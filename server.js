@@ -7,7 +7,7 @@ import connectDB from "./config/db.js";
 
 // Routes
 import adminRoutes from "./routes/adminRoutes.js";
-
+import announcementRoutes from "./routes/announcementRoutes.js";
 dotenv.config();
 connectDB();
 
@@ -44,7 +44,7 @@ app.get("/", (req, res) => {
 // API Routes
 // =======================
 app.use("/api/admin", adminRoutes);
-
+app.use("/api", announcementRoutes);
 // =======================
 // Start server
 // =======================
