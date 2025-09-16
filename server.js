@@ -8,6 +8,7 @@ import connectDB from "./config/db.js";
 // Routes
 import adminRoutes from "./routes/adminRoutes.js";
 import announcementRoutes from "./routes/announcementRoutes.js";
+import departmentRoutes from "./routes/departmentRoutes.js"; 
 dotenv.config();
 connectDB();
 
@@ -37,7 +38,7 @@ app.use(morgan("dev"));
 // Health check
 // =======================
 app.get("/", (req, res) => {
-  res.send("AIG Hospital Event Backend is running 🚀");
+  res.send("AIG Hospital Event Backend is running ..... ");
 });
 
 // =======================
@@ -45,6 +46,7 @@ app.get("/", (req, res) => {
 // =======================
 app.use("/api/admin", adminRoutes);
 app.use("/api", announcementRoutes);
+app.use("/api", departmentRoutes);
 // =======================
 // Start server
 // =======================
