@@ -9,8 +9,12 @@ import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// Public: Get all announcements
-router.get("/announcements", getAnnouncements);
+// Get announcements - only logged in users (any role)
+router.get(
+  "/announcements",
+  protect, //  ensures user is logged in
+  getAnnouncements
+);
 
 // Admin-only: Create, Update, Delete
 router.post(
