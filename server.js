@@ -12,6 +12,7 @@ import departmentRoutes from "./routes/departmentRoutes.js";
 import organizerRoutes from "./routes/organizerRoutes.js";
 import venueRoutes from "./routes/venueRoutes.js";
 import teamRoutes from "./routes/teamRoutes.js";
+import eventRoutes from "./routes/eventRoutes.js";
 
 dotenv.config();
 connectDB();
@@ -54,6 +55,7 @@ app.use("/api", departmentRoutes);
 app.use("/api", organizerRoutes);
 app.use("/api", venueRoutes);
 app.use("/api", teamRoutes);
+app.use("/api", eventRoutes);
 // =======================
 // Start server
 // =======================
