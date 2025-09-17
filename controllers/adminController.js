@@ -121,12 +121,16 @@ export const forgotPassword = async (req, res) => {
     const admin = await User.findOne({ email, role: "admin" });
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
-    const resetToken = crypto.randomBytes(32).toString("hex");
+    // Generate token
+    const token = crypto.randomBytes(32).toString("hex");
+    const resetToken = crypto.createHash("sha256").update(token).digest("hex");
+
     admin.passwordResetToken = resetToken;
     admin.passwordResetExpires = Date.now() + 15 * 60 * 1000; // 15 min
     await admin.save();
 
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    // Send token as query param
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
     const message = `
       <h3>Password Reset Request</h3>
       <p>Click the link below to reset your password:</p>
