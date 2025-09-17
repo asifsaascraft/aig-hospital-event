@@ -1,7 +1,7 @@
 import Announcement from "../models/Announcement.js";
 
 // =======================
-// Get all announcements (public)
+// Get all announcements (any logged-in role)
 // =======================
 export const getAnnouncements = async (req, res) => {
   try {

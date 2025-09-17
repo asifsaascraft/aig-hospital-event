@@ -1,7 +1,7 @@
 import Department from "../models/Department.js";
 
 // =======================
-// Get all departments (any logged-in role)
+// Get all departments (public)
 // =======================
 export const getDepartments = async (req, res) => {
   try {
