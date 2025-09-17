@@ -5,7 +5,7 @@ import cloudinary from "../config/cloudinary.js";
 
 /**
  * Reusable upload function
- * @param {string} folder - Cloudinary folder name (e.g. "venues", "events")
+ * @param {string} folder - Cloudinary folder name (e.g. "venues", "events", "hotels")
  */
 export const createUploader = (folder) => {
   const storage = new CloudinaryStorage({
@@ -22,3 +22,4 @@ export const createUploader = (folder) => {
 // Export specific uploaders for convenience
 export const uploadVenueImage = createUploader("venues");
 export const uploadEventImage = createUploader("events");
+export const uploadHotelImage = createUploader("hotels"); 
