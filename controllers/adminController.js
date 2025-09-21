@@ -315,31 +315,30 @@ export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
     const admin = await User.findOne({ email, role: "admin" });
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
+    if (!admin) return res.status(404).json({ message: "Admin account not found with this email" });
 
-    // Generate token
-    const token = crypto.randomBytes(32).toString("hex");
-    const resetToken = crypto.createHash("sha256").update(token).digest("hex");
-
+    const resetToken = crypto.randomBytes(32).toString("hex");
     admin.passwordResetToken = resetToken;
     admin.passwordResetExpires = Date.now() + 15 * 60 * 1000; // 15 min
     await admin.save();
 
-    // Send token as query param
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
     const message = `
       <h3>Password Reset Request</h3>
       <p>Click the link below to reset your password:</p>
       <a href="${resetUrl}" target="_blank">${resetUrl}</a>
     `;
 
-    await sendEmail({
+    // respond immediately
+    res.json({ message: "Password reset link sent (if email exists)" });
+
+    // send email in background (non-blocking)
+    sendEmail({
       email: admin.email,
       subject: "Password Reset",
       message,
-    });
+    }).catch(err => console.error("Email error:", err));
 
-    res.json({ message: "Password reset link sent to email" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
