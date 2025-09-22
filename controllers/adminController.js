@@ -129,7 +129,10 @@ export const forgotPassword = async (req, res) => {
     admin.passwordResetExpires = Date.now() + 15 * 60 * 1000; // 15 min
     await admin.save();
 
-    // Send token as query param
+    // Send response immediately
+    res.json({ message: "Password reset link sent to email" });
+
+    // Send email in background
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
     const message = `
       <h3>Password Reset Request</h3>
@@ -137,17 +140,17 @@ export const forgotPassword = async (req, res) => {
       <a href="${resetUrl}" target="_blank">${resetUrl}</a>
     `;
 
-    await sendEmail({
+    sendEmail({
       email: admin.email,
       subject: "Password Reset",
       message,
-    });
+    }).catch(err => console.error("Email sending error:", err));
 
-    res.json({ message: "Password reset link sent to email" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Forgot password error:", error);
   }
 };
+
 
 // =======================
 // Reset Password
