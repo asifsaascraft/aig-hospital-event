@@ -1,4 +1,6 @@
+// models/Event.js
 import mongoose from "mongoose";
+import moment from "moment-timezone";
 
 // Schema
 const EventSchema = new mongoose.Schema(
@@ -34,23 +36,23 @@ const EventSchema = new mongoose.Schema(
       required: [true, "Department is required"],
     },
     startDate: {
-      type: String,
+      type: String, // Format: DD/MM/YYYY
       required: [true, "Start Date is required"],
     },
     endDate: {
-      type: String,
+      type: String, // Format: DD/MM/YYYY
       required: [true, "End Date is required"],
     },
     startTime: {
-      type: String,
+      type: String, // Format: hh:mm A (e.g., 09:00 AM)
       required: [true, "Start Time is required"],
     },
     endTime: {
-      type: String,
+      type: String, // Format: hh:mm A (e.g., 05:00 PM)
       required: [true, "End Time is required"],
     },
     timeZone: {
-      type: String,
+      type: String, // e.g., "Asia/Kolkata"
       required: [true, "Time Zone is required"],
     },
     venueName: {
@@ -95,7 +97,7 @@ const EventSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["Live", "Running", "Past"],
-      default: "Live", // default before checking
+      default: "Live",
     },
   },
   { timestamps: true }
@@ -105,12 +107,24 @@ const EventSchema = new mongoose.Schema(
  * Helper function to compute event status
  */
 function computeStatus(event) {
-  const start = new Date(`${event.startDate} ${event.startTime}`);
-  const end = new Date(`${event.endDate} ${event.endTime}`);
-  const now = new Date();
+  const tz = event.timeZone || "UTC";
 
-  if (now < start) return "Live";
-  if (now >= start && now <= end) return "Running";
+  const start = moment.tz(
+    `${event.startDate} ${event.startTime}`,
+    "DD/MM/YYYY hh:mm A",
+    tz
+  );
+
+  const end = moment.tz(
+    `${event.endDate} ${event.endTime}`,
+    "DD/MM/YYYY hh:mm A",
+    tz
+  );
+
+  const now = moment.tz(tz);
+
+  if (now.isBefore(start)) return "Live";
+  if (now.isBetween(start, end, null, "[]")) return "Running";
   return "Past";
 }
 
@@ -129,12 +143,13 @@ EventSchema.pre("findOneAndUpdate", function (next) {
   const update = this.getUpdate();
 
   if (update.startDate || update.startTime || update.endDate || update.endTime) {
-    // If any time/date is updated, recompute status
     const doc = { ...this._update };
     doc.startDate = doc.startDate || this.startDate;
     doc.startTime = doc.startTime || this.startTime;
     doc.endDate = doc.endDate || this.endDate;
     doc.endTime = doc.endTime || this.endTime;
+    doc.timeZone = doc.timeZone || this.timeZone;
+
     update.status = computeStatus(doc);
     this.setUpdate(update);
   }
