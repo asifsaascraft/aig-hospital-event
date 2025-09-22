@@ -121,7 +121,7 @@ export const forgotPassword = async (req, res) => {
     const admin = await User.findOne({ email, role: "admin" });
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
-    // Generate token
+    // Generate raw + hashed tokens
     const token = crypto.randomBytes(32).toString("hex");
     const resetToken = crypto.createHash("sha256").update(token).digest("hex");
 
@@ -129,10 +129,6 @@ export const forgotPassword = async (req, res) => {
     admin.passwordResetExpires = Date.now() + 15 * 60 * 1000; // 15 min
     await admin.save();
 
-    // Send response immediately
-    res.json({ message: "Password reset link sent to email" });
-
-    // Send email in background
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
     const message = `
       <h3>Password Reset Request</h3>
@@ -140,14 +136,17 @@ export const forgotPassword = async (req, res) => {
       <a href="${resetUrl}" target="_blank">${resetUrl}</a>
     `;
 
-    sendEmail({
+    // Send email first, then respond
+    await sendEmail({
       email: admin.email,
       subject: "Password Reset",
       message,
-    }).catch(err => console.error("Email sending error:", err));
+    });
 
+    res.json({ message: "Password reset link sent to your email address" });
   } catch (error) {
     console.error("Forgot password error:", error);
+    res.status(500).json({ message: "Failed to send reset email" });
   }
 };
 
@@ -160,10 +159,12 @@ export const resetPassword = async (req, res) => {
     const { token } = req.params;
     const { password } = req.body;
 
-    const admin = await User.findOne({
-      passwordResetToken: token,
-      passwordResetExpires: { $gt: Date.now() },
-    });
+  const hashedToken = crypto.createHash("sha256").update(req.params.token).digest("hex");
+  const admin = await User.findOne({
+  passwordResetToken: hashedToken,
+  passwordResetExpires: { $gt: Date.now() },
+      });
+
 
     if (!admin) return res.status(400).json({ message: "Invalid or expired token" });
 
