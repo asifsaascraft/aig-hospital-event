@@ -9,7 +9,9 @@ import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-//  Admin-only: Get all teams
+// =======================
+// Admin-only: Get all teams (eventAdmins)
+// =======================
 router.get(
   "/admin/teams",
   protect,
@@ -17,7 +19,9 @@ router.get(
   getTeams
 );
 
-//  Admin-only: Create a new team
+// =======================
+// Admin-only: Create a new team (eventAdmin user)
+// =======================
 router.post(
   "/admin/teams",
   protect,
@@ -25,7 +29,9 @@ router.post(
   createTeam
 );
 
-//  Admin-only: Update team by ID
+// =======================
+// Admin-only: Update team by ID (eventAdmin user)
+// =======================
 router.put(
   "/admin/teams/:id",
   protect,
@@ -33,7 +39,9 @@ router.put(
   updateTeam
 );
 
-//  Admin-only: Delete team by ID
+// =======================
+// Admin-only: Delete team by ID (eventAdmin user)
+// =======================
 router.delete(
   "/admin/teams/:id",
   protect,

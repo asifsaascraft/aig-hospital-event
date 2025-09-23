@@ -17,9 +17,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
     },
+    plainPassword: {          //  Added field for storing original password
+      type: String,
+    },
     role: {
       type: String,
-      enum: ["admin", "user", "eventManager", "sponsor", "exhibitor", "onsite"],
+      enum: ["admin", "user", "eventAdmin", "sponsor", "exhibitor", "onsite"],
       default: "user",
     },
     status: {
@@ -27,8 +30,18 @@ const userSchema = new mongoose.Schema(
       enum: ["Active", "Inactive"],
       default: "Active", // only relevant for admin
     },
+    //  Added for Team (eventAdmin)
+    companyName: {
+      type: String,
+      trim: true,
+    },
+    mobile: {
+      type: String,
+      match: [/^\d{10}$/, "Mobile number must be 10 digits"],
+      trim: true,
+    },
 
-    // 🔑 For forgot-password/reset-password
+    //  For forgot-password/reset-password
     passwordResetToken: {
       type: String,
       default: null,
@@ -41,7 +54,7 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// 🔐 Hash password before saving
+//  Hash password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   const salt = await bcrypt.genSalt(10);
@@ -49,7 +62,7 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-// 🔑 Compare entered password with hashed password
+//  Compare entered password with hashed password
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };

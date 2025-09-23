@@ -1,11 +1,33 @@
-import Team from "../models/Team.js";
+import User from "../models/User.js";
+import bcrypt from "bcryptjs";
+
+// 🔐 Generate strong random password (8–14 chars)
+function generateStrongPassword() {
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const digits = "0123456789";
+  const symbols = "!@#$%^&*";
+  const all = upper + lower + digits + symbols;
+  const length = Math.floor(Math.random() * (14 - 8 + 1)) + 8;
+
+  let password = "";
+  password += upper[Math.floor(Math.random() * upper.length)];
+  password += digits[Math.floor(Math.random() * digits.length)];
+  password += symbols[Math.floor(Math.random() * symbols.length)];
+
+  for (let i = password.length; i < length; i++) {
+    password += all[Math.floor(Math.random() * all.length)];
+  }
+
+  return password.split("").sort(() => Math.random() - 0.5).join("");
+}
 
 // =======================
-// Get all teams (admin only)
+// Get all eventAdmins (admin only)
 // =======================
 export const getTeams = async (req, res) => {
   try {
-    const teams = await Team.find().sort({ createdAt: -1 });
+    const teams = await User.find({ role: "eventAdmin" }).sort({ createdAt: -1 });
     res.json({ success: true, data: teams });
   } catch (error) {
     res.status(500).json({
@@ -17,27 +39,47 @@ export const getTeams = async (req, res) => {
 };
 
 // =======================
-// Create team (admin only)
+// Create eventAdmin (admin only)
 // =======================
 export const createTeam = async (req, res) => {
   try {
-    const { companyName, contactPersonName, contactPersonMobile, contactPersonEmail, status } = req.body;
+    const { name, email, mobile, companyName, status } = req.body;
 
-    if (!companyName || !contactPersonName || !contactPersonMobile || !contactPersonEmail) {
+    if (!name || !email || !mobile || !companyName) {
       return res
         .status(400)
         .json({ success: false, message: "All fields are required" });
     }
 
-    const team = await Team.create({
+    // Check if email already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Email already exists" });
+    }
+
+    // Generate password
+    const plainPassword = generateStrongPassword();
+    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+    const eventAdmin = await User.create({
+      name,
+      email,
+      mobile,
       companyName,
-      contactPersonName,
-      contactPersonMobile,
-      contactPersonEmail,
-      status,
+      password: hashedPassword,
+      plainPassword,
+      role: "eventAdmin",
+      status: status || "Active",
     });
 
-    res.status(201).json({ success: true, data: team });
+    // Return plain password to admin
+    res.status(201).json({
+      success: true,
+      data: eventAdmin,
+      plainPassword, // admin can note/send to user
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -48,26 +90,28 @@ export const createTeam = async (req, res) => {
 };
 
 // =======================
-// Update team (admin only)
+// Update eventAdmin (admin only)
 // =======================
 export const updateTeam = async (req, res) => {
   try {
     const { id } = req.params;
-    const { companyName, contactPersonName, contactPersonMobile, contactPersonEmail, status } = req.body;
+    const { name, email, mobile, companyName, status } = req.body;
 
-    const team = await Team.findByIdAndUpdate(
+    const updatedData = { name, email, mobile, companyName, status };
+
+    const eventAdmin = await User.findByIdAndUpdate(
       id,
-      { companyName, contactPersonName, contactPersonMobile, contactPersonEmail, status },
+      updatedData,
       { new: true, runValidators: true }
     );
 
-    if (!team) {
+    if (!eventAdmin) {
       return res
         .status(404)
-        .json({ success: false, message: "Team not found" });
+        .json({ success: false, message: "EventAdmin not found" });
     }
 
-    res.json({ success: true, data: team });
+    res.json({ success: true, data: eventAdmin });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -78,21 +122,21 @@ export const updateTeam = async (req, res) => {
 };
 
 // =======================
-// Delete team (admin only)
+// Delete eventAdmin (admin only)
 // =======================
 export const deleteTeam = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const team = await Team.findByIdAndDelete(id);
+    const eventAdmin = await User.findByIdAndDelete(id);
 
-    if (!team) {
+    if (!eventAdmin) {
       return res
         .status(404)
-        .json({ success: false, message: "Team not found" });
+        .json({ success: false, message: "EventAdmin not found" });
     }
 
-    res.json({ success: true, message: "Team deleted successfully" });
+    res.json({ success: true, message: "EventAdmin deleted successfully" });
   } catch (error) {
     res.status(500).json({
       success: false,
