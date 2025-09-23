@@ -138,7 +138,7 @@ export const forgotPassword = async (req, res) => {
 
     // Send email first, then respond
     await sendEmail({
-      email: email,
+      email: admin.email,
       subject: "Password Reset",
       message,
     });
