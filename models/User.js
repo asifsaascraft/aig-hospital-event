@@ -40,7 +40,12 @@ const userSchema = new mongoose.Schema(
       match: [/^\d{10}$/, "Mobile number must be 10 digits"],
       trim: true,
     },
-
+    //  Assigned events for eventAdmin (array of Event ObjectIds)
+    assignedEvents: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Event",
+      default: [],
+    }],
     //  For forgot-password/reset-password
     passwordResetToken: {
       type: String,

@@ -24,6 +24,33 @@ export const getEvents = async (req, res) => {
 };
 
 // =======================
+// Get all live events (public)
+// =======================
+export const getLiveEvents = async (req, res) => {
+  try {
+    const events = await Event.find()
+      .populate("organizer department venueName")
+      .sort({ startDate: 1 }); // sort by start date ascending
+
+    // Filter events where dynamicStatus is "Live" or "Running"
+    const liveEvents = events
+      .map((e) => e.toObject({ virtuals: true }))
+      .filter((e) => e.dynamicStatus === "Live" || e.dynamicStatus === "Running");
+
+    res.json({
+      success: true,
+      data: liveEvents,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch live events",
+      error: error.message,
+    });
+  }
+};
+
+// =======================
 // Get single event (public)
 // =======================
 export const getEventById = async (req, res) => {

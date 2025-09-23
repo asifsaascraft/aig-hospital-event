@@ -16,7 +16,7 @@ import eventRoutes from "./routes/eventRoutes.js";
 import hotelRoutes from "./routes/hotelRoutes.js"; 
 import supplierRoutes from "./routes/supplierRoutes.js";
 import roomCategoryRoutes from "./routes/roomCategoryRoutes.js";
-
+import eventAssignRoutes from "./routes/eventAssignRoutes.js";
 dotenv.config();
 connectDB();
 
@@ -62,6 +62,7 @@ app.use("/api", eventRoutes);
 app.use("/api", hotelRoutes); 
 app.use("/api", supplierRoutes);
 app.use("/api", roomCategoryRoutes);
+app.use("/api", eventAssignRoutes); 
 // =======================
 // Start server
 // =======================

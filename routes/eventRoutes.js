@@ -2,6 +2,7 @@
 import express from "express";
 import {
   getEvents,
+  getLiveEvents,
   getEventById,
   createEvent,
   updateEvent,
@@ -14,6 +15,9 @@ const router = express.Router();
 
 // Public: anyone can view all events
 router.get("/events", getEvents);
+// Public: Get all live events
+router.get("/events/live", getLiveEvents);
+
 router.get("/events/:id", getEventById);
 
 // Admin-only: Create a new event
