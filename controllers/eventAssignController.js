@@ -8,7 +8,11 @@ import Event from "../models/Event.js";
 export const getEventAssignments = async (req, res) => {
   try {
     const eventAdmins = await User.find({ role: "eventAdmin" })
-      .populate("assignedEvents", "eventName eventType"); // populate event details
+      .populate({
+        path: "assignedEvents",
+        select: "_id eventName eventType", 
+      })
+      .lean(); // ensures no extra fields like dynamicStatus
 
     res.json({
       success: true,
