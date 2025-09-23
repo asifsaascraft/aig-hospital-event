@@ -94,29 +94,25 @@ const EventSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    status: {
-      type: String,
-      enum: ["Live", "Running", "Past"],
-      default: "Live",
-    },
+    // status removed from schema because we calculate it dynamically
   },
-  { timestamps: true }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
 
 /**
- * Helper function to compute event status
+ * Virtual: Dynamic event status
  */
-function computeStatus(event) {
-  const tz = event.timeZone || "UTC";
+EventSchema.virtual("dynamicStatus").get(function () {
+  const tz = this.timeZone || "UTC";
 
   const start = moment.tz(
-    `${event.startDate} ${event.startTime}`,
+    `${this.startDate} ${this.startTime}`,
     "DD/MM/YYYY hh:mm A",
     tz
   );
 
   const end = moment.tz(
-    `${event.endDate} ${event.endTime}`,
+    `${this.endDate} ${this.endTime}`,
     "DD/MM/YYYY hh:mm A",
     tz
   );
@@ -126,34 +122,6 @@ function computeStatus(event) {
   if (now.isBefore(start)) return "Live";
   if (now.isBetween(start, end, null, "[]")) return "Running";
   return "Past";
-}
-
-/**
- * Middleware: Before saving, update status
- */
-EventSchema.pre("save", function (next) {
-  this.status = computeStatus(this);
-  next();
-});
-
-/**
- * Middleware: Before updating with findOneAndUpdate
- */
-EventSchema.pre("findOneAndUpdate", function (next) {
-  const update = this.getUpdate();
-
-  if (update.startDate || update.startTime || update.endDate || update.endTime) {
-    const doc = { ...this._update };
-    doc.startDate = doc.startDate || this.startDate;
-    doc.startTime = doc.startTime || this.startTime;
-    doc.endDate = doc.endDate || this.endDate;
-    doc.endTime = doc.endTime || this.endTime;
-    doc.timeZone = doc.timeZone || this.timeZone;
-
-    update.status = computeStatus(doc);
-    this.setUpdate(update);
-  }
-  next();
 });
 
 // Avoid model overwrite during hot-reload

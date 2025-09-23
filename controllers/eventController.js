@@ -9,7 +9,11 @@ export const getEvents = async (req, res) => {
     const events = await Event.find()
       .populate("organizer department venueName")
       .sort({ createdAt: -1 });
-    res.json({ success: true, data: events });
+
+    res.json({
+      success: true,
+      data: events.map((e) => e.toObject({ virtuals: true })),
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -33,7 +37,7 @@ export const getEventById = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Event not found" });
     }
-    res.json({ success: true, data: event });
+    res.json({ success: true, data: event.toObject({ virtuals: true }) });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -61,7 +65,9 @@ export const createEvent = async (req, res) => {
 
     const newEvent = await Event.create(eventData);
 
-    res.status(201).json({ success: true, data: newEvent });
+    res
+      .status(201)
+      .json({ success: true, data: newEvent.toObject({ virtuals: true }) });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -92,7 +98,7 @@ export const updateEvent = async (req, res) => {
         .json({ success: false, message: "Event not found" });
     }
 
-    res.json({ success: true, data: updatedEvent });
+    res.json({ success: true, data: updatedEvent.toObject({ virtuals: true }) });
   } catch (error) {
     res.status(500).json({
       success: false,
