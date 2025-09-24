@@ -121,22 +121,28 @@ export const forgotPassword = async (req, res) => {
     const admin = await User.findOne({ email, role: "admin" });
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
-    // Generate raw + hashed tokens
+    // Generate raw + hashed token
     const token = crypto.randomBytes(32).toString("hex");
-    const resetToken = crypto.createHash("sha256").update(token).digest("hex");
+    const resetToken = crypto.createHash("sha256").update(token.trim()).digest("hex");
 
+    // Save hashed token in DB (trimmed)
     admin.passwordResetToken = resetToken;
-    admin.passwordResetExpires = Date.now() + 15 * 60 * 1000; // 15 min
+    admin.passwordResetExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
     await admin.save();
 
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+    // Debug log DB value
+    console.log("Stored token in DB:", admin.passwordResetToken);
+
+    // Send raw token in URL as route param
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${token}`;
+    console.log("Reset URL:", resetUrl);
+
     const message = `
       <h3>Password Reset Request</h3>
       <p>Click the link below to reset your password:</p>
       <a href="${resetUrl}" target="_blank">${resetUrl}</a>
     `;
 
-    // Send email first, then respond
     await sendEmail({
       email: admin.email,
       subject: "Password Reset",
@@ -150,32 +156,45 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
-
 // =======================
 // Reset Password
 // =======================
 export const resetPassword = async (req, res) => {
   try {
-    const { token } = req.params;
+    let { token } = req.params; // get token from URL
     const { password } = req.body;
 
-  const hashedToken = crypto.createHash("sha256").update(req.params.token).digest("hex");
-  const admin = await User.findOne({
-  passwordResetToken: hashedToken,
-  passwordResetExpires: { $gt: Date.now() },
-      });
+    if (!token) return res.status(400).json({ message: "Token is required" });
 
+    // Trim token to remove extra spaces/newlines
+    token = token.trim();
 
-    if (!admin) return res.status(400).json({ message: "Invalid or expired token" });
+    // Hash token to match DB
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
-    admin.password = password; // will be hashed by pre-save hook
+    // Debug logs
+    console.log("Token received:", token);
+    console.log("Hashed token:", hashedToken);
+
+    const admin = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() },
+    });
+
+    if (!admin) {
+      console.log("DB check failed");
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    // Update password
+    admin.password = password; // will be hashed in pre-save hook
     admin.passwordResetToken = null;
     admin.passwordResetExpires = null;
-
     await admin.save();
 
     res.json({ message: "Password reset successful" });
   } catch (error) {
+    console.error("Reset password error:", error);
     res.status(500).json({ message: error.message });
   }
 };
