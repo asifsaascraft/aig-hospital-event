@@ -130,18 +130,16 @@ export const forgotPassword = async (req, res) => {
     admin.passwordResetExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
     await admin.save();
 
-    // Debug log DB value
-    console.log("Stored token in DB:", admin.passwordResetToken);
 
     // Send raw token in URL as route param
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${token}`;
-    console.log("Reset URL:", resetUrl);
 
     const message = `
       <h3>Password Reset Request</h3>
-      <p>Click the link below to reset your password:</p>
-      <a href="${resetUrl}" target="_blank">${resetUrl}</a>
+      <p>Click the button below to reset your password:</p>
+      <a href="${resetUrl}" target="_blank">Reset Password</a>
     `;
+
 
     await sendEmail({
       email: admin.email,
@@ -172,17 +170,12 @@ export const resetPassword = async (req, res) => {
     // Hash token to match DB
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
-    // Debug logs
-    console.log("Token received:", token);
-    console.log("Hashed token:", hashedToken);
-
     const admin = await User.findOne({
       passwordResetToken: hashedToken,
       passwordResetExpires: { $gt: Date.now() },
     });
 
     if (!admin) {
-      console.log("DB check failed");
       return res.status(400).json({ message: "Invalid or expired token" });
     }
 
