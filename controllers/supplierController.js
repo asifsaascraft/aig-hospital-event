@@ -67,6 +67,18 @@ export const createSupplier = async (req, res) => {
         .json({ success: false, message: "All required fields must be provided" });
     }
 
+    //  Check if email already exists
+    const existingEmail = await Supplier.findOne({ contactPersonEmail });
+    if (existingEmail) {
+      return res.status(400).json({ success: false, message: "Email already exists" });
+    }
+
+    //  Check if mobile already exists
+    const existingMobile = await Supplier.findOne({ contactPersonMobile });
+    if (existingMobile) {
+      return res.status(400).json({ success: false, message: "Mobile already exists" });
+    }
+
     const newSupplier = await Supplier.create({
       supplierName,
       services,
@@ -92,12 +104,45 @@ export const createSupplier = async (req, res) => {
 export const updateSupplier = async (req, res) => {
   try {
     const { id } = req.params;
-    const updatedData = { ...req.body };
+    const {
+      supplierName,
+      services,
+      contactPersonName,
+      contactPersonEmail,
+      contactPersonMobile,
+      status,
+    } = req.body;
 
-    const updatedSupplier = await Supplier.findByIdAndUpdate(id, updatedData, {
-      new: true,
-      runValidators: true,
-    });
+    //  Check email uniqueness (exclude current supplier)
+    if (contactPersonEmail) {
+      const existingEmail = await Supplier.findOne({
+        contactPersonEmail,
+        _id: { $ne: id },
+      });
+      if (existingEmail) {
+        return res.status(400).json({ success: false, message: "Email already exists" });
+      }
+    }
+
+    //  Check mobile uniqueness (exclude current supplier)
+    if (contactPersonMobile) {
+      const existingMobile = await Supplier.findOne({
+        contactPersonMobile,
+        _id: { $ne: id },
+      });
+      if (existingMobile) {
+        return res.status(400).json({ success: false, message: "Mobile already exists" });
+      }
+    }
+
+    const updatedSupplier = await Supplier.findByIdAndUpdate(
+      id,
+      { supplierName, services, contactPersonName, contactPersonEmail, contactPersonMobile, status },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
     if (!updatedSupplier) {
       return res

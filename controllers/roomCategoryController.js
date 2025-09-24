@@ -57,7 +57,16 @@ export const createRoomCategory = async (req, res) => {
         message: "All required fields must be provided",
       });
     }
+    //  Check if this hotel already has a room category
+    const existingHotel = await RoomCategory.findOne({ hotel });
 
+    if (existingHotel) {
+      return res.status(400).json({
+        success: false,
+        message: "Room category for this hotel already exists",
+      });
+    }
+    
     const newCategory = await RoomCategory.create({
       hotel,
       roomCategory,

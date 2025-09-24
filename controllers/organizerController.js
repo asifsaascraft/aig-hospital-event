@@ -27,6 +27,18 @@ export const createOrganizer = async (req, res) => {
       return res.status(400).json({ success: false, message: "All fields are required" });
     }
 
+    //  Check if email already exists
+    const existingEmail = await Organizer.findOne({ contactPersonEmail });
+    if (existingEmail) {
+      return res.status(400).json({ success: false, message: "Email already exists" });
+    }
+
+    //  Check if mobile already exists
+    const existingMobile = await Organizer.findOne({ contactPersonMobile });
+    if (existingMobile) {
+      return res.status(400).json({ success: false, message: "Mobile already exists" });
+    }
+
     const organizer = await Organizer.create({
       organizerName,
       contactPersonName,
@@ -52,6 +64,28 @@ export const updateOrganizer = async (req, res) => {
   try {
     const { id } = req.params;
     const { organizerName, contactPersonName, contactPersonMobile, contactPersonEmail, status } = req.body;
+
+    //  Check email uniqueness (exclude current organizer)
+    if (contactPersonEmail) {
+      const existingEmail = await Organizer.findOne({
+        contactPersonEmail,
+        _id: { $ne: id },
+      });
+      if (existingEmail) {
+        return res.status(400).json({ success: false, message: "Email already exists" });
+      }
+    }
+
+    //  Check mobile uniqueness (exclude current organizer)
+    if (contactPersonMobile) {
+      const existingMobile = await Organizer.findOne({
+        contactPersonMobile,
+        _id: { $ne: id },
+      });
+      if (existingMobile) {
+        return res.status(400).json({ success: false, message: "Mobile already exists" });
+      }
+    }
 
     const organizer = await Organizer.findByIdAndUpdate(
       id,

@@ -29,6 +29,24 @@ export const createDepartment = async (req, res) => {
         .json({ success: false, message: "All fields are required" });
     }
 
+    //  Check if email already exists
+    const existingEmail = await Department.findOne({ contactPersonEmail });
+    if (existingEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already exists",
+      });
+    }
+
+    //  Check if mobile already exists
+    const existingMobile = await Department.findOne({ contactPersonMobile });
+    if (existingMobile) {
+      return res.status(400).json({
+        success: false,
+        message: "Mobile already exists",
+      });
+    }
+
     const department = await Department.create({
       departmentName,
       contactPersonName,
@@ -54,6 +72,34 @@ export const updateDepartment = async (req, res) => {
   try {
     const { id } = req.params;
     const { departmentName, contactPersonName, contactPersonMobile, contactPersonEmail, status } = req.body;
+
+    //  Check if email already exists in another department
+    if (contactPersonEmail) {
+      const existingEmail = await Department.findOne({
+        contactPersonEmail,
+        _id: { $ne: id },
+      });
+      if (existingEmail) {
+        return res.status(400).json({
+          success: false,
+          message: "Email already exists",
+        });
+      }
+    }
+
+    //  Check if mobile already exists in another department
+    if (contactPersonMobile) {
+      const existingMobile = await Department.findOne({
+        contactPersonMobile,
+        _id: { $ne: id },
+      });
+      if (existingMobile) {
+        return res.status(400).json({
+          success: false,
+          message: "Mobile already exists",
+        });
+      }
+    }
 
     const department = await Department.findByIdAndUpdate(
       id,

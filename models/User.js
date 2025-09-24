@@ -39,6 +39,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       match: [/^\d{10}$/, "Mobile number must be 10 digits"],
       trim: true,
+      unique: true,
     },
     //  Assigned events for eventAdmin (array of Event ObjectIds)
     assignedEvents: [{

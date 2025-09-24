@@ -16,6 +16,8 @@ const DepartmentSchema = new mongoose.Schema(
       type: String,
       required: [true, "Mobile number is required"],
       match: [/^\d{10}$/, "Mobile number must be 10 digits"],
+      trim: true,
+      unique: true,
     },
     contactPersonEmail: {
       type: String,
@@ -23,6 +25,7 @@ const DepartmentSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
       match: [/^\S+@\S+\.\S+$/, "Invalid email format"],
+      unique: true,
     },
     status: {
       type: String,

@@ -24,12 +24,14 @@ const SupplierSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
       match: [/^\S+@\S+\.\S+$/, "Invalid email address"],
+      unique: true,
     },
     contactPersonMobile: {
       type: String,
       required: [true, "Mobile number is required"],
       trim: true,
       match: [/^\d{10}$/, "Mobile number must be 10 digits only"],
+      unique: true,
     },
     status: {
       type: String,

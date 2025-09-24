@@ -39,14 +39,14 @@ export const loginAdmin = async (req, res) => {
     const { email, password } = req.body;
 
     const admin = await User.findOne({ email, role: "admin" });
-    if (!admin) return res.status(400).json({ message: "Invalid credentials" });
+    if (!admin) return res.status(400).json({ message: "Email does not Exist" });
 
     if (admin.status !== "Active") {
       return res.status(403).json({ message: "Admin account is inactive" });
     }
 
     const isMatch = await admin.matchPassword(password);
-    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
+    if (!isMatch) return res.status(400).json({ message: "You Entered Wrong Password" });
 
     // Generate tokens
     const { accessToken, refreshToken } = generateTokens(admin._id, admin.role);
