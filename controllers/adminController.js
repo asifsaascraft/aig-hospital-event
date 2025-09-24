@@ -124,17 +124,12 @@ export const forgotPassword = async (req, res) => {
     // Generate raw + hashed tokens
     const token = crypto.randomBytes(32).toString("hex");
     const resetToken = crypto.createHash("sha256").update(token).digest("hex");
-    console.log("Reset Token (raw):", resetToken);
-    console.log("Admin reset Password token:", admin.passwordResetToken);
-    console.log("Admin reset Password expiry:", admin.passwordResetExpires);
 
     admin.passwordResetToken = resetToken;
-    
     admin.passwordResetExpires = Date.now() + 15 * 60 * 1000; // 15 min
     await admin.save();
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-    console.log("Reset URL:", resetUrl);
     const message = `
       <h3>Password Reset Request</h3>
       <p>Click the link below to reset your password:</p>
