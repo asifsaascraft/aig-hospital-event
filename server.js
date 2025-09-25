@@ -7,6 +7,8 @@ import connectDB from "./config/db.js";
 
 // Routes
 import adminRoutes from "./routes/adminRoutes.js";
+import eventAdminRoutes from "./routes/eventAdminRoutes.js";
+
 import announcementRoutes from "./routes/announcementRoutes.js";
 import departmentRoutes from "./routes/departmentRoutes.js"; 
 import organizerRoutes from "./routes/organizerRoutes.js";
@@ -25,7 +27,11 @@ const app = express();
 // =======================
 // CORS setup for multiple frontends
 // =======================
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || "").split(",");
+const allowedOrigins = [
+  "http://localhost:3000",
+  process.env.ADMIN_FRONTEND_URL,
+  process.env.EVENT_ADMIN_FRONTEND_URL,
+];
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -53,6 +59,7 @@ app.get("/", (req, res) => {
 // API Routes
 // =======================
 app.use("/api/admin", adminRoutes);
+app.use("/api/event-admin", eventAdminRoutes);
 app.use("/api", announcementRoutes);
 app.use("/api", departmentRoutes);
 app.use("/api", organizerRoutes);

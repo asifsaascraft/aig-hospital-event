@@ -1,4 +1,3 @@
-// routes/adminRoutes.js
 import express from "express";
 import cookieParser from "cookie-parser";
 import {
@@ -7,7 +6,7 @@ import {
   refreshAccessToken,
   logoutAdmin,
   forgotPassword,
-  resetPassword
+  resetPassword,
 } from "../controllers/adminController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -29,8 +28,13 @@ router.post("/login", loginAdmin);
 // Refresh access token
 router.post("/refresh-token", refreshAccessToken);
 
-// Logout
-router.post("/logout", protect, authorizeRoles("admin"), logoutAdmin);
+// Logout - Admin only
+router.post(
+  "/logout",
+  protect, // ensures user is logged in
+  authorizeRoles("admin"), // admin-only
+  logoutAdmin
+);
 
 // Forgot Password
 router.post("/forgot-password", forgotPassword);

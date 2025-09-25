@@ -55,7 +55,7 @@ export const loginAdmin = async (req, res) => {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -94,7 +94,7 @@ export const refreshAccessToken = async (req, res) => {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -118,6 +118,8 @@ export const logoutAdmin = (req, res) => {
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
+
+    // Find only admin
     const admin = await User.findOne({ email, role: "admin" });
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
@@ -125,22 +127,20 @@ export const forgotPassword = async (req, res) => {
     const token = crypto.randomBytes(32).toString("hex");
     const resetToken = crypto.createHash("sha256").update(token.trim()).digest("hex");
 
-    // Save hashed token in DB (trimmed)
+    // Save hashed token in DB
     admin.passwordResetToken = resetToken;
     admin.passwordResetExpires = Date.now() + 24 * 60 * 60 * 1000; // 1 day
-
     await admin.save();
 
-
-    // Send raw token in URL as route param
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${token}`;
+    // Frontend URL for admin
+    const frontendUrl = process.env.ADMIN_FRONTEND_URL;
+    const resetUrl = `${frontendUrl}/reset-password/${token}`;
 
     const message = `
       <h3>Password Reset Request</h3>
       <p>Click the button below to reset your password:</p>
       <a href="${resetUrl}" target="_blank">Reset Password</a>
     `;
-
 
     await sendEmail({
       email: admin.email,

@@ -61,14 +61,13 @@ export const createTeam = async (req, res) => {
 
     // Generate password
     const plainPassword = generateStrongPassword();
-    const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
     const eventAdmin = await User.create({
       name,
       email,
       mobile,
       companyName,
-      password: hashedPassword,
+      password: plainPassword,
       plainPassword,
       role: "eventAdmin",
       status: status || "Active",
