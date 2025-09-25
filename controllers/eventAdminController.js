@@ -159,3 +159,33 @@ export const resetPasswordEventAdmin = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+// =======================
+// Get all events assigned to logged-in eventAdmin
+// =======================
+export const myEvents = async (req, res) => {
+  try {
+    const eventAdminId = req.user._id;
+
+    // Fetch eventAdmin and populate assignedEvents with all fields
+    const eventAdmin = await User.findById(eventAdminId)
+      .populate("assignedEvents"); // no 'select', so all event fields included
+
+    if (!eventAdmin) {
+      return res.status(404).json({ success: false, message: "EventAdmin not found" });
+    }
+
+    res.json({
+      success: true,
+      events: eventAdmin.assignedEvents,
+    });
+  } catch (error) {
+    console.error("My events error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch events",
+      error: error.message,
+    });
+  }
+};
