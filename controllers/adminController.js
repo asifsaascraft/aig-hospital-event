@@ -127,7 +127,8 @@ export const forgotPassword = async (req, res) => {
 
     // Save hashed token in DB (trimmed)
     admin.passwordResetToken = resetToken;
-    admin.passwordResetExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+    admin.passwordResetExpires = Date.now() + 24 * 60 * 60 * 1000; // 1 day
+
     await admin.save();
 
 
