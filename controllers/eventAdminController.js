@@ -41,6 +41,7 @@ export const loginEventAdmin = async (req, res) => {
         email: eventAdmin.email,
         role: eventAdmin.role,
         companyName: eventAdmin.companyName || null,
+        assignedEvents: eventAdmin.assignedEvents, 
       },
     });
   } catch (error) {
@@ -129,7 +130,11 @@ export const resetPasswordEventAdmin = async (req, res) => {
     const { password } = req.body;
 
     if (!token) return res.status(400).json({ message: "Token is required" });
+
+     // Trim token to remove extra spaces/newlines
     token = token.trim();
+
+    // Hash token to match DB
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
     const eventAdmin = await User.findOne({
@@ -138,15 +143,19 @@ export const resetPasswordEventAdmin = async (req, res) => {
       role: "eventAdmin",
     });
 
-    if (!eventAdmin) return res.status(400).json({ message: "Invalid or expired token" });
+    if (!eventAdmin) {
+        return res.status(400).json({ message: "Invalid or expired token" });
+    }
 
-    eventAdmin.password = password;
+    // Update password
+    eventAdmin.password = password;  // will be hashed in pre-save hook
     eventAdmin.passwordResetToken = null;
     eventAdmin.passwordResetExpires = null;
     await eventAdmin.save();
 
     res.json({ message: "Password reset successful" });
   } catch (error) {
+    console.error("Reset password error:", error);
     res.status(500).json({ message: error.message });
   }
 };
