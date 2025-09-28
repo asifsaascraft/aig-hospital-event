@@ -1,3 +1,4 @@
+// routes/teamRoutes.js
 import express from "express";
 import {
   getTeams,
