@@ -58,6 +58,15 @@ export const createTeam = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Email already exists" });
     }
+    
+    //  Check if mobile already exists
+    const existingMobile = await User.findOne({ mobile });
+    if (existingMobile) {
+      return res.status(400).json({
+        success: false,
+        message: "Mobile already exists",
+      });
+    }
 
     // Generate password
     const plainPassword = generateStrongPassword();
