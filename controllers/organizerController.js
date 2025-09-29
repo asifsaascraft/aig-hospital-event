@@ -1,4 +1,5 @@
 import Organizer from "../models/Organizer.js";
+import sendEmailWithTemplate from "../utils/sendEmail.js";
 
 // =======================
 // Get all organizers (public)
@@ -54,10 +55,13 @@ export const createOrganizer = async (req, res) => {
         name: contactPersonName,
         templateKey: "2518b.554b0da719bc314.k1.4cbd6830-9d19-11f0-b6bb-8e9a6c33ddc2.19994dea633",
         mergeInfo: {
-          name: contactPersonName,
-          organizer_name: organizerName, // example variable, change according to your template
+          contactPersonName,
+          organizerName,
+          contactPersonEmail,
+          contactPersonMobile,
         },
       });
+
     } catch (emailError) {
       console.error("Organizer creation email failed:", emailError);
     }
