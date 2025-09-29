@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import User from "../models/User.js";
 import { generateTokens } from "../utils/generateTokens.js";
-import sendEmail from "../utils/sendEmail.js";
+import sendEmailWithTemplate from "../utils/sendEmail.js"; 
 import jwt from "jsonwebtoken"; // fixed import for refreshAccessToken
 
 // =======================
@@ -119,41 +119,41 @@ export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
-    // Find only admin
+    // Find admin
     const admin = await User.findOne({ email, role: "admin" });
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
-    // Generate raw + hashed token
+    // Generate reset token
     const token = crypto.randomBytes(32).toString("hex");
     const resetToken = crypto.createHash("sha256").update(token.trim()).digest("hex");
 
-    // Save hashed token in DB
     admin.passwordResetToken = resetToken;
-    admin.passwordResetExpires = Date.now() + 24 * 60 * 60 * 1000; // 1 day
-    await admin.save();
+    admin.passwordResetExpires = Date.now() + 24 * 60 * 60 * 1000;
+    await admin.save({ validateBeforeSave: false });
 
-    // Frontend URL for admin
     const frontendUrl = process.env.ADMIN_FRONTEND_URL;
     const resetUrl = `${frontendUrl}/reset-password/${token}`;
 
-    const message = `
-      <h3>Password Reset Request</h3>
-      <p>Click the button below to reset your password:</p>
-      <a href="${resetUrl}" target="_blank">Reset Password</a>
-    `;
-
-    await sendEmail({
-      email: admin.email,
-      subject: "Password Reset",
-      message,
+    // Send email via ZeptoMail template
+    await sendEmailWithTemplate({
+      to: admin.email,
+      name: admin.name,
+      templateKey: "2518b.554b0da719bc314.k1.01bb6360-9c50-11f0-8ac3-ae9c7e0b6a9f.1998fb77496", // Replace with your ZeptoMail template key
+      mergeInfo: {
+        name: admin.name,
+        password_reset_link: resetUrl,
+      },
     });
 
     res.json({ message: "Password reset link sent to your email address" });
   } catch (error) {
-    console.error("Forgot password error:", error);
+    console.error("Forgot password error:", error?.response?.data || error.message || error);
     res.status(500).json({ message: "Failed to send reset email" });
   }
 };
+
+
+
 
 // =======================
 // Reset Password

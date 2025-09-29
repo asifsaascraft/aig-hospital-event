@@ -1,5 +1,6 @@
-import express from "express";
 import dotenv from "dotenv";
+dotenv.config();
+import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
@@ -19,7 +20,7 @@ import hotelRoutes from "./routes/hotelRoutes.js";
 import supplierRoutes from "./routes/supplierRoutes.js";
 import roomCategoryRoutes from "./routes/roomCategoryRoutes.js";
 import eventAssignRoutes from "./routes/eventAssignRoutes.js";
-dotenv.config();
+
 connectDB();
 
 const app = express();

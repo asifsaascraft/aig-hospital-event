@@ -1,29 +1,46 @@
-import { google } from "googleapis";
+// utils/sendEmail.js
+import { SendMailClient } from "zeptomail";
+import dotenv from "dotenv";
 
-const sendEmail = async (options) => {
-  const oAuth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    "https://developers.google.com/oauthplayground"
-  );
+dotenv.config();
 
-  oAuth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+const client = new SendMailClient({
+  url: process.env.ZEPTO_URL,
+  token: process.env.ZEPTO_TOKEN,
+});
 
-  const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
 
-  const rawMessage =
-    `From: "AIG Event" <${process.env.EMAIL_USER}>\r\n` +
-    `To: ${options.email}\r\n` +
-    `Subject: ${options.subject}\r\n\r\n` +
-    `${options.message}`;
-
-  const encodedMessage = Buffer.from(rawMessage).toString("base64").replace(/\+/g, "-").replace(/\//g, "_");
-
-  await gmail.users.messages.send({
-    userId: "me",
-    requestBody: { raw: encodedMessage },
-  });
-
+/**
+ * Send email via ZeptoMail template
+ * @param {Object} params
+ * @param {string} params.to - Recipient email
+ * @param {string} params.name - Recipient name
+ * @param {string} params.templateKey - ZeptoMail template key
+ * @param {Object} params.mergeInfo - Merge variables for template
+ */
+const sendEmailWithTemplate = async ({ to, name, templateKey, mergeInfo }) => {
+  try {
+    const resp = await client.sendMailWithTemplate({
+      mail_template_key: templateKey,
+      from: {
+        address: process.env.ZEPTO_FROM,
+        name: "AIGAcademics",
+      },
+      to: [
+        {
+          email_address: {
+            address: to,
+            name,
+          },
+        },
+      ],
+      merge_info: mergeInfo,
+    });
+    return resp;
+  } catch (error) {
+    console.error("sendEmailWithTemplate error:", error);
+    throw error;
+  }
 };
 
-export default sendEmail;
+export default sendEmailWithTemplate;

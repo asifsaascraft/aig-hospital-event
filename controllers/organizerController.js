@@ -46,6 +46,21 @@ export const createOrganizer = async (req, res) => {
       contactPersonEmail,
       status,
     });
+   
+    // ----- Send email using ZeptoMail template -----
+    try {
+      await sendEmailWithTemplate({
+        to: contactPersonEmail,
+        name: contactPersonName,
+        templateKey: "2518b.554b0da719bc314.k1.4cbd6830-9d19-11f0-b6bb-8e9a6c33ddc2.19994dea633",
+        mergeInfo: {
+          name: contactPersonName,
+          organizer_name: organizerName, // example variable, change according to your template
+        },
+      });
+    } catch (emailError) {
+      console.error("Organizer creation email failed:", emailError);
+    }
 
     res.status(201).json({ success: true, data: organizer });
   } catch (error) {
