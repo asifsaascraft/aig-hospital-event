@@ -1,25 +1,23 @@
 // middlewares/uploadMiddleware.js
-import { CloudinaryStorage } from "multer-storage-cloudinary";
 import multer from "multer";
-import cloudinary from "../config/cloudinary.js";
+import multerS3 from "multer-s3";
+import s3 from "../config/s3.js";
 
-/**
- * Reusable upload function
- * @param {string} folder - Cloudinary folder name (e.g. "venues", "events", "hotels")
- */
 export const createUploader = (folder) => {
-  const storage = new CloudinaryStorage({
-    cloudinary,
-    params: {
-      folder, // dynamic folder name
-      allowed_formats: ["jpg", "jpeg", "png"],
+  const storage = multerS3({
+    s3, // AWS SDK v3 S3Client
+    bucket: process.env.AWS_BUCKET_NAME,
+    acl: "public-read", // makes files accessible via public URL
+    key: (req, file, cb) => {
+      const fileName = `${folder}/${Date.now().toString()}-${file.originalname}`;
+      cb(null, fileName);
     },
   });
 
   return multer({ storage });
 };
 
-// Export specific uploaders for convenience
+// Export specific uploaders
 export const uploadVenueImage = createUploader("venues");
 export const uploadEventImage = createUploader("events");
-export const uploadHotelImage = createUploader("hotels"); 
+export const uploadHotelImage = createUploader("hotels");

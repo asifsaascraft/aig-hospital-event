@@ -48,7 +48,7 @@ export const createVenue = async (req, res) => {
     const newVenue = await Venue.create({
       venueName,
       venueAddress,
-      venueImage: req.file.path, // Cloudinary URL
+      venueImage: req.file.location,
       country,
       state,
       city,

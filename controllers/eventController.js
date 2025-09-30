@@ -87,7 +87,7 @@ export const createEvent = async (req, res) => {
 
     const eventData = {
       ...req.body,
-      eventImage: req.file.path,
+      eventImage: req.file.location,
     };
 
     const newEvent = await Event.create(eventData);

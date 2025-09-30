@@ -68,7 +68,7 @@ export const createHotel = async (req, res) => {
     const newHotel = await Hotel.create({
       hotelName,
       hotelAddress,
-      hotelImage: req.file.path, // Cloudinary URL
+      hotelImage: req.file.location,
       country,
       state,
       city,
