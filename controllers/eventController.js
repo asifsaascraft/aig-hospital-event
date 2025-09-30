@@ -112,7 +112,7 @@ export const updateEvent = async (req, res) => {
     const { id } = req.params;
 
     const updatedData = { ...req.body };
-    if (req.file) updatedData.eventImage = req.file.path;
+    if (req.file) updatedData.eventImage = req.file.location;
 
     const updatedEvent = await Event.findByIdAndUpdate(id, updatedData, {
       new: true,

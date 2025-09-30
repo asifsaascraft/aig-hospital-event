@@ -78,7 +78,7 @@ export const updateVenue = async (req, res) => {
     const { id } = req.params;
 
     const updatedData = { ...req.body };
-    if (req.file) updatedData.venueImage = req.file.path; // update image if provided
+    if (req.file) updatedData.venueImage = req.file.location;
 
     const updatedVenue = await Venue.findByIdAndUpdate(id, updatedData, { new: true, runValidators: true });
 

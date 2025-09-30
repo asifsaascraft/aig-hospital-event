@@ -98,7 +98,7 @@ export const updateHotel = async (req, res) => {
     const { id } = req.params;
     const updatedData = { ...req.body };
 
-    if (req.file) updatedData.hotelImage = req.file.path;
+    if (req.file) updatedData.hotelImage = req.file.location;
 
     const updatedHotel = await Hotel.findByIdAndUpdate(id, updatedData, {
       new: true,
