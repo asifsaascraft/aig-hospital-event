@@ -36,16 +36,8 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // allow requests with no origin (like Postman or server-to-server)
-    if (!origin) return callback(null, true);
-
-    // check if origin exists in allowedOrigins
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.log("Blocked CORS request from:", origin); // debug log
-      callback(new Error("CORS not allowed"));
-    }
+    // allow any origin (including browser requests)
+    callback(null, true);
   },
   credentials: true,
 };
