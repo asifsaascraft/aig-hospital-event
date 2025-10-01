@@ -3,11 +3,8 @@ import mongoose from "mongoose";
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
-      //  only these are valid
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    // v6+ no need for useNewUrlParser or useUnifiedTopology
+    const conn = await mongoose.connect(process.env.MONGO_URI);
 
     console.log(`MongoDB connected: ${conn.connection.host}`);
   } catch (error) {
