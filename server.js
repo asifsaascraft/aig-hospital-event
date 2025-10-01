@@ -30,19 +30,23 @@ const app = express();
 // =======================
 const allowedOrigins = [
   "http://localhost:3000",
-  process.env.ADMIN_FRONTEND_URL,
-  process.env.EVENT_ADMIN_FRONTEND_URL,
+  "https://admin.aigacademics.com",
+  "https://manage.aigevent.tech"
 ];
 const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+  origin: function (origin, callback) {
+    // allow requests with no origin (Postman, curl, mobile apps)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.warn("Blocked by CORS:", origin);
       callback(new Error("CORS not allowed"));
     }
   },
-  credentials: true, // allow cookies
+  credentials: true,
 };
+
 
 app.use(express.json());
 app.use(cors(corsOptions));
