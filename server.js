@@ -33,16 +33,23 @@ const allowedOrigins = [
   process.env.ADMIN_FRONTEND_URL,
   process.env.EVENT_ADMIN_FRONTEND_URL,
 ];
+
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // allow requests with no origin (like Postman or server-to-server)
+    if (!origin) return callback(null, true);
+
+    // check if origin exists in allowedOrigins
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.log("Blocked CORS request from:", origin); // debug log
       callback(new Error("CORS not allowed"));
     }
   },
-  credentials: true, // allow cookies
+  credentials: true,
 };
+
 
 app.use(express.json());
 app.use(cors(corsOptions));
