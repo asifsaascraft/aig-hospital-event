@@ -52,7 +52,7 @@ const corsOptions = {
 
 
 app.use(express.json());
-app.use(cors({ origin: "*", credentials: true }));
+app.use(cors(corsOptions));
 app.use(cookieParser()); // Needed to read cookies (refresh token)
 app.use(morgan("dev"));
 
