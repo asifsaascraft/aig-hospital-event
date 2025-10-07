@@ -57,6 +57,63 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+    // -------------------------
+    // Additional fields for general "user" role (added; optional — no defaults)
+    // -------------------------
+    // prefix, designation, affiliation, medical council, address details, preferences, profile pic, term acceptance
+    prefix: {
+      type: String,
+      trim: true,
+    },
+    designation: {
+      type: String,
+      trim: true,
+    },
+    affiliation: {
+      type: String,
+      trim: true,
+    },
+    medicalCouncilState: {
+      type: String,
+      trim: true,
+    },
+    medicalCouncilRegistration: {
+      type: String,
+      trim: true,
+    },
+    gender: {
+      type: String,
+      trim: true,
+    },
+    country: {
+      type: String,
+      trim: true,
+    },
+    city: {
+      type: String,
+      trim: true,
+    },
+    state: {
+      type: String,
+      trim: true,
+    },
+    pincode: {
+      type: String,
+      trim: true,
+    },
+    mealPreference: {
+      type: String,
+      trim: true,
+    },
+    profilePicture: {
+      type: String,
+      trim: true,
+    },
+    termAndCondition: {
+      type: Boolean,
+    },
+    // -------------------------
   },
   { timestamps: true }
 );
@@ -83,4 +140,4 @@ userSchema.methods.getJwtToken = function () {
   );
 };
 
-export default mongoose.model("User", userSchema);
+export default mongoose.models.User || mongoose.model("User", userSchema);

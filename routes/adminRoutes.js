@@ -25,8 +25,8 @@ router.post("/register", registerAdmin);
 // Login
 router.post("/login", loginAdmin);
 
-// Refresh access token
-router.post("/refresh-token", refreshAccessToken);
+// Refresh access token (GET, using cookies)
+router.get("/refresh-token", refreshAccessToken);
 
 // Logout - Admin only
 router.post(

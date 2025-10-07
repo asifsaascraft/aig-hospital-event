@@ -28,6 +28,7 @@ router.post(
   logoutEventAdmin
 );
 
+// Refresh access token (GET, using cookies)
 router.get("/refresh-token", refreshAccessTokenEventAdmin);
 
 // Protected route for eventAdmin to see their assigned events
