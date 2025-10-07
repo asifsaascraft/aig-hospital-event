@@ -57,6 +57,25 @@ export const registerUser = async (req, res) => {
       role: "user",
       status: "Active",
     });
+    
+    // =======================
+    // Send Welcome Email
+    // =======================
+    try {
+      await sendEmailWithTemplate({
+        to: user.email,
+        name: user.name,
+        templateKey: "2518b.554b0da719bc314.k1.4b76afb1-a361-11f0-bc12-525400c92439.199be08ce2b",
+        mergeInfo: {
+          name: user.name,
+          email: user.email,
+          mobile: user.mobile,
+          affiliation: user.affiliation || "N/A",
+        },
+      });
+    } catch (emailError) {
+      console.error("Error sending registration email:", emailError);
+    }
 
     res.status(201).json({
       message: "User registered successfully",
