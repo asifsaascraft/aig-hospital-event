@@ -7,8 +7,11 @@ import {
   logoutUser,
   forgotPasswordUser,
   resetPasswordUser,
+  getUserProfile,
+  updateUserProfile,
 } from "../controllers/userController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
+import { uploadProfileImage } from "../middlewares/uploadMiddleware.js";
 
 const router = express.Router();
 
@@ -22,24 +25,41 @@ router.use(cookieParser());
 // Public signup
 router.post("/register", registerUser);
 
-// User login
+// Login
 router.post("/login", loginUser);
 
 // Refresh access token (GET, using cookies)
 router.get("/refresh-token", refreshAccessTokenUser);
 
-// Logout user
+// Logout - User only
 router.post(
   "/logout",
-  protect,
-  authorizeRoles("user"),
+  protect, // ensures user is logged in
+  authorizeRoles("user"), // user-only
   logoutUser
 );
 
-// Forgot password
+// Forgot Password
 router.post("/forgot-password", forgotPasswordUser);
 
-// Reset password
+// Reset Password
 router.post("/reset-password/:token", resetPasswordUser);
+
+// Get User Profile - User only
+router.get(
+  "/profile",
+  protect, // ensures user is logged in
+  authorizeRoles("user"), // user-only
+  getUserProfile
+);
+
+// Update User Profile - User only
+router.put(
+  "/profile",
+  protect, // ensures user is logged in
+  authorizeRoles("user"), // user-only
+  uploadProfileImage.single("profilePicture"), // handles profile image upload
+  updateUserProfile
+);
 
 export default router;

@@ -16,7 +16,7 @@ const EventSchema = new mongoose.Schema(
       trim: true,
     },
     eventImage: {
-      type: String, // Cloudinary URL or file path
+      type: String, // store file path or URL
     },
     eventCode: {
       type: String,

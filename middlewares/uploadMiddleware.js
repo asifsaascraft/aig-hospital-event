@@ -16,8 +16,8 @@ export const createUploader = (folder) => {
 
   return multer({ storage });
 };
-
 // Export specific uploaders
 export const uploadVenueImage = createUploader("venues");
 export const uploadEventImage = createUploader("events");
 export const uploadHotelImage = createUploader("hotels");
+export const uploadProfileImage = createUploader("profile-pictures"); 
