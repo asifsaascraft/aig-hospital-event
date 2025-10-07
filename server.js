@@ -32,6 +32,7 @@ const allowedOrigins = [
   "http://localhost:3000",
   process.env.ADMIN_FRONTEND_URL,
   process.env.EVENT_ADMIN_FRONTEND_URL,
+  process.env.USER_FRONTEND_URL,
 ];
 
 const corsOptions = {

@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import User from "../models/User.js";
 import { generateTokens } from "../utils/generateTokens.js";
-import sendEmail from "../utils/sendEmail.js";
+import sendEmailWithTemplate from "../utils/sendEmail.js";
 import jwt from "jsonwebtoken";
 
 // =======================
@@ -90,36 +90,43 @@ export const logoutEventAdmin = (req, res) => {
 export const forgotPasswordEventAdmin = async (req, res) => {
   try {
     const { email } = req.body;
-    const eventAdmin = await User.findOne({ email, role: "eventAdmin" });
-    if (!eventAdmin) return res.status(404).json({ message: "EventAdmin not found" });
 
+    // Find event admin
+    const eventAdmin = await User.findOne({ email, role: "eventAdmin" });
+    if (!eventAdmin) {
+      return res.status(404).json({ message: "EventAdmin not found" });
+    }
+
+    // Generate reset token
     const token = crypto.randomBytes(32).toString("hex");
     const resetToken = crypto.createHash("sha256").update(token.trim()).digest("hex");
 
     eventAdmin.passwordResetToken = resetToken;
-    eventAdmin.passwordResetExpires = Date.now() + 24 * 60 * 60 * 1000; // 1 day
-    await eventAdmin.save();
+    eventAdmin.passwordResetExpires = Date.now() + 24 * 60 * 60 * 1000; // 1 day expiry
+    await eventAdmin.save({ validateBeforeSave: false });
 
-    // Frontend URL for eventAdmin
+    // Build reset link for event admin frontend
     const frontendUrl = process.env.EVENT_ADMIN_FRONTEND_URL;
     const resetUrl = `${frontendUrl}/reset-password/${token}`;
-    const message = `
-      <h3>Password Reset Request</h3>
-      <p>Click the button below to reset your password:</p>
-      <a href="${resetUrl}" target="_blank">Reset Password</a>
-    `;
 
-    await sendEmail({
-      email: eventAdmin.email,
-      subject: "Password Reset",
-      message,
+    // Send email using ZeptoMail template (same as admin logic)
+    await sendEmailWithTemplate({
+      to: eventAdmin.email,
+      name: eventAdmin.name,
+      templateKey: "2518b.554b0da719bc314.k1.01bb6360-9c50-11f0-8ac3-ae9c7e0b6a9f.1998fb77496", 
+      mergeInfo: {
+        name: eventAdmin.name,
+        password_reset_link: resetUrl,
+      },
     });
 
     res.json({ message: "Password reset link sent to your email address" });
   } catch (error) {
+    console.error("Forgot password (eventAdmin) error:", error?.response?.data || error.message || error);
     res.status(500).json({ message: "Failed to send reset email" });
   }
 };
+
 
 // =======================
 // Reset Password
