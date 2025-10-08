@@ -20,8 +20,10 @@ import hotelRoutes from "./routes/hotelRoutes.js";
 import supplierRoutes from "./routes/supplierRoutes.js";
 import roomCategoryRoutes from "./routes/roomCategoryRoutes.js";
 import eventAssignRoutes from "./routes/eventAssignRoutes.js";
+import registrationSlabRoutes from "./routes/registrationSlabRoutes.js";
+import eventRegistrationRoutes from "./routes/eventRegistrationRoutes.js";
 
-connectDB();
+await connectDB();
 
 const app = express();
 
@@ -73,6 +75,8 @@ app.use("/api", hotelRoutes);
 app.use("/api", supplierRoutes);
 app.use("/api", roomCategoryRoutes);
 app.use("/api", eventAssignRoutes); 
+app.use("/api", registrationSlabRoutes);
+app.use("/api", eventRegistrationRoutes);
 // =======================
 // Start server
 // =======================
