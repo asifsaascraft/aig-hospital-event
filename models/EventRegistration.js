@@ -83,6 +83,18 @@ const EventRegistrationSchema = new mongoose.Schema(
       required: [true, "Address is required"],
       trim: true,
     },
+    isPaid: {
+      type: Boolean,
+      default: false,
+    },
+    regNum: {
+      type: String,
+      trim: true,
+    },
+    regNumGenerated: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

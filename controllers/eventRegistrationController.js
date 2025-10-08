@@ -5,7 +5,7 @@ import User from "../models/User.js";
 
 /* 
 ========================================================
-  1️ Get Prefilled Registration Form Data (User)
+  1 Get Prefilled Registration Form Data (User)
   Route: GET /api/events/:eventId/prefilled
   Access: Private (User)
 ========================================================
@@ -68,7 +68,7 @@ export const getPrefilledRegistrationForm = async (req, res) => {
 
 /* 
 ========================================================
-  2️ Register for an Event (User)
+  2 Register for an Event (User)
   Route: POST /api/events/:eventId/register
   Access: Private (User)
 ========================================================
@@ -101,7 +101,7 @@ export const registerForEvent = async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Create new registration
+    // Create new unpaid registration
     const registration = await EventRegistration.create({
       userId,
       eventId,
@@ -120,11 +120,13 @@ export const registerForEvent = async (req, res) => {
       city,
       state,
       address,
+      isPaid: false, 
+      regNumGenerated: false,
     });
 
     res.status(201).json({
       success: true,
-      message: "Event registration successful",
+      message: "Event registration created successfully (Unpaid)",
       data: registration,
     });
   } catch (error) {
@@ -143,7 +145,7 @@ export const registerForEvent = async (req, res) => {
 
 /* 
 ========================================================
-  3️ Get All Registrations for Logged-in User
+  3 Get All Registrations for Logged-in User
   Route: GET /api/my/registrations
   Access: Private (User)
 ========================================================

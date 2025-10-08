@@ -22,7 +22,7 @@ import roomCategoryRoutes from "./routes/roomCategoryRoutes.js";
 import eventAssignRoutes from "./routes/eventAssignRoutes.js";
 import registrationSlabRoutes from "./routes/registrationSlabRoutes.js";
 import eventRegistrationRoutes from "./routes/eventRegistrationRoutes.js";
-
+import paymentRoutes from "./routes/paymentRoutes.js";
 await connectDB();
 
 const app = express();
@@ -77,6 +77,7 @@ app.use("/api", roomCategoryRoutes);
 app.use("/api", eventAssignRoutes); 
 app.use("/api", registrationSlabRoutes);
 app.use("/api", eventRegistrationRoutes);
+app.use("/api", paymentRoutes);
 // =======================
 // Start server
 // =======================
