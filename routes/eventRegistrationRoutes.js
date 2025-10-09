@@ -42,7 +42,7 @@ router.get(
 
 // Get a registration by ID
 router.get(
-  "/registrations/:id",
+  "/registrations/:registrationId",
   protect,
   authorizeRoles("user"),
   getRegistrationById

@@ -100,9 +100,6 @@ const EventRegistrationSchema = new mongoose.Schema(
 );
 
 
-// Add compound index to prevent duplicate registration for same user & event
-EventRegistrationSchema.index({ userId: 1, eventId: 1 }, { unique: true });
-
 
 // Avoid model overwrite during hot-reload
 export default mongoose.models.EventRegistration || 

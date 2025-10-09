@@ -2,7 +2,7 @@ import EventRegistration from "../models/EventRegistration.js";
 import Event from "../models/Event.js";
 import RegistrationSlab from "../models/RegistrationSlab.js";
 import User from "../models/User.js";
-import Payment from "../models/Payment.js";
+
 
 /* 
 ========================================================
@@ -82,6 +82,17 @@ export const registerForEvent = async (req, res) => {
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ message: "Event not found" });
 
+    //  Only check for existing **paid** registration
+    const existingPaidReg = await EventRegistration.findOne({
+      userId,
+      eventId,
+      isPaid: true
+    });
+
+    if (existingPaidReg) {
+      return res.status(400).json({ message: "You have already registered and paid for this event" });
+    }
+
     const registration = await EventRegistration.create({
       userId,
       eventId,
@@ -111,9 +122,6 @@ export const registerForEvent = async (req, res) => {
     });
   } catch (error) {
     console.error("Event registration error:", error);
-    if (error.code === 11000) {
-      return res.status(400).json({ message: "User already registered for this event" });
-    }
     res.status(500).json({ message: "Server Error" });
   }
 };
@@ -131,7 +139,6 @@ export const getMyRegistrations = async (req, res) => {
       .populate({
         path: "eventId",
         select: "eventName shortName startDate endDate",
-        populate: { path: "venueName", select: "name" },
       })
       .sort({ createdAt: -1 });
 
@@ -159,9 +166,9 @@ export const getRegistrationById = async (req, res) => {
       .populate({
         path: "eventId",
         select: "eventName shortName startDate endDate",
-        populate: { path: "venueName", select: "name" },
       });
-
+    console.log("Logged-in userId:", userId);
+console.log("Requested registrationId:", registrationId);
     if (!registration) return res.status(404).json({ message: "Registration not found or unpaid" });
 
     res.status(200).json({
