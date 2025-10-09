@@ -4,6 +4,8 @@ import crypto from "crypto";
 import Payment from "../models/Payment.js";
 import EventRegistration from "../models/EventRegistration.js";
 import Event from "../models/Event.js";
+import sendEmailWithTemplate from "../utils/sendEmail.js";
+
 
 //  Initialize Razorpay
 const razorpay = new Razorpay({
@@ -144,6 +146,51 @@ export const verifyPayment = async (req, res) => {
     payment.status = "paid";
     await payment.save();
 
+    // Send Confirmation Email
+    try {
+      await sendEmailWithTemplate({
+        to: registration.email,
+        name: registration.name,
+        templateKey: "2518b.554b0da719bc314.k1.69b32810-a4ff-11f0-8b9c-8e9a6c33ddc2.199c8a2c511",
+        mergeInfo: {
+          // Basic Info
+          name: registration.name,
+          eventName: event.eventName,
+          eventCode: event.eventCode,
+          registrationNumber: registration.regNum,
+          registrationSlabName: registration.registrationSlabName,
+
+          // Event Dates
+          startDate: event.startDate?.toLocaleDateString("en-IN"),
+          endDate: event.endDate?.toLocaleDateString("en-IN"),
+
+          // Registration Info
+          designation: registration.designation,
+          affiliation: registration.affiliation,
+          medicalCouncilState: registration.medicalCouncilState,
+          medicalCouncilRegistration: registration.medicalCouncilRegistration,
+          mealPreference: registration.mealPreference,
+          country: registration.country,
+          city: registration.city,
+
+          // Payment Info
+          paymentAmount: payment.amount,
+          razorpayOrderId: payment.razorpayOrderId,
+          razorpayPaymentId: payment.razorpayPaymentId,
+          paymentStatus: payment.status,
+        },
+      });
+
+    } catch (err) {
+      console.error(" Email sending failed:", err);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Payment verified successfully",
+      data: { payment, registration },
+    });
+
     res.status(200).json({
       success: true,
       message: "Payment verified successfully",
@@ -183,6 +230,36 @@ export const getMyPayments = async (req, res) => {
     });
   } catch (error) {
     console.error("Get payments error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+/* 
+========================================================
+  4. Mark Payment as Failed
+  Route: POST /api/payments/failed
+  Access: Private (User)
+========================================================
+*/
+export const markPaymentFailed = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { paymentId, reason } = req.body;
+
+    const payment = await Payment.findOne({ _id: paymentId, userId });
+    if (!payment) return res.status(404).json({ message: "Payment not found" });
+
+    payment.status = "failed";
+    payment.failedReason = reason || "User payment failed";
+    await payment.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Payment marked as failed",
+      data: payment,
+    });
+  } catch (error) {
+    console.error("Mark payment failed error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };

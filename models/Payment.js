@@ -45,6 +45,10 @@ const PaymentSchema = new mongoose.Schema(
       },
       default: "initiated",
     },
+    failedReason: {
+      type: String,
+      trim: true,
+    },
   },
   { timestamps: true }
 );

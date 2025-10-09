@@ -4,6 +4,7 @@ import {
   createOrder,
   verifyPayment,
   getMyPayments,
+  markPaymentFailed
 } from "../controllers/paymentController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -37,6 +38,14 @@ router.get(
   protect,
   authorizeRoles("user"),
   getMyPayments
+);
+
+// Mark Payment as Failed
+router.post(
+  "/payments/failed",
+  protect,
+  authorizeRoles("user"),
+  markPaymentFailed
 );
 
 export default router;
