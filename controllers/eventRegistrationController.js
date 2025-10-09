@@ -2,38 +2,29 @@ import EventRegistration from "../models/EventRegistration.js";
 import Event from "../models/Event.js";
 import RegistrationSlab from "../models/RegistrationSlab.js";
 import User from "../models/User.js";
+import Payment from "../models/Payment.js";
 
 /* 
 ========================================================
-  1 Get Prefilled Registration Form Data (User)
-  Route: GET /api/events/:eventId/prefilled
-  Access: Private (User)
-========================================================
-*/
+  1. Get Prefilled Registration Form Data (User)
+========================================================*/
 export const getPrefilledRegistrationForm = async (req, res) => {
   try {
     const userId = req.user._id;
     const { eventId } = req.params;
 
-    // Check if event exists
-    const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ message: "Event not found" });
-    }
+    const event = await Event.findById(eventId)
+      .populate("venueName", "name"); // Corrected field
 
-    // Fetch user details
+    if (!event) return res.status(404).json({ message: "Event not found" });
+
     const user = await User.findById(userId).select(
       "name prefix gender email mobile designation affiliation medicalCouncilState medicalCouncilRegistration mealPreference country city state pincode"
     );
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // Fetch registration slabs for this event
     const slabs = await RegistrationSlab.find({ eventId }).sort({ createdAt: -1 });
 
-    // Prepare prefilled data
     const prefilledData = {
       name: user.name || "",
       prefix: user.prefix || "",
@@ -54,11 +45,7 @@ export const getPrefilledRegistrationForm = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Prefilled registration form data fetched successfully",
-      data: {
-        event,
-        slabs,
-        user: prefilledData,
-      },
+      data: { event, slabs, user: prefilledData },
     });
   } catch (error) {
     console.error("Get prefilled registration form error:", error);
@@ -68,11 +55,8 @@ export const getPrefilledRegistrationForm = async (req, res) => {
 
 /* 
 ========================================================
-  2 Register for an Event (User)
-  Route: POST /api/events/:eventId/register
-  Access: Private (User)
-========================================================
-*/
+  2. Register for an Event (User)
+========================================================*/
 export const registerForEvent = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -95,13 +79,9 @@ export const registerForEvent = async (req, res) => {
       address,
     } = req.body;
 
-    // Validate event
     const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ message: "Event not found" });
-    }
+    if (!event) return res.status(404).json({ message: "Event not found" });
 
-    // Create new unpaid registration
     const registration = await EventRegistration.create({
       userId,
       eventId,
@@ -120,7 +100,7 @@ export const registerForEvent = async (req, res) => {
       city,
       state,
       address,
-      isPaid: false, 
+      isPaid: false,
       regNumGenerated: false,
     });
 
@@ -131,40 +111,66 @@ export const registerForEvent = async (req, res) => {
     });
   } catch (error) {
     console.error("Event registration error:", error);
-
-    // Handle duplicate registration via MongoDB unique index
     if (error.code === 11000) {
-      return res
-        .status(400)
-        .json({ message: "User already registered for this event" });
+      return res.status(400).json({ message: "User already registered for this event" });
     }
-
     res.status(500).json({ message: "Server Error" });
   }
 };
 
 /* 
 ========================================================
-  3 Get All Registrations for Logged-in User
-  Route: GET /api/my/registrations
-  Access: Private (User)
-========================================================
-*/
+  3. Get All Paid Registrations for Logged-in User
+========================================================*/
 export const getMyRegistrations = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    const registrations = await EventRegistration.find({ userId })
-      .populate("eventId", "title startDate endDate venue")
+    // Only fetch paid registrations
+    const registrations = await EventRegistration.find({ userId, isPaid: true })
+      .populate({
+        path: "eventId",
+        select: "eventName shortName startDate endDate",
+        populate: { path: "venueName", select: "name" },
+      })
       .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
-      message: "User event registrations fetched successfully",
+      message: "Paid registrations fetched successfully",
       data: registrations,
     });
   } catch (error) {
-    console.error("Get user registrations error:", error);
+    console.error("Get paid registrations error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+/* 
+========================================================
+  4. Get Registration By ID
+========================================================*/
+export const getRegistrationById = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { registrationId } = req.params;
+
+    const registration = await EventRegistration.findOne({ _id: registrationId, userId, isPaid: true })
+      .populate({
+        path: "eventId",
+        select: "eventName shortName startDate endDate",
+        populate: { path: "venueName", select: "name" },
+      });
+
+    if (!registration) return res.status(404).json({ message: "Registration not found or unpaid" });
+
+    res.status(200).json({
+      success: true,
+      message: "Registration fetched successfully",
+      data: registration,
+    });
+  } catch (error) {
+    console.error("Get registration by ID error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };

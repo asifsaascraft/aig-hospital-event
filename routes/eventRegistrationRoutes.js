@@ -4,6 +4,7 @@ import {
   getPrefilledRegistrationForm,
   registerForEvent,
   getMyRegistrations,
+  getRegistrationById,
 } from "../controllers/eventRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -37,6 +38,14 @@ router.get(
   protect,
   authorizeRoles("user"),
   getMyRegistrations
+);
+
+// Get a registration by ID
+router.get(
+  "/registrations/:id",
+  protect,
+  authorizeRoles("user"),
+  getRegistrationById
 );
 
 export default router;

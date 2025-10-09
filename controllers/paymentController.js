@@ -172,7 +172,7 @@ export const getMyPayments = async (req, res) => {
     const payments = await Payment.find({ userId })
       .populate({
         path: "eventRegistrationId",
-        populate: { path: "eventId", select: "title startDate endDate" },
+        populate: { path: "eventId", select: "eventName shortName startDate endDate" },
       })
       .sort({ createdAt: -1 });
 
