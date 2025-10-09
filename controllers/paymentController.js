@@ -3,8 +3,9 @@ import Razorpay from "razorpay";
 import crypto from "crypto";
 import Payment from "../models/Payment.js";
 import EventRegistration from "../models/EventRegistration.js";
+import Event from "../models/Event.js";
 
-// 🪙 Initialize Razorpay
+//  Initialize Razorpay
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_SECRET,
@@ -89,7 +90,7 @@ export const verifyPayment = async (req, res) => {
       paymentId,
     } = req.body;
 
-    // Verify the signature
+    //  Verify Razorpay signature
     const body = razorpayOrderId + "|" + razorpayPaymentId;
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_SECRET)
@@ -100,26 +101,56 @@ export const verifyPayment = async (req, res) => {
       return res.status(400).json({ message: "Invalid payment signature" });
     }
 
-    // Update payment record
+    //  Find Payment record
     const payment = await Payment.findById(paymentId);
     if (!payment) {
       return res.status(404).json({ message: "Payment record not found" });
     }
 
+    //  Find related registration
+    const registration = await EventRegistration.findById(payment.eventRegistrationId);
+    if (!registration) {
+      return res.status(404).json({ message: "Event registration not found" });
+    }
+
+    //  Find related event
+    const event = await Event.findById(registration.eventId);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    //  Count how many paid registrations exist for this event
+    const count = await EventRegistration.countDocuments({
+      eventId: registration.eventId,
+      regNumGenerated: true,
+    });
+
+    //  Base regNum from Event model
+    const baseNum = parseInt(event.regNum || 0);
+    const nextRegNum = baseNum + count + 1;
+
+    //  Final formatted RegNum
+    const generatedRegNum = `${event.eventCode}-${nextRegNum}`;
+
+    //  Update Registration
+    registration.isPaid = true;
+    registration.regNumGenerated = true;
+    registration.regNum = generatedRegNum;
+    await registration.save();
+
+    //  Update Payment
     payment.razorpayPaymentId = razorpayPaymentId;
     payment.razorpaySignature = razorpaySignature;
     payment.status = "paid";
     await payment.save();
 
-    // Update registration as paid
-    await EventRegistration.findByIdAndUpdate(payment.eventRegistrationId, {
-      isPaid: true,
-    });
-
     res.status(200).json({
       success: true,
       message: "Payment verified successfully",
-      data: payment,
+      data: {
+        payment,
+        registration,
+      },
     });
   } catch (error) {
     console.error("Verify payment error:", error);
