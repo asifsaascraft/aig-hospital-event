@@ -6,7 +6,6 @@ import EventRegistration from "../models/EventRegistration.js";
 import Event from "../models/Event.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
 
-
 //  Initialize Razorpay
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -85,12 +84,8 @@ export const createOrder = async (req, res) => {
 */
 export const verifyPayment = async (req, res) => {
   try {
-    const {
-      razorpayOrderId,
-      razorpayPaymentId,
-      razorpaySignature,
-      paymentId,
-    } = req.body;
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, paymentId } =
+      req.body;
 
     //  Verify Razorpay signature
     const body = razorpayOrderId + "|" + razorpayPaymentId;
@@ -110,7 +105,9 @@ export const verifyPayment = async (req, res) => {
     }
 
     //  Find related registration
-    const registration = await EventRegistration.findById(payment.eventRegistrationId);
+    const registration = await EventRegistration.findById(
+      payment.eventRegistrationId
+    );
     if (!registration) {
       return res.status(404).json({ message: "Event registration not found" });
     }
@@ -121,18 +118,27 @@ export const verifyPayment = async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    //  Count how many paid registrations exist for this event
-    const count = await EventRegistration.countDocuments({
+    // Find the latest paid registration for this event
+    const lastPaidRegistration = await EventRegistration.findOne({
       eventId: registration.eventId,
       regNumGenerated: true,
-    });
+    })
+      .sort({ createdAt: -1 }) // latest registration
+      .limit(1);
 
-    //  Base regNum from Event model
-    const baseNum = parseInt(event.regNum || 0);
-    const nextRegNum = baseNum + count + 1;
+    let newRegNumInt;
+    if (lastPaidRegistration && lastPaidRegistration.regNum) {
+      // Extract numeric part from regNum (e.g. AIG25-1001 → 1001)
+      const lastNum = parseInt(lastPaidRegistration.regNum.split("-").pop());
+      newRegNumInt = lastNum + 1;
+    } else {
+      // No previous registration → start from event.regNum + 1
+      const baseNum = parseInt(event.regNum || 0);
+      newRegNumInt = baseNum + 1;
+    }
 
-    //  Final formatted RegNum
-    const generatedRegNum = `${event.eventCode}-${nextRegNum}`;
+    // Final Reg Number format
+    const generatedRegNum = `${event.eventCode}-${newRegNumInt}`;
 
     //  Update Registration
     registration.isPaid = true;
@@ -151,7 +157,8 @@ export const verifyPayment = async (req, res) => {
       await sendEmailWithTemplate({
         to: registration.email,
         name: registration.name,
-        templateKey: "2518b.554b0da719bc314.k1.69b32810-a4ff-11f0-8b9c-8e9a6c33ddc2.199c8a2c511",
+        templateKey:
+          "2518b.554b0da719bc314.k1.69b32810-a4ff-11f0-8b9c-8e9a6c33ddc2.199c8a2c511",
         mergeInfo: {
           // Basic Info
           name: registration.name,
@@ -180,7 +187,6 @@ export const verifyPayment = async (req, res) => {
           paymentStatus: payment.status,
         },
       });
-
     } catch (err) {
       console.error(" Email sending failed:", err);
     }
@@ -213,7 +219,10 @@ export const getMyPayments = async (req, res) => {
     const payments = await Payment.find({ userId })
       .populate({
         path: "eventRegistrationId",
-        populate: { path: "eventId", select: "eventName shortName startDate endDate" },
+        populate: {
+          path: "eventId",
+          select: "eventName shortName startDate endDate",
+        },
       })
       .sort({ createdAt: -1 });
 
