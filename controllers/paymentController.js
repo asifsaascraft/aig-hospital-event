@@ -188,12 +188,6 @@ export const verifyPayment = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Payment verified successfully",
-      data: { payment, registration },
-    });
-
-    res.status(200).json({
-      success: true,
-      message: "Payment verified successfully",
       data: {
         payment,
         registration,
