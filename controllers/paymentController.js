@@ -151,6 +151,7 @@ export const verifyPayment = async (req, res) => {
     payment.razorpaySignature = razorpaySignature;
     payment.status = "paid";
     await payment.save();
+    
 
     // Send Confirmation Email
     try {
