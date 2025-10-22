@@ -145,17 +145,21 @@ export const verifyPayment = async (req, res) => {
             eventName: event.eventName,
             registrationNumber: registration.regNum,
             registrationSlabName: registration.registrationSlabName,
-            startDate: event.startDate?.toLocaleDateString("en-IN"),
-            endDate: event.endDate?.toLocaleDateString("en-IN"),
+            startDate: event.startDate
+              ? new Date(event.startDate).toLocaleDateString("en-IN")
+              : "N/A",
+            endDate: event.endDate
+              ? new Date(event.endDate).toLocaleDateString("en-IN")
+              : "N/A",
             mealPreference: registration.mealPreference,
             designation: registration.designation,
             affiliation: registration.affiliation,
-            medicalCouncilRegistration:
-              registration.medicalCouncilRegistration,
+            medicalCouncilRegistration: registration.medicalCouncilRegistration,
             medicalCouncilState: registration.medicalCouncilState,
             country: registration.country,
             city: registration.city,
           },
+
         }),
         sendEmailWithTemplate({
           to: registration.email,
@@ -173,6 +177,7 @@ export const verifyPayment = async (req, res) => {
           },
         }),
       ]);
+      console.log("📧 Sending email to:", registration.email);
 
       if (registrationEmail.status === "fulfilled")
         console.log("✅ Registration Email sent successfully");
