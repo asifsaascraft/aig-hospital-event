@@ -153,44 +153,49 @@ export const verifyPayment = async (req, res) => {
     await payment.save();
     
 
-    // Send Confirmation Email
+    // Send Registration Received + Payment Successful Emails
     try {
+      // 1️ Send "Registration Received" Email
       await sendEmailWithTemplate({
         to: registration.email,
         name: registration.name,
-        templateKey:
-          "2518b.554b0da719bc314.k1.69b32810-a4ff-11f0-8b9c-8e9a6c33ddc2.199c8a2c511",
+        templateKey: "2518b.554b0da719bc314.k1.f7c9f490-a7f1-11f0-8b9c-8e9a6c33ddc2.199dbf3d259", 
         mergeInfo: {
-          // Basic Info
           name: registration.name,
           eventName: event.eventName,
-          eventCode: event.eventCode,
           registrationNumber: registration.regNum,
           registrationSlabName: registration.registrationSlabName,
-
-          // Event Dates
           startDate: event.startDate?.toLocaleDateString("en-IN"),
           endDate: event.endDate?.toLocaleDateString("en-IN"),
-
-          // Registration Info
+          mealPreference: registration.mealPreference,
           designation: registration.designation,
           affiliation: registration.affiliation,
-          medicalCouncilState: registration.medicalCouncilState,
           medicalCouncilRegistration: registration.medicalCouncilRegistration,
-          mealPreference: registration.mealPreference,
+          medicalCouncilState: registration.medicalCouncilState,
           country: registration.country,
           city: registration.city,
+        },
+      });
 
-          // Payment Info
+      // 2️ Send "Payment Successful" Email
+      await sendEmailWithTemplate({
+        to: registration.email,
+        name: registration.name,
+        templateKey: "2518b.554b0da719bc314.k1.2f2232e0-a7f2-11f0-8b9c-8e9a6c33ddc2.199dbf53d0e", 
+        mergeInfo: {
+          name: registration.name,
+          eventName: event.eventName,
+          registrationNumber: registration.regNum,
           paymentAmount: payment.amount,
-          razorpayOrderId: payment.razorpayOrderId,
           razorpayPaymentId: payment.razorpayPaymentId,
+          razorpayOrderId: payment.razorpayOrderId,
           paymentStatus: payment.status,
         },
       });
     } catch (err) {
-      console.error(" Email sending failed:", err);
+      console.error("Email sending failed:", err);
     }
+
 
     res.status(200).json({
       success: true,
