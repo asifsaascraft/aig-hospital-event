@@ -177,15 +177,7 @@ export const verifyPayment = async (req, res) => {
           },
         }),
       ]);
-      console.log("📧 Sending email to:", registration.email);
-
-      if (registrationEmail.status === "fulfilled")
-        console.log("✅ Registration Email sent successfully");
-      else console.error("❌ Registration Email failed:", registrationEmail.reason);
-
-      if (paymentEmail.status === "fulfilled")
-        console.log("✅ Payment Email sent successfully");
-      else console.error("❌ Payment Email failed:", paymentEmail.reason);
+      
     } catch (err) {
       console.error("Email sending exception:", err);
     }
@@ -220,10 +212,32 @@ export const getMyPayments = async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
+    // Fetch payment mode from Razorpay for each payment
+    const paymentsWithMode = await Promise.all(
+      payments.map(async (payment) => {
+        if (payment.razorpayPaymentId) {
+          try {
+            const razorpayPayment = await razorpay.payments.fetch(payment.razorpayPaymentId);
+            return {
+              ...payment.toObject(),
+              paymentMode: razorpayPayment.method || "Unknown", // e.g., 'card', 'netbanking', 'upi'
+            };
+          } catch (err) {
+            console.error("Razorpay fetch error:", err);
+            return {
+              ...payment.toObject(),
+              paymentMode: "Unknown",
+            };
+          }
+        }
+        return { ...payment.toObject(), paymentMode: "Unknown" };
+      })
+    );
+
     res.status(200).json({
       success: true,
       message: "Payments fetched successfully",
-      data: payments,
+      data: paymentsWithMode,
     });
   } catch (error) {
     console.error("Get payments error:", error);
