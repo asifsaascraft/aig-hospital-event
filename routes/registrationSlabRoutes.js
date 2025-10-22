@@ -3,6 +3,7 @@ import {
   createRegistrationSlab,
   getRegistrationSlabsByEvent,
   deleteRegistrationSlab,
+  updateRegistrationSlab,
 } from "../controllers/registrationSlabController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -22,6 +23,17 @@ router.post(
 // Public/User: Get All Registration Slabs by Event ID
 // =======================
 router.get("/events/:eventId/slabs", getRegistrationSlabsByEvent);
+
+// =======================
+// EventAdmin: Update Registration Slab
+// =======================
+router.put(
+  "/event-admin/slabs/:id",
+  protect,
+  authorizeRoles("eventAdmin"),
+  updateRegistrationSlab
+);
+
 
 // =======================
 // EventAdmin: Delete Registration Slab
