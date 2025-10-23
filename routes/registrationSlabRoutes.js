@@ -13,7 +13,7 @@ const router = express.Router();
 // EventAdmin: Create Registration Slab
 // =======================
 router.post(
-  "/event-admin/slabs",
+  "/event-admin/events/:eventId/slabs",
   protect,
   authorizeRoles("eventAdmin"),
   createRegistrationSlab

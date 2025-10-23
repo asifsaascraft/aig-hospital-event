@@ -6,7 +6,8 @@ import Event from "../models/Event.js";
 // =======================
 export const createRegistrationSlab = async (req, res) => {
   try {
-    const { eventId, slabName, amount, startDate, endDate } = req.body;
+    const { eventId } = req.params;
+    const { slabName, amount, startDate, endDate } = req.body;
 
     // Validate event existence
     const event = await Event.findById(eventId);
