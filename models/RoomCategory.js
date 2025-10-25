@@ -1,45 +1,32 @@
-// models/Organizer.js
 import mongoose from "mongoose";
 
-const OrganizerSchema = new mongoose.Schema(
+const RoomCategorySchema = new mongoose.Schema(
   {
-    organizerName: {
-      type: String,
-      required: [true, "Organizer Name is required"],
-      trim: true,
+    hotel: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Hotel",
+      required: [true, "Hotel Name is required"],
     },
-    contactPersonName: {
+    roomCategory: {
       type: String,
-      required: [true, "Contact Person is required"],
-      trim: true,
+      required: [true, "Room Category is required"],
     },
-    contactPersonMobile: {
+    roomType: {
       type: String,
-      required: [true, "Mobile number is required"],
-      match: [/^\d{10}$/, "Mobile number must be 10 digits"],
-      trim: true,
-      unique: true,
-    },
-    contactPersonEmail: {
-      type: String,
-      required: [true, "Email is required"],
-      lowercase: true,
-      trim: true,
-      match: [/^\S+@\S+\.\S+$/, "Invalid email format"],
-      unique: true,
+      required: [true, "Room Type is required"],
     },
     status: {
       type: String,
-      enum: ["Active", "Inactive"], // restricts to these values
+      enum: ["Active", "Inactive"], //  restricts to these values
       default: "Active",
       required: [true, "Status is required"],
     },
   },
-  { timestamps: true } // adds createdAt & updatedAt automatically
+  { timestamps: true }
 );
 
 // Avoid model overwrite during hot-reload
-const Organizer =
-  mongoose.models.Organizer || mongoose.model("Organizer", OrganizerSchema);
+const RoomCategory =
+  mongoose.models.RoomCategory || mongoose.model("RoomCategory", RoomCategorySchema);
 
-export default Organizer;
+export default RoomCategory;

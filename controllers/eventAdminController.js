@@ -3,7 +3,7 @@ import User from "../models/User.js";
 import { generateTokens } from "../utils/generateTokens.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
 import jwt from "jsonwebtoken";
-
+import Event from "../models/Event.js";
 // =======================
 // EventAdmin Login
 // =======================
@@ -175,17 +175,33 @@ export const myEvents = async (req, res) => {
   try {
     const eventAdminId = req.user._id;
 
-    // Fetch eventAdmin and populate assignedEvents with all fields
+    // Fetch the event admin and populate assignedEvents deeply
     const eventAdmin = await User.findById(eventAdminId)
-      .populate("assignedEvents"); // no 'select', so all event fields included
+      .populate({
+        path: "assignedEvents",
+        populate: [
+          { path: "organizer" },
+          { path: "department" },
+          { path: "venueName" },
+        ],
+        options: { sort: { createdAt: -1 } },
+      });
 
     if (!eventAdmin) {
-      return res.status(404).json({ success: false, message: "EventAdmin not found" });
+      return res.status(404).json({
+        success: false,
+        message: "EventAdmin not found",
+      });
     }
 
     res.json({
       success: true,
-      events: eventAdmin.assignedEvents,
+      events: eventAdmin.assignedEvents.map((e) =>
+        e.toObject({ virtuals: true })
+      ),
+      user: {
+        name: eventAdmin.name,
+      },
     });
   } catch (error) {
     console.error("My events error:", error);
@@ -196,3 +212,4 @@ export const myEvents = async (req, res) => {
     });
   }
 };
+
