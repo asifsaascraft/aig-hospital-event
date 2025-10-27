@@ -34,6 +34,7 @@ export const uploadVenueImage = createUploader("venues");
 export const uploadEventImage = createUploader("events");
 export const uploadHotelImage = createUploader("hotels");
 export const uploadProfileImage = createUploader("profile-pictures");
+export const uploadSponsorImage = createUploader("sponsors");
 
 
 export const uploadBoothPDF = createUploader("booths", pdfFileFilter);

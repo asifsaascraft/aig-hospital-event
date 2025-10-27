@@ -24,6 +24,7 @@ import registrationSlabRoutes from "./routes/registrationSlabRoutes.js";
 import hallRoutes from "./routes/hallRoutes.js";
 import boothRoutes from "./routes/boothRoutes.js";
 import sponsorCategoryRoutes from "./routes/sponsorCategoryRoutes.js";
+import sponsorRoutes from "./routes/sponsorRoutes.js";
 import eventRegistrationRoutes from "./routes/eventRegistrationRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 await connectDB();
@@ -82,6 +83,7 @@ app.use("/api", registrationSlabRoutes);
 app.use("/api", hallRoutes);
 app.use("/api", boothRoutes);
 app.use("/api", sponsorCategoryRoutes);
+app.use("/api", sponsorRoutes);
 app.use("/api", eventRegistrationRoutes);
 app.use("/api", paymentRoutes);
 // =======================
