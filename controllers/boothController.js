@@ -17,7 +17,7 @@ export const createBooth = async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // ✅ Support both local & S3 uploads
+    //  Support both local & S3 uploads
     const boothFilePath = req.file?.location || req.file?.path;
     if (!boothFilePath) {
       return res.status(400).json({ message: "Booth PDF file is required" });
@@ -30,7 +30,7 @@ export const createBooth = async (req, res) => {
       hall,
       stallType,
       status,
-      boothImageUpload: boothFilePath, // ✅ use the unified variable
+      boothImageUpload: boothFilePath, // use the unified variable
     });
 
     res.status(201).json({
@@ -44,44 +44,6 @@ export const createBooth = async (req, res) => {
   }
 };
 
-
-// OLD Code 
-// export const createBooth = async (req, res) => {
-//   try {
-//     const { eventId } = req.params;
-//     const { booth, hallName, stallType, status } = req.body;
-
-//     // Validate event existence
-//     const event = await Event.findById(eventId);
-//     if (!event) {
-//       return res.status(404).json({ message: "Event not found" });
-//     }
-
-//     // Validate file upload
-//     if (!req.file || !req.file.location) {
-//       return res.status(400).json({ message: "Booth PDF file is required" });
-//     }
-
-//     // Create new booth
-//     const newBooth = await Booth.create({
-//       eventId,
-//       booth,
-//       boothImageUpload: req.file.location, //  Store uploaded S3 URL
-//       hallName,
-//       stallType,
-//       status,
-//     });
-
-//     res.status(201).json({
-//       success: true,
-//       message: "Booth created successfully",
-//       data: newBooth,
-//     });
-//   } catch (error) {
-//     console.error("Create booth error:", error);
-//     res.status(500).json({ message: "Server Error" });
-//   }
-// };
 
 // =======================
 // Get All Booths by Event ID (Public/User)
