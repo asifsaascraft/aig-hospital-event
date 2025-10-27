@@ -1,5 +1,6 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
+import sendEmailWithTemplate from "../utils/sendEmail.js";
 
 // 🔐 Generate strong random password (8–14 chars)
 function generateStrongPassword() {
@@ -81,6 +82,23 @@ export const createTeam = async (req, res) => {
       role: "eventAdmin",
       status: status || "Active",
     });
+
+    //  Send welcome email using ZeptoMail template
+    try {
+      await sendEmailWithTemplate({
+        to: email,
+        name,
+        templateKey: "2518b.554b0da719bc314.k1.f14bdd00-b303-11f0-ac53-ae9c7e0b6a9f.19a24808ed0",
+        mergeInfo: {
+          name,
+          companyName,
+          email,
+          mobile,
+        },
+      });
+    } catch (emailError) {
+      console.error("Team creation email failed:", emailError);
+    }
 
     // Return plain password to admin
     res.status(201).json({
