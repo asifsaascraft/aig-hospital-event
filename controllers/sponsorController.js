@@ -28,7 +28,7 @@ function generateStrongPassword() {
 export const getSponsorsByEvent = async (req, res) => {
     try {
         const { eventId } = req.params;
-        const sponsors = await Sponsor.find({ eventId }).sort({ createdAt: -1 }).populate("eventId booth");
+        const sponsors = await Sponsor.find({ eventId }).sort({ createdAt: -1 }).populate("eventId sponsorBooth");
         res.json({ success: true, data: sponsors });
     } catch (error) {
         res.status(500).json({
@@ -53,7 +53,7 @@ export const createSponsor = async (req, res) => {
             additionalEmail,
             gstNumber,
             companyAddress,
-            booth,
+            sponsorBooth,
             sponsorCategory,
             status,
         } = req.body;
@@ -100,7 +100,7 @@ export const createSponsor = async (req, res) => {
             plainPassword,
             gstNumber,
             companyAddress,
-            booth,
+            sponsorBooth,
             sponsorCategory,
             status: status || "Active",
         });
