@@ -12,6 +12,10 @@ const BoothSchema = new mongoose.Schema(
       required: [true, "Booth is required"],
       trim: true,
     },
+    boothImageUpload: {
+      type: String,  // store file path or URL
+      required: [true, "Only PDF Image is required"],
+    },
     hallName: {
       type: String,
       required: [true, "Hall Name is required"],

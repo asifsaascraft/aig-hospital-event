@@ -15,10 +15,16 @@ export const createBooth = async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
+    // Validate file upload
+    if (!req.file || !req.file.location) {
+      return res.status(400).json({ message: "Booth PDF file is required" });
+    }
+
     // Create new booth
     const newBooth = await Booth.create({
       eventId,
       booth,
+      boothImageUpload: req.file.location, //  Store uploaded S3 URL
       hallName,
       stallType,
       status,
@@ -74,6 +80,11 @@ export const updateBooth = async (req, res) => {
     if (hallName) existingBooth.hallName = hallName;
     if (stallType) existingBooth.stallType = stallType;
     if (status) existingBooth.status = status;
+
+    //  Update PDF if new file uploaded
+    if (req.file && req.file.location) {
+      existingBooth.boothImageUpload = req.file.location;
+    }
 
     await existingBooth.save();
 

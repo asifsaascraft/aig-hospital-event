@@ -6,6 +6,7 @@ import {
   deleteBooth,
 } from "../controllers/boothController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
+import { uploadBoothPDF } from "../middlewares/uploadMiddleware.js"; // ✅
 
 const router = express.Router();
 
@@ -16,6 +17,7 @@ router.post(
   "/event-admin/events/:eventId/booths",
   protect,
   authorizeRoles("eventAdmin"),
+  uploadBoothPDF.single("boothImageUpload"), 
   createBooth
 );
 
@@ -31,6 +33,7 @@ router.put(
   "/event-admin/booths/:id",
   protect,
   authorizeRoles("eventAdmin"),
+  uploadBoothPDF.single("boothImageUpload"), 
   updateBooth
 );
 

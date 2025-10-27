@@ -3,21 +3,37 @@ import multer from "multer";
 import multerS3 from "multer-s3";
 import s3 from "../config/s3.js";
 
-export const createUploader = (folder) => {
+export const createUploader = (folder, fileFilter = null) => {
   const storage = multerS3({
-    s3, // AWS SDK v3 S3Client
+    s3,
     bucket: process.env.AWS_BUCKET_NAME,
-    acl: "public-read", // makes files accessible via public URL
+    acl: "public-read",
     key: (req, file, cb) => {
       const fileName = `${folder}/${Date.now().toString()}-${file.originalname}`;
       cb(null, fileName);
     },
   });
 
-  return multer({ storage });
+  const uploaderOptions = { storage };
+  if (fileFilter) uploaderOptions.fileFilter = fileFilter;
+
+  return multer(uploaderOptions);
 };
-// Export specific uploaders
+
+//  Allow only PDFs
+const pdfFileFilter = (req, file, cb) => {
+  if (file.mimetype === "application/pdf") {
+    cb(null, true);
+  } else {
+    cb(new Error("Only PDF files are allowed for booth uploads"), false);
+  }
+};
+
+
 export const uploadVenueImage = createUploader("venues");
 export const uploadEventImage = createUploader("events");
 export const uploadHotelImage = createUploader("hotels");
-export const uploadProfileImage = createUploader("profile-pictures"); 
+export const uploadProfileImage = createUploader("profile-pictures");
+
+
+export const uploadBoothPDF = createUploader("booths", pdfFileFilter);
