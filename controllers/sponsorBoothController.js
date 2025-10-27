@@ -1,12 +1,10 @@
-import Booth from "../models/Booth.js";
+import SponsorBooth from "../models/SponsorBooth.js";
 import Event from "../models/Event.js";
 
 // =======================
-// Create Booth (EventAdmin Only)
+// Create Sponsor Booth (EventAdmin Only)
 // =======================
-
-
-export const createBooth = async (req, res) => {
+export const createSponsorBooth = async (req, res) => {
   try {
     const { eventId } = req.params;
     const { booth, hall, stallType, status } = req.body;
@@ -17,112 +15,111 @@ export const createBooth = async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    //  Support both local & S3 uploads
+    // Support both local & S3 uploads
     const boothFilePath = req.file?.location || req.file?.path;
     if (!boothFilePath) {
       return res.status(400).json({ message: "Booth PDF file is required" });
     }
 
-    // Create new booth
-    const newBooth = await Booth.create({
+    // Create new sponsor booth
+    const newBooth = await SponsorBooth.create({
       eventId,
       booth,
       hall,
       stallType,
       status,
-      boothImageUpload: boothFilePath, // use the unified variable
+      boothImageUpload: boothFilePath,
     });
 
     res.status(201).json({
       success: true,
-      message: "Booth created successfully",
+      message: "Sponsor Booth created successfully",
       data: newBooth,
     });
   } catch (error) {
-    console.error("Create booth error:", error);
+    console.error("Create Sponsor Booth error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
 
-
 // =======================
-// Get All Booths by Event ID (Public/User)
+// Get All Sponsor Booths by Event ID (Public/User)
 // =======================
-export const getBoothsByEvent = async (req, res) => {
+export const getSponsorBoothsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
 
-    const booths = await Booth.find({ eventId }).sort({ createdAt: -1 });
+    const booths = await SponsorBooth.find({ eventId }).sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
-      message: "Booths fetched successfully",
+      message: "Sponsor Booths fetched successfully",
       data: booths,
     });
   } catch (error) {
-    console.error("Get booths error:", error);
+    console.error("Get Sponsor Booths error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
 
 // =======================
-// Update Booth (EventAdmin Only)
+// Update Sponsor Booth (EventAdmin Only)
 // =======================
-export const updateBooth = async (req, res) => {
+export const updateSponsorBooth = async (req, res) => {
   try {
     const { id } = req.params;
-    const { booth, hallName, stallType, status } = req.body;
+    const { booth, hall, stallType, status } = req.body;
 
-    // Find existing booth
-    const existingBooth = await Booth.findById(id);
+    const existingBooth = await SponsorBooth.findById(id);
     if (!existingBooth) {
-      return res.status(404).json({ message: "Booth not found" });
+      return res.status(404).json({ message: "Sponsor Booth not found" });
     }
 
-    // Update only provided fields
+    // Update provided fields
     if (booth) existingBooth.booth = booth;
-    if (hallName) existingBooth.hallName = hallName;
+    if (hall) existingBooth.hall = hall;
     if (stallType) existingBooth.stallType = stallType;
     if (status) existingBooth.status = status;
 
-    //  Update PDF if new file uploaded
-    if (req.file && req.file.location) {
-      existingBooth.boothImageUpload = req.file.location;
+    // Update booth PDF if new file uploaded
+    const boothFilePath = req.file?.location || req.file?.path;
+    if (boothFilePath) {
+      existingBooth.boothImageUpload = boothFilePath;
     }
 
     await existingBooth.save();
 
     res.status(200).json({
       success: true,
-      message: "Booth updated successfully",
+      message: "Sponsor Booth updated successfully",
       data: existingBooth,
     });
   } catch (error) {
-    console.error("Update booth error:", error);
+    console.error("Update Sponsor Booth error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
 
 // =======================
-// Delete Booth (EventAdmin Only)
+// Delete Sponsor Booth (EventAdmin Only)
 // =======================
-export const deleteBooth = async (req, res) => {
+export const deleteSponsorBooth = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const booth = await Booth.findById(id);
+    const booth = await SponsorBooth.findById(id);
     if (!booth) {
-      return res.status(404).json({ message: "Booth not found" });
+      return res.status(404).json({ message: "Sponsor Booth not found" });
     }
 
     await booth.deleteOne();
 
     res.status(200).json({
       success: true,
-      message: "Booth deleted successfully",
+      message: "Sponsor Booth deleted successfully",
     });
   } catch (error) {
-    console.error("Delete booth error:", error);
+    console.error("Delete Sponsor Booth error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };

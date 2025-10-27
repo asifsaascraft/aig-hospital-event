@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const BoothSchema = new mongoose.Schema(
+const SponsorBoothSchema = new mongoose.Schema(
   {
     eventId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -36,5 +36,5 @@ const BoothSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.models.Booth ||
-  mongoose.model("Booth", BoothSchema);
+export default mongoose.models.SponsorBooth ||
+  mongoose.model("SponsorBooth", SponsorBoothSchema);

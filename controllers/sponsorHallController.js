@@ -1,10 +1,10 @@
-import Hall from "../models/Hall.js";
+import SponsorHall from "../models/SponsorHall.js";
 import Event from "../models/Event.js";
 
 // =======================
 // Create Hall (EventAdmin Only)
 // =======================
-export const createHall = async (req, res) => {
+export const createSponsorHall = async (req, res) => {
   try {
     const { eventId } = req.params;
     const { hallName, status } = req.body;
@@ -16,7 +16,7 @@ export const createHall = async (req, res) => {
     }
 
     // Create new hall
-    const hall = await Hall.create({
+    const hall = await SponsorHall.create({
       eventId,
       hallName,
       status,
@@ -24,11 +24,11 @@ export const createHall = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Hall created successfully",
+      message: "Sponsor Hall created successfully",
       data: hall,
     });
   } catch (error) {
-    console.error("Create hall error:", error);
+    console.error("Create Sponsor Hall error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
@@ -36,19 +36,19 @@ export const createHall = async (req, res) => {
 // =======================
 // Get All Halls by Event ID (Public/User)
 // =======================
-export const getHallsByEvent = async (req, res) => {
+export const getSponsorHallsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
 
-    const halls = await Hall.find({ eventId }).sort({ createdAt: -1 });
+    const halls = await SponsorHall.find({ eventId }).sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
-      message: "Halls fetched successfully",
+      message: "Sponsor Halls fetched successfully",
       data: halls,
     });
   } catch (error) {
-    console.error("Get halls error:", error);
+    console.error("Get Sponsor Halls error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
@@ -56,18 +56,16 @@ export const getHallsByEvent = async (req, res) => {
 // =======================
 // Update Hall (EventAdmin Only)
 // =======================
-export const updateHall = async (req, res) => {
+export const updateSponsorHall = async (req, res) => {
   try {
     const { id } = req.params;
     const { hallName, status } = req.body;
 
-    // Find existing hall
-    const hall = await Hall.findById(id);
+    const hall = await SponsorHall.findById(id);
     if (!hall) {
-      return res.status(404).json({ message: "Hall not found" });
+      return res.status(404).json({ message: "Sponsor Hall not found" });
     }
 
-    // Update only provided fields
     if (hallName) hall.hallName = hallName;
     if (status) hall.status = status;
 
@@ -75,11 +73,11 @@ export const updateHall = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Hall updated successfully",
+      message: "Sponsor Hall updated successfully",
       data: hall,
     });
   } catch (error) {
-    console.error("Update hall error:", error);
+    console.error("Update Sponsor Hall error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
@@ -87,23 +85,23 @@ export const updateHall = async (req, res) => {
 // =======================
 // Delete Hall (EventAdmin Only)
 // =======================
-export const deleteHall = async (req, res) => {
+export const deleteSponsorHall = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const hall = await Hall.findById(id);
+    const hall = await SponsorHall.findById(id);
     if (!hall) {
-      return res.status(404).json({ message: "Hall not found" });
+      return res.status(404).json({ message: "Sponsor Hall not found" });
     }
 
     await hall.deleteOne();
 
     res.status(200).json({
       success: true,
-      message: "Hall deleted successfully",
+      message: "Sponsor Hall deleted successfully",
     });
   } catch (error) {
-    console.error("Delete hall error:", error);
+    console.error("Delete Sponsor Hall error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };

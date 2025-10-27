@@ -43,7 +43,7 @@ export const uploadProfileImage = createUploader("profile-pictures");
 export const uploadSponsorImage = createUploader("sponsors");
 
 //  Booth PDF uploader with inline viewing enabled
-export const uploadBoothPDF = createUploader("booths", pdfFileFilter);
+export const uploadBoothPDF = createUploader("sponsor-booths", pdfFileFilter);
 
 
 

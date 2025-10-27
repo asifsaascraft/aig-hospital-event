@@ -1,10 +1,10 @@
 import express from "express";
 import {
-  createHall,
-  getHallsByEvent,
-  updateHall,
-  deleteHall,
-} from "../controllers/hallController.js";
+  createSponsorHall,
+  getSponsorHallsByEvent,
+  updateSponsorHall,
+  deleteSponsorHall,
+} from "../controllers/sponsorHallController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
@@ -16,13 +16,13 @@ router.post(
   "/event-admin/events/:eventId/halls",
   protect,
   authorizeRoles("eventAdmin"),
-  createHall
+  createSponsorHall
 );
 
 // =======================
 // Public/User: Get All Halls by Event ID
 // =======================
-router.get("/events/:eventId/halls", getHallsByEvent);
+router.get("/events/:eventId/halls", getSponsorHallsByEvent);
 
 // =======================
 // EventAdmin: Update Hall
@@ -31,7 +31,7 @@ router.put(
   "/event-admin/halls/:id",
   protect,
   authorizeRoles("eventAdmin"),
-  updateHall
+  updateSponsorHall
 );
 
 // =======================
@@ -41,7 +41,7 @@ router.delete(
   "/event-admin/halls/:id",
   protect,
   authorizeRoles("eventAdmin"),
-  deleteHall
+  deleteSponsorHall
 );
 
 export default router;

@@ -51,9 +51,9 @@ const sponsorSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    booth: {
+    sponsorBooth: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Booth",
+      ref: "SponsorBooth",
     },
     sponsorCategory: {
       type: String,

@@ -1,50 +1,50 @@
 import express from "express";
 import {
-  createBooth,
-  getBoothsByEvent,
-  updateBooth,
-  deleteBooth,
-} from "../controllers/boothController.js";
+  createSponsorBooth,
+  getSponsorBoothsByEvent,
+  updateSponsorBooth,
+  deleteSponsorBooth,
+} from "../controllers/sponsorBoothController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
-import { uploadBoothPDF } from "../middlewares/uploadMiddleware.js"; 
+import { uploadBoothPDF } from "../middlewares/uploadMiddleware.js";
 
 const router = express.Router();
 
 // =======================
-// EventAdmin: Create Booth
+// EventAdmin: Create Sponsor Booth
 // =======================
 router.post(
   "/event-admin/events/:eventId/booths",
   protect,
   authorizeRoles("eventAdmin"),
-  uploadBoothPDF.single("boothImageUpload"), 
-  createBooth
+  uploadBoothPDF.single("boothImageUpload"),
+  createSponsorBooth
 );
 
 // =======================
-// Public/User: Get All Booths by Event ID
+// Public/User: Get All Sponsor Booths by Event ID
 // =======================
-router.get("/events/:eventId/booths", getBoothsByEvent);
+router.get("/events/:eventId/booths", getSponsorBoothsByEvent);
 
 // =======================
-// EventAdmin: Update Booth
+// EventAdmin: Update Sponsor Booth
 // =======================
 router.put(
   "/event-admin/booths/:id",
   protect,
   authorizeRoles("eventAdmin"),
-  uploadBoothPDF.single("boothImageUpload"), 
-  updateBooth
+  uploadBoothPDF.single("boothImageUpload"),
+  updateSponsorBooth
 );
 
 // =======================
-// EventAdmin: Delete Booth
+// EventAdmin: Delete Sponsor Booth
 // =======================
 router.delete(
   "/event-admin/booths/:id",
   protect,
   authorizeRoles("eventAdmin"),
-  deleteBooth
+  deleteSponsorBooth
 );
 
 export default router;
