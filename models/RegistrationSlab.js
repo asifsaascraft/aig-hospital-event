@@ -17,6 +17,11 @@ const RegistrationSlabSchema = new mongoose.Schema(
       required: [true, "Amount is required"],
       min: [0, "Amount must be a positive number"],
     },
+    AccompanyAmount: {
+      type: Number,
+      required: [true, "Amount is required"],
+      min: [0, "Amount must be a positive number"],
+    },
     startDate: {
       type: Date,
     },

@@ -7,7 +7,7 @@ import Event from "../models/Event.js";
 export const createRegistrationSlab = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { slabName, amount, startDate, endDate } = req.body;
+    const { slabName, amount, AccompanyAmount, startDate, endDate } = req.body;
 
     // Validate event existence
     const event = await Event.findById(eventId);
@@ -20,6 +20,7 @@ export const createRegistrationSlab = async (req, res) => {
       eventId,
       slabName,
       amount,
+      AccompanyAmount,
       startDate,
       endDate,
     });
@@ -61,7 +62,7 @@ export const getRegistrationSlabsByEvent = async (req, res) => {
 export const updateRegistrationSlab = async (req, res) => {
   try {
     const { id } = req.params;
-    const { slabName, amount, startDate, endDate } = req.body;
+    const { slabName, amount, AccompanyAmount, startDate, endDate } = req.body;
 
     // Find existing slab
     const slab = await RegistrationSlab.findById(id);
@@ -72,6 +73,7 @@ export const updateRegistrationSlab = async (req, res) => {
     // Update fields only if provided
     if (slabName) slab.slabName = slabName;
     if (amount !== undefined) slab.amount = amount;
+    if (AccompanyAmount !== undefined) slab.AccompanyAmount = AccompanyAmount;
     if (startDate) slab.startDate = startDate;
     if (endDate) slab.endDate = endDate;
 

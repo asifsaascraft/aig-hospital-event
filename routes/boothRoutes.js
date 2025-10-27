@@ -6,7 +6,7 @@ import {
   deleteBooth,
 } from "../controllers/boothController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
-import { uploadBoothPDF } from "../middlewares/uploadMiddleware.js"; // ✅
+import { uploadBoothPDF } from "../middlewares/uploadMiddleware.js"; 
 
 const router = express.Router();
 
