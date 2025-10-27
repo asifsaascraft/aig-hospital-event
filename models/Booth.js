@@ -16,7 +16,7 @@ const BoothSchema = new mongoose.Schema(
       type: String,  // store file path or URL
       required: [true, "Only PDF Image is required"],
     },
-    hallName: {
+    hall: {
       type: String,
       required: [true, "Hall Name is required"],
       trim: true,
