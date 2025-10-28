@@ -58,19 +58,32 @@ export const createSponsor = async (req, res) => {
             status,
         } = req.body;
 
-        if (!eventId || !sponsorName || !contactPersonName || !email || !sponsorCategory) {
+        if (
+            !eventId ||
+            !sponsorName ||
+            !contactPersonName ||
+            !email ||
+            !mobile ||
+            !companyAddress ||
+            !sponsorBooth ||
+            !sponsorCategory
+        ) {
             return res.status(400).json({
                 success: false,
-                message: "Required fields: eventId, sponsorName, contactPersonName, email, sponsorCategory",
+                message: "Required fields: eventId, sponsorName, contactPersonName, email, mobile, companyAddress, sponsorBooth, sponsorCategory",
             });
         }
 
-        // Check if sponsor email already exists
-        const existingSponsor = await Sponsor.findOne({ email });
-        if (existingSponsor) {
+        // Check if an active sponsor with this email already exists
+        const existingActiveSponsor = await Sponsor.findOne({
+            email,
+            status: "Active",
+        });
+
+        if (existingActiveSponsor) {
             return res.status(400).json({
                 success: false,
-                message: "Sponsor with this email already exists",
+                message: "A sponsor with this email is already Active. Please deactivate the existing sponsor before adding a new one."
             });
         }
         //  Handle sponsor image upload (using multer-s3) 

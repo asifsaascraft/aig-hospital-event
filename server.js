@@ -25,6 +25,7 @@ import sponsorHallRoutes from "./routes/sponsorHallRoutes.js";
 import sponsorBoothRoutes from "./routes/sponsorBoothRoutes.js";
 import sponsorCategoryRoutes from "./routes/sponsorCategoryRoutes.js";
 import sponsorRoutes from "./routes/sponsorRoutes.js";
+import sponsorRegistrationQuotaRoutes from "./routes/sponsorRegistrationQuotaRoutes.js";
 import eventRegistrationRoutes from "./routes/eventRegistrationRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 await connectDB();
@@ -84,6 +85,7 @@ app.use("/api", sponsorHallRoutes);
 app.use("/api", sponsorBoothRoutes);
 app.use("/api", sponsorCategoryRoutes);
 app.use("/api", sponsorRoutes);
+app.use("/api", sponsorRegistrationQuotaRoutes);
 app.use("/api", eventRegistrationRoutes);
 app.use("/api", paymentRoutes);
 // =======================

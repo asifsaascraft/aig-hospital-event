@@ -7,14 +7,7 @@ export const createUploader = (folder, fileFilter = null) => {
   const storage = multerS3({
     s3,
     bucket: process.env.AWS_BUCKET_NAME,
-    acl: "public-read",
-
-    //  Serve PDFs inline in browser instead of downloading
-    contentDisposition: "inline",
-
-    //  Let S3 detect the file type automatically
-    contentType: multerS3.AUTO_CONTENT_TYPE,
-
+    //acl: "public-read",
     key: (req, file, cb) => {
       const fileName = `${folder}/${Date.now().toString()}-${file.originalname}`;
       cb(null, fileName);
@@ -35,6 +28,7 @@ const pdfFileFilter = (req, file, cb) => {
     cb(new Error("Only PDF files are allowed for booth uploads"), false);
   }
 };
+
 
 export const uploadVenueImage = createUploader("venues");
 export const uploadEventImage = createUploader("events");

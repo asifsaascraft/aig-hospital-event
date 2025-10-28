@@ -14,6 +14,7 @@ const sponsorSchema = new mongoose.Schema(
     },
     sponsorImage: {
       type: String, // store file path or URL
+      required: [true, "Sponsor image is required"],
       trim: true,
     },
     contactPersonName: {
@@ -30,6 +31,7 @@ const sponsorSchema = new mongoose.Schema(
     },
     mobile: {
       type: String,
+      required: [true, "Mobile number is required"],
       trim: true,
     },
     additionalEmail: {
@@ -49,11 +51,13 @@ const sponsorSchema = new mongoose.Schema(
     },
     companyAddress: {
       type: String,
+      required: [true, "Company Address is required"],
       trim: true,
     },
     sponsorBooth: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "SponsorBooth",
+      required: [true, "Sponsor booth is required"],
     },
     sponsorCategory: {
       type: String,
