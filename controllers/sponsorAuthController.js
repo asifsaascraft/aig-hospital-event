@@ -103,7 +103,7 @@ export const forgotPasswordSponsor = async (req, res) => {
 
     const resetToken = crypto.randomBytes(20).toString("hex");
     const resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
-    const resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 mins
+    const resetPasswordExpire = Date.now() + 24 * 60 * 60 * 1000; // 1 day expiry
 
     sponsor.resetPasswordToken = resetPasswordToken;
     sponsor.resetPasswordExpire = resetPasswordExpire;
