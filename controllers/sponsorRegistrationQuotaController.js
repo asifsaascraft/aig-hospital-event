@@ -21,6 +21,15 @@ export const createSponsorRegistrationQuota = async (req, res) => {
     if (!sponsor) {
       return res.status(404).json({ message: "Sponsor not found" });
     }
+    
+    //  Check if sponsorId already exists globally
+    const existingQuota = await SponsorRegistrationQuota.findOne({ sponsorId });
+    if (existingQuota) {
+      return res.status(400).json({
+        success: false,
+        message: "This sponsor already has a registration quota.",
+      });
+    }
 
     // Create quota record
     const newQuota = await SponsorRegistrationQuota.create({
@@ -49,7 +58,7 @@ export const getSponsorRegistrationQuotasByEvent = async (req, res) => {
     const { eventId } = req.params;
 
     const quotas = await SponsorRegistrationQuota.find({ eventId })
-      .populate("Sponsor")
+      .populate("sponsorId")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -69,11 +78,25 @@ export const getSponsorRegistrationQuotasByEvent = async (req, res) => {
 export const updateSponsorRegistrationQuota = async (req, res) => {
   try {
     const { id } = req.params;
-    const { quota, status } = req.body;
+    const { sponsorId, quota, status } = req.body;
 
     const quotaRecord = await SponsorRegistrationQuota.findById(id);
     if (!quotaRecord) {
-      return res.status(404).json({ message: "Sponsor registration quota not found" });
+      return res
+        .status(404)
+        .json({ message: "Sponsor registration quota not found" });
+    }
+
+    //  If sponsorId is being updated, ensure it's unique globally
+    if (sponsorId && sponsorId.toString() !== quotaRecord.sponsorId.toString()) {
+      const existingQuota = await SponsorRegistrationQuota.findOne({ sponsorId });
+      if (existingQuota) {
+        return res.status(400).json({
+          success: false,
+          message: "This sponsor already has a registration quota.",
+        });
+      }
+      quotaRecord.sponsorId = sponsorId;
     }
 
     if (quota !== undefined) quotaRecord.quota = quota;
@@ -91,6 +114,7 @@ export const updateSponsorRegistrationQuota = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
 
 // =======================
 // Delete Sponsor Registration Quota (EventAdmin Only)
