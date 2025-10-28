@@ -122,6 +122,7 @@ export const createSponsor = async (req, res) => {
         // Return plain password (for eventAdmin to note or send)
         res.status(201).json({
             success: true,
+            message: "Sponsor created successfully",
             data: sponsor,
             plainPassword,
         });
