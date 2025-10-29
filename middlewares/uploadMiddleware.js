@@ -9,13 +9,13 @@ export const createUploader = (folder, fileFilter = null) => {
     bucket: process.env.AWS_BUCKET_NAME,
 
     //  Make file accessible by URL
-    //acl: "public-read",
+    acl: "public-read",
 
     //  Allow browser to open file inline
-    //contentDisposition: "inline",
+    contentDisposition: "inline",
 
     //  Automatically detect file type (PDF, image, etc.)
-    //contentType: multerS3.AUTO_CONTENT_TYPE,
+    contentType: multerS3.AUTO_CONTENT_TYPE,
     
     //  Unique file name pattern
     key: (req, file, cb) => {
