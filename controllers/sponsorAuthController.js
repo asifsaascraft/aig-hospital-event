@@ -159,3 +159,35 @@ export const resetPasswordSponsor = async (req, res) => {
     res.status(500).json({ message: "Password reset failed", error: error.message });
   }
 };
+
+// =======================
+// Get Sponsor's Event
+// =======================
+export const getMyEvent = async (req, res) => {
+  try {
+    const sponsorId = req.sponsor?.id;
+
+    if (!sponsorId) {
+      return res.status(401).json({ message: "Unauthorized access" });
+    }
+
+    // Fetch sponsor and populate event
+    const sponsor = await Sponsor.findById(sponsorId).populate("eventId");
+
+    if (!sponsor) {
+      return res.status(404).json({ message: "Sponsor not found" });
+    }
+
+    res.json({
+      success: true,
+      message: "Event fetched successfully",
+      data: sponsor.eventId,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to fetch event",
+      error: error.message,
+    });
+  }
+};
+

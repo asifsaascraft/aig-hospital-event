@@ -7,6 +7,7 @@ import {
   refreshAccessTokenSponsor,
   forgotPasswordSponsor,
   resetPasswordSponsor,
+  getMyEvent,
 } from "../controllers/sponsorAuthController.js";
 import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
 
@@ -28,5 +29,8 @@ router.post("/forgot-password", forgotPasswordSponsor);
 
 // Reset Password
 router.post("/reset-password/:token", resetPasswordSponsor);
+
+// Get My Event
+router.get("/my-event", protectSponsor, getMyEvent);
 
 export default router;
