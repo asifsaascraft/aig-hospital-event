@@ -23,7 +23,10 @@ export const loginSponsor = async (req, res) => {
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
-    const { accessToken, refreshToken } = generateTokens(sponsor._id, "sponsor");
+    const { accessToken, refreshToken } = generateTokens(
+      sponsor._id,
+      "sponsor"
+    );
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
@@ -85,7 +88,9 @@ export const refreshAccessTokenSponsor = async (req, res) => {
 
     res.json({ success: true, accessToken });
   } catch (error) {
-    res.status(401).json({ message: "Invalid refresh token", error: error.message });
+    res
+      .status(401)
+      .json({ message: "Invalid refresh token", error: error.message });
   }
 };
 
@@ -102,7 +107,10 @@ export const forgotPasswordSponsor = async (req, res) => {
     }
 
     const resetToken = crypto.randomBytes(20).toString("hex");
-    const resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+    const resetPasswordToken = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
     const resetPasswordExpire = Date.now() + 24 * 60 * 60 * 1000; // 1 day expiry
 
     sponsor.resetPasswordToken = resetPasswordToken;
@@ -115,7 +123,8 @@ export const forgotPasswordSponsor = async (req, res) => {
     await sendEmailWithTemplate({
       to: sponsor.email,
       name: sponsor.sponsorName,
-      templateKey: "2518b.554b0da719bc314.k1.01bb6360-9c50-11f0-8ac3-ae9c7e0b6a9f.1998fb77496",
+      templateKey:
+        "2518b.554b0da719bc314.k1.01bb6360-9c50-11f0-8ac3-ae9c7e0b6a9f.1998fb77496",
       mergeInfo: {
         name: sponsor.sponsorName,
         password_reset_link: resetUrl,
@@ -124,7 +133,12 @@ export const forgotPasswordSponsor = async (req, res) => {
 
     res.json({ success: true, message: "Password reset email sent" });
   } catch (error) {
-    res.status(500).json({ message: "Failed to send password reset email", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Failed to send password reset email",
+        error: error.message,
+      });
   }
 };
 
@@ -133,7 +147,10 @@ export const forgotPasswordSponsor = async (req, res) => {
 // =======================
 export const resetPasswordSponsor = async (req, res) => {
   try {
-    const resetPasswordToken = crypto.createHash("sha256").update(req.params.token).digest("hex");
+    const resetPasswordToken = crypto
+      .createHash("sha256")
+      .update(req.params.token)
+      .digest("hex");
     const sponsor = await Sponsor.findOne({
       resetPasswordToken,
       resetPasswordExpire: { $gt: Date.now() },
@@ -156,38 +173,67 @@ export const resetPasswordSponsor = async (req, res) => {
 
     res.json({ success: true, message: "Password reset successful" });
   } catch (error) {
-    res.status(500).json({ message: "Password reset failed", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Password reset failed", error: error.message });
   }
 };
 
 // =======================
-// Get Sponsor's Event
+// Get Sponsor's Event (Deeply Populated)
 // =======================
 export const getMyEvent = async (req, res) => {
   try {
-    const sponsorId = req.sponsor?.id;
+    const sponsorId = req.sponsor?._id || req.sponsor?.id;
 
     if (!sponsorId) {
-      return res.status(401).json({ message: "Unauthorized access" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized access",
+      });
     }
 
-    // Fetch sponsor and populate event
-    const sponsor = await Sponsor.findById(sponsorId).populate("eventId");
+    // Fetch sponsor and deeply populate related event details
+    const sponsor = await Sponsor.findById(sponsorId).populate({
+      path: "eventId",
+      populate: [
+        { path: "organizer" },
+        { path: "department" },
+        { path: "venueName" },
+      ],
+      options: { sort: { createdAt: -1 } },
+    });
 
     if (!sponsor) {
-      return res.status(404).json({ message: "Sponsor not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Sponsor not found",
+      });
+    }
+
+    if (!sponsor.eventId) {
+      return res.status(404).json({
+        success: false,
+        message: "No event associated with this sponsor",
+      });
     }
 
     res.json({
       success: true,
       message: "Event fetched successfully",
-      data: sponsor.eventId,
+      event: sponsor.eventId.toObject({ virtuals: true }),
+      sponsor: {
+        id: sponsor._id,
+        sponsorName: sponsor.sponsorName,
+        email: sponsor.email,
+      },
     });
   } catch (error) {
+    console.error("Get sponsor event error:", error);
     res.status(500).json({
+      success: false,
       message: "Failed to fetch event",
       error: error.message,
     });
   }
 };
-
