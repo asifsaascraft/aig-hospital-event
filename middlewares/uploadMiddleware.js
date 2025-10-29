@@ -7,7 +7,17 @@ export const createUploader = (folder, fileFilter = null) => {
   const storage = multerS3({
     s3,
     bucket: process.env.AWS_BUCKET_NAME,
-    //acl: "public-read",
+
+    //  Make file accessible by URL
+    acl: "public-read",
+
+    //  Allow browser to open file inline
+    contentDisposition: "inline",
+
+    //  Automatically detect file type (PDF, image, etc.)
+    contentType: multerS3.AUTO_CONTENT_TYPE,
+    
+    //  Unique file name pattern
     key: (req, file, cb) => {
       const fileName = `${folder}/${Date.now().toString()}-${file.originalname}`;
       cb(null, fileName);
@@ -29,7 +39,7 @@ const pdfFileFilter = (req, file, cb) => {
   }
 };
 
-
+//  Export uploaders for different folders
 export const uploadVenueImage = createUploader("venues");
 export const uploadEventImage = createUploader("events");
 export const uploadHotelImage = createUploader("hotels");
