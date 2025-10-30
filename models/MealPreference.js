@@ -1,20 +1,16 @@
 import mongoose from "mongoose";
 
-const SponsorRegistrationQuotaSchema = new mongoose.Schema(
+const MealPreferenceSchema = new mongoose.Schema(
   {
     eventId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Event",
       required: true,
     },
-    sponsorId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Sponsor",
-      required: true,
-    },
-    quota: {
+    mealName: {
       type: String,
-      required: [true, "Quota is required"],
+      required: [true, "Slab name is required"],
+      trim: true,
     },
     status: {
       type: String,
@@ -26,5 +22,5 @@ const SponsorRegistrationQuotaSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.models.SponsorRegistrationQuota ||
-  mongoose.model("SponsorRegistrationQuota", SponsorRegistrationQuotaSchema);
+export default mongoose.models.MealPreference ||
+  mongoose.model("MealPreference", MealPreferenceSchema);

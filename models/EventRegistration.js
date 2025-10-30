@@ -32,6 +32,8 @@ const EventRegistrationSchema = new mongoose.Schema(
     email: {
       type: String,
       required: [true, "Email is required"],
+      trim: true,
+      lowercase: true,
     },
     mobile: {
       type: String,

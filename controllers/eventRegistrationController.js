@@ -35,7 +35,6 @@ export const getPrefilledRegistrationForm = async (req, res) => {
       affiliation: user.affiliation || "",
       medicalCouncilState: user.medicalCouncilState || "",
       medicalCouncilRegistration: user.medicalCouncilRegistration || "",
-      mealPreference: user.mealPreference || "",
       country: user.country || "",
       state: user.state || "",
       city: user.city || "",

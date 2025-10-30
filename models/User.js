@@ -102,10 +102,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    mealPreference: {
-      type: String,
-      trim: true,
-    },
     profilePicture: {
       type: String,
       trim: true,
