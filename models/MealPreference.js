@@ -9,7 +9,7 @@ const MealPreferenceSchema = new mongoose.Schema(
     },
     mealName: {
       type: String,
-      required: [true, "Slab name is required"],
+      required: [true, "Meal name is required"],
       trim: true,
     },
     status: {

@@ -13,7 +13,7 @@ const SponsorRegistrationQuotaSchema = new mongoose.Schema(
       required: true,
     },
     quota: {
-      type: String,
+      type: Number,
       required: [true, "Quota is required"],
     },
     status: {
