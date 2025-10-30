@@ -14,6 +14,10 @@ const PaymentSchema = new mongoose.Schema(
       required: [true, "Event registration reference is required"],
       index: true,
     },
+    accompanyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Accompany",
+    },
     razorpayOrderId: {
       type: String,
       trim: true,

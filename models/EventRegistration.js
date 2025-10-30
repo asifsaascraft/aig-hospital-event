@@ -13,9 +13,10 @@ const EventRegistrationSchema = new mongoose.Schema(
       ref: "Event",
       required: true,
     },
-    registrationSlabName: {
-      type: String,
-      required: [true, "Registration slab name is required"],
+    registrationSlabId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "RegistrationSlab",
+      required: true,
     },
     prefix: {
       type: String,
