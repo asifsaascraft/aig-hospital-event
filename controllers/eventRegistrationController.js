@@ -61,7 +61,7 @@ export const registerForEvent = async (req, res) => {
     const userId = req.user._id;
     const { eventId } = req.params;
     const {
-      registrationSlabName,
+      registrationSlabId,
       prefix,
       name,
       gender,
@@ -95,7 +95,7 @@ export const registerForEvent = async (req, res) => {
     const registration = await EventRegistration.create({
       userId,
       eventId,
-      registrationSlabName,
+      registrationSlabId,
       prefix,
       name,
       gender,
