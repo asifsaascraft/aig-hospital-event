@@ -133,11 +133,14 @@ export const getMyRegistrations = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Only fetch paid registrations
     const registrations = await EventRegistration.find({ userId, isPaid: true })
       .populate({
         path: "eventId",
-        select: "eventName shortName startDate endDate",
+        select: "eventName shortName startDate endDate dynamicStatus",
+      })
+      .populate({
+        path: "registrationSlabId",
+        select: "slabName amount", // Include more fields if needed
       })
       .sort({ createdAt: -1 });
 
@@ -152,6 +155,7 @@ export const getMyRegistrations = async (req, res) => {
   }
 };
 
+
 /* 
 ========================================================
   4. Get Registration By ID
@@ -161,14 +165,23 @@ export const getRegistrationById = async (req, res) => {
     const userId = req.user._id;
     const { registrationId } = req.params;
 
-    const registration = await EventRegistration.findOne({ _id: registrationId, userId, isPaid: true })
+    const registration = await EventRegistration.findOne({
+      _id: registrationId,
+      userId,
+      isPaid: true,
+    })
       .populate({
         path: "eventId",
-        select: "eventName shortName startDate endDate",
+        select: "eventName shortName startDate endDate dynamicStatus",
+      })
+      .populate({
+        path: "registrationSlabId",
+        select: "slabName amount",
       });
-    console.log("Logged-in userId:", userId);
-console.log("Requested registrationId:", registrationId);
-    if (!registration) return res.status(404).json({ message: "Registration not found or unpaid" });
+
+    if (!registration) {
+      return res.status(404).json({ message: "Registration not found or unpaid" });
+    }
 
     res.status(200).json({
       success: true,
@@ -180,3 +193,4 @@ console.log("Requested registrationId:", registrationId);
     res.status(500).json({ message: "Server Error" });
   }
 };
+
