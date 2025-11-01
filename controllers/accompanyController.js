@@ -2,9 +2,69 @@
 import Accompany from "../models/Accompany.js";
 import Event from "../models/Event.js";
 import EventRegistration from "../models/EventRegistration.js";
+import RegistrationSlab from "../models/RegistrationSlab.js";
+
+/* 
+========================================================
+  1️ Get Accompany Amount for a User Registration
+========================================================
+  @route   GET /api/accompanies/:eventId/:eventRegistrationId/amount
+  @access  Protected (user)
+========================================================
+*/
+export const getAccompanyAmount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { eventId, eventRegistrationId } = req.params;
+
+    //  Check if Event exists
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    //  Check if EventRegistration exists and belongs to the user
+    const registration = await EventRegistration.findOne({
+      _id: eventRegistrationId,
+      eventId,
+      userId,
+    });
+
+    if (!registration) {
+      return res
+        .status(404)
+        .json({ message: "Event registration not found for this user" });
+    }
+
+    //  Get the registration slab linked to that registration
+    const slab = await RegistrationSlab.findById(registration.registrationSlabId);
+
+    if (!slab) {
+      return res
+        .status(404)
+        .json({ message: "Registration slab not found for this registration" });
+    }
+
+    //  Return the accompany amount
+    res.status(200).json({
+      success: true,
+      message: "Accompany amount fetched successfully",
+      data: {
+        eventId,
+        eventRegistrationId,
+        accompanyAmount: slab.AccompanyAmount,
+      },
+    });
+  } catch (error) {
+    console.error("Get accompany amount error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+
 
 /* ========================================================
-   1. Add Accompanies to a Registration
+   2. Add Accompanies to a Registration
    Route: POST /api/events/:eventId/registrations/:eventRegistrationId/accompanies
    Access: Private (User)
 ======================================================== */
@@ -53,7 +113,7 @@ export const addAccompanies = async (req, res) => {
 };
 
 /* ========================================================
-   2. Get My Accompanies for a Registration
+   3. Get My Accompanies for a Registration
    Route: GET /api/events/:eventId/registrations/:eventRegistrationId/accompanies
    Access: Private (User)
 ======================================================== */
@@ -86,7 +146,7 @@ export const getMyAccompanies = async (req, res) => {
 };
 
 /* ========================================================
-   3. Mark Accompanies as Paid (after payment success)
+   4. Mark Accompanies as Paid (after payment success)
    Route: PATCH /api/accompanies/:accompanyId/mark-paid
    Access: Private (User)
 ======================================================== */

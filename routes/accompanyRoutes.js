@@ -1,6 +1,7 @@
 // routes/accompanyRoutes.js
 import express from "express";
 import {
+  getAccompanyAmount,
   addAccompanies,
   getMyAccompanies,
   markAccompanyPaid,
@@ -13,7 +14,15 @@ const router = express.Router();
    Accompany Routes — Accessible only by "user"
 ======================================================== */
 
-// 1️ Add Accompanies for a Registration
+//  Get accompany amount by event + registration
+router.get(
+  "/:eventId/:eventRegistrationId/amount",
+  protect,
+  authorizeRoles("user"),
+  getAccompanyAmount
+);
+
+//  Add Accompanies for a Registration
 router.post(
   "/events/:eventId/:eventRegistrationId/accompanies",
   protect,
@@ -21,7 +30,7 @@ router.post(
   addAccompanies
 );
 
-// 2️ Get My Accompanies for a Registration
+// 2 Get My Accompanies for a Registration
 router.get(
   "/events/:eventId/:eventRegistrationId/accompanies",
   protect,
@@ -29,7 +38,7 @@ router.get(
   getMyAccompanies
 );
 
-// 3️ Mark Accompanies Paid
+//  Mark Accompanies Paid
 router.patch(
   "/accompanies/:accompanyId/mark-paid",
   protect,
