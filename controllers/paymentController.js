@@ -291,39 +291,54 @@ export const createAccompanyOrder = async (req, res) => {
       return res.status(400).json({ message: "accompanyId and accompanyItemIds are required" });
     }
 
+    // Fetch accompany document
     const accompany = await Accompany.findById(accompanyId);
-    if (!accompany) return res.status(404).json({ message: "Accompany record not found" });
+    if (!accompany) {
+      return res.status(404).json({ message: "Accompany record not found" });
+    }
 
-    // ensure provided item ids exist and are currently unpaid
-    const itemsToPay = accompany.accompanies.filter((a) =>
-      accompanyItemIds.some((id) => id.toString() === a._id.toString())
+    // Filter valid items to pay now (unpaid ones only)
+    const unpaidItems = accompany.accompanies.filter((a) =>
+      accompanyItemIds.includes(a._id.toString()) && a.isPaid === false
     );
 
-    if (itemsToPay.length !== accompanyItemIds.length) {
-      return res.status(400).json({ message: "Some accompany items not found in accompany record" });
+    if (unpaidItems.length === 0) {
+      return res.status(400).json({
+        message: "No unpaid accompany items found for payment. Please check selection.",
+      });
     }
 
-    // Check for already-paid items
-    const alreadyPaid = itemsToPay.filter((i) => i.isPaid === true);
-    if (alreadyPaid.length > 0) {
-      return res.status(400).json({ message: "One or more selected accompany items are already paid" });
+    // Verify registration ownership & payment status
+    const registration = await EventRegistration.findOne({
+      _id: eventRegistrationId,
+      userId,
+      isPaid: true,
+    });
+    if (!registration) {
+      return res.status(400).json({
+        message: "You must complete event registration payment before paying for accompanies.",
+      });
     }
 
-    const shortId = accompany._id.toString().slice(-6); // last 6 chars of ID
+    //  Always allow new order creation for unpaid accompany items
+    const shortId = accompany._id.toString().slice(-6); // short unique suffix
+    const receiptId = `acc_${shortId}_${Date.now().toString().slice(-6)}`.slice(0, 40); // ensure <40 chars
+
     const options = {
       amount: Math.round(Number(amount) * 100),
       currency: "INR",
-      receipt: `acc_${shortId}_${Date.now().toString().slice(-6)}`, // always < 40 chars
+      receipt: receiptId,
     };
 
-
+    // Create new Razorpay order every time
     const order = await razorpay.orders.create(options);
 
+    // Create a new Payment record
     const payment = await Payment.create({
       userId,
       eventRegistrationId,
       accompanyId,
-      accompanyItemIds,
+      accompanyItemIds: unpaidItems.map((a) => a._id),
       amount,
       paymentCategory: "accompany",
       razorpayOrderId: order.id,
@@ -332,7 +347,7 @@ export const createAccompanyOrder = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Accompany order created successfully",
+      message: "Accompany payment order created successfully",
       data: {
         orderId: order.id,
         amount,
@@ -346,6 +361,7 @@ export const createAccompanyOrder = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
 
 
 /* ========================================================
