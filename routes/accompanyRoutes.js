@@ -4,6 +4,7 @@ import {
   getAccompanyAmount,
   addAccompanies,
   getAllPaidAccompanies,
+  editPaidAccompanies,
 } from "../controllers/accompanyController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -36,5 +37,14 @@ router.get(
   authorizeRoles("user"),
   getAllPaidAccompanies
 );
+
+// Edit paid accompanies (only editable fields)
+router.put(
+  "/accompanies/:accompanyId/edit",
+  protect,
+  authorizeRoles("user"),
+  editPaidAccompanies
+);
+
 
 export default router;

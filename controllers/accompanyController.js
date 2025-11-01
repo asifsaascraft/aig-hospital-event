@@ -180,3 +180,67 @@ export const getAllPaidAccompanies = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
+
+/* 
+========================================================
+  4️ Edit Paid Accompanies (Only editable fields)
+========================================================
+  @route   PUT /api/accompanies/:accompanyId/edit
+  @access  Protected (user)
+========================================================
+*/
+export const editPaidAccompanies = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { accompanyId } = req.params;
+    const { accompanies } = req.body; // array of objects with _id + editable fields
+
+    if (!Array.isArray(accompanies) || accompanies.length === 0) {
+      return res.status(400).json({ message: "No accompany data provided for edit" });
+    }
+
+    // Fetch accompany document
+    const accompanyDoc = await Accompany.findOne({
+      _id: accompanyId,
+      userId,
+    });
+
+    if (!accompanyDoc) {
+      return res.status(404).json({ message: "Accompany record not found" });
+    }
+
+    // Update only the allowed fields for paid accompany entries
+    let updatedCount = 0;
+
+    accompanies.forEach((item) => {
+      const sub = accompanyDoc.accompanies.id(item._id);
+      if (sub && sub.isPaid) {
+        // Only update allowed fields
+        if (item.fullName !== undefined) sub.fullName = item.fullName.trim();
+        if (item.relation !== undefined) sub.relation = item.relation.trim();
+        if (item.gender !== undefined) sub.gender = item.gender.trim();
+        if (item.age !== undefined) sub.age = Number(item.age);
+        if (item.mealPreference !== undefined) sub.mealPreference = item.mealPreference.trim();
+        updatedCount++;
+      }
+    });
+
+    if (updatedCount === 0) {
+      return res.status(400).json({
+        message: "No valid paid accompanies found to edit or invalid IDs provided",
+      });
+    }
+
+    await accompanyDoc.save();
+
+    res.status(200).json({
+      success: true,
+      message: `${updatedCount} paid accompany record(s) updated successfully`,
+      data: accompanyDoc,
+    });
+  } catch (error) {
+    console.error("Edit paid accompanies error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
