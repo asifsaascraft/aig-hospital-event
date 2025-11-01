@@ -16,6 +16,12 @@ const PaymentSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Accompany",
     },
+    // NEW: list of accompany subdocument IDs inside the Accompany.accompanies array
+    accompanyItemIds: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+      },
+    ],
     paymentCategory: {
       type: String,
       enum: ["eventRegistration", "accompany"],

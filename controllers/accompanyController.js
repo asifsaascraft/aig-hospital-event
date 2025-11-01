@@ -121,3 +121,62 @@ export const addAccompanies = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
+
+/* 
+========================================================
+  3️ Get All Paid Accompanies for Logged-in User
+========================================================
+  @route   GET /api/accompanies/paid
+  @access  Protected (user)
+========================================================
+*/
+export const getAllPaidAccompanies = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Find accompany records belonging to the user
+    const accompanies = await Accompany.find({ userId })
+      .populate({
+        path: "eventId",
+        select: "eventName eventCode startDate endDate",
+      })
+      .populate({
+        path: "eventRegistrationId",
+        select: "regNum registrationSlabName isPaid",
+      })
+      .sort({ createdAt: -1 });
+
+    // Filter out only paid accompanies (inside the array)
+    const paidAccompanies = accompanies
+      .map((doc) => {
+        const paidList = doc.accompanies.filter((a) => a.isPaid === true);
+        if (paidList.length > 0) {
+          return {
+            _id: doc._id,
+            event: doc.eventId,
+            registration: doc.eventRegistrationId,
+            paidAccompanies: paidList,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean); // remove nulls
+
+    if (paidAccompanies.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No paid accompanies found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Paid accompanies fetched successfully",
+      data: paidAccompanies,
+    });
+  } catch (error) {
+    console.error("Get all paid accompanies error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};

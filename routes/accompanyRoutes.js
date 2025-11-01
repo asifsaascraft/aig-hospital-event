@@ -3,6 +3,7 @@ import express from "express";
 import {
   getAccompanyAmount,
   addAccompanies,
+  getAllPaidAccompanies,
 } from "../controllers/accompanyController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -26,6 +27,14 @@ router.post(
   protect,
   authorizeRoles("user"),
   addAccompanies
+);
+
+// Get all paid accompanies for logged-in user
+router.get(
+  "/accompanies/paid",
+  protect,
+  authorizeRoles("user"),
+  getAllPaidAccompanies
 );
 
 export default router;
