@@ -11,12 +11,15 @@ const PaymentSchema = new mongoose.Schema(
     eventRegistrationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "EventRegistration",
-      required: [true, "Event registration reference is required"],
-      index: true,
     },
     accompanyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Accompany",
+    },
+    paymentCategory: {
+      type: String,
+      enum: ["eventRegistration", "accompany"],
+      required: [true, "Payment type is required"],
     },
     razorpayOrderId: {
       type: String,

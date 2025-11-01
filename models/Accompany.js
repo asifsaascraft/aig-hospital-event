@@ -47,6 +47,14 @@ const AccompanySchema = new mongoose.Schema(
           type: Boolean,
           default: false,
         },
+        regNum: {
+          type: String,
+          trim: true,
+        },
+        regNumGenerated: {
+          type: Boolean,
+          default: false,
+        },
       },
     ],
   },

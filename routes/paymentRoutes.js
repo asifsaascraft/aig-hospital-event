@@ -4,7 +4,9 @@ import {
   createOrder,
   verifyPayment,
   getMyPayments,
-  markPaymentFailed
+  markPaymentFailed,
+  createAccompanyOrder,
+  verifyAccompanyPayment,
 } from "../controllers/paymentController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -46,6 +48,20 @@ router.post(
   protect,
   authorizeRoles("user"),
   markPaymentFailed
+);
+
+// Accompany Payments
+router.post(
+  "/payments/accompany/create-order",
+  protect,
+  authorizeRoles("user"),
+  createAccompanyOrder
+);
+router.post(
+  "/payments/accompany/verify",
+  protect,
+  authorizeRoles("user"),
+  verifyAccompanyPayment
 );
 
 export default router;

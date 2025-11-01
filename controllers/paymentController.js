@@ -4,6 +4,7 @@ import crypto from "crypto";
 import Payment from "../models/Payment.js";
 import EventRegistration from "../models/EventRegistration.js";
 import Event from "../models/Event.js";
+import Accompany from "../models/Accompany.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
 
 // Initialize Razorpay
@@ -46,6 +47,7 @@ export const createOrder = async (req, res) => {
       userId,
       eventRegistrationId,
       amount,
+      paymentCategory: "eventRegistration",
       razorpayOrderId: order.id,
       status: "initiated",
     });
@@ -270,6 +272,128 @@ export const markPaymentFailed = async (req, res) => {
     });
   } catch (error) {
     console.error("Mark payment failed error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+/* ========================================================
+   5. Create Razorpay Order for Accompany Payment
+   Route: POST /api/payments/accompany/create-order
+   Access: Private (User)
+======================================================== */
+export const createAccompanyOrder = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { eventRegistrationId, accompanyId, amount } = req.body;
+
+    const accompany = await Accompany.findById(accompanyId);
+    if (!accompany)
+      return res.status(404).json({ message: "Accompany record not found" });
+
+    const registration = await EventRegistration.findById(eventRegistrationId);
+    if (!registration)
+      return res.status(404).json({ message: "Event registration not found" });
+
+    const existingPayment = await Payment.findOne({
+      userId,
+      accompanyId,
+      status: "paid",
+    });
+    if (existingPayment)
+      return res.status(400).json({ message: "Accompany payment already completed" });
+
+    const options = {
+      amount: Math.round(amount * 100),
+      currency: "INR",
+      receipt: `accompany_${accompany._id}`,
+    };
+
+    const order = await razorpay.orders.create(options);
+
+    const payment = await Payment.create({
+      userId,
+      eventRegistrationId,
+      accompanyId,
+      amount,
+      paymentCategory: "accompany",
+      razorpayOrderId: order.id,
+      status: "initiated",
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Accompany order created successfully",
+      data: {
+        orderId: order.id,
+        amount,
+        currency: order.currency,
+        paymentId: payment._id,
+        razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+      },
+    });
+  } catch (error) {
+    console.error("Create accompany order error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+/* ========================================================
+   6. Verify Accompany Payment
+   Route: POST /api/payments/accompany/verify
+   Access: Private (User)
+======================================================== */
+export const verifyAccompanyPayment = async (req, res) => {
+  try {
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, paymentId } =
+      req.body;
+
+    const body = razorpayOrderId + "|" + razorpayPaymentId;
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_SECRET)
+      .update(body.toString())
+      .digest("hex");
+
+    if (expectedSignature !== razorpaySignature)
+      return res.status(400).json({ message: "Invalid payment signature" });
+
+    const payment = await Payment.findById(paymentId);
+    if (!payment)
+      return res.status(404).json({ message: "Payment record not found" });
+
+    const accompany = await Accompany.findById(payment.accompanyId);
+    if (!accompany)
+      return res.status(404).json({ message: "Accompany record not found" });
+
+    const registration = await EventRegistration.findById(payment.eventRegistrationId);
+    if (!registration)
+      return res.status(404).json({ message: "Event registration not found" });
+
+    // Generate regNum for each accompany
+    let counter = 1;
+    accompany.accompanies.forEach((a) => {
+      if (!a.isPaid) {
+        a.isPaid = true;
+        a.regNumGenerated = true;
+        a.regNum = `${registration.regNum}-A${counter}`;
+        counter++;
+      }
+    });
+
+    await accompany.save();
+
+    // Update payment record
+    payment.razorpayPaymentId = razorpayPaymentId;
+    payment.razorpaySignature = razorpaySignature;
+    payment.status = "paid";
+    await payment.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Accompany payment verified successfully",
+      data: { payment, accompany },
+    });
+  } catch (error) {
+    console.error("Verify accompany payment error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
