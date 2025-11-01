@@ -179,7 +179,7 @@ export const verifyPayment = async (req, res) => {
           },
         }),
       ]);
-      
+
     } catch (err) {
       console.error("Email sending exception:", err);
     }
@@ -309,11 +309,13 @@ export const createAccompanyOrder = async (req, res) => {
       return res.status(400).json({ message: "One or more selected accompany items are already paid" });
     }
 
+    const shortId = accompany._id.toString().slice(-6); // last 6 chars of ID
     const options = {
-      amount: Math.round(amount * 100),
+      amount: Math.round(Number(amount) * 100),
       currency: "INR",
-      receipt: `accompany_${accompany._id}_${Date.now()}`,
+      receipt: `acc_${shortId}_${Date.now().toString().slice(-6)}`, // always < 40 chars
     };
+
 
     const order = await razorpay.orders.create(options);
 
