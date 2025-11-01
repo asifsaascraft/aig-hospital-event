@@ -136,6 +136,8 @@ export const verifyPayment = async (req, res) => {
     //  Send Emails (2 templates)
     // ==============================================
     try {
+      const slabName = registration.registrationSlabId?.slabName || "N/A";
+
       const [registrationEmail, paymentEmail] = await Promise.allSettled([
         sendEmailWithTemplate({
           to: registration.email,
@@ -146,7 +148,7 @@ export const verifyPayment = async (req, res) => {
             name: registration.name,
             eventName: event.eventName,
             registrationNumber: registration.regNum,
-            registrationSlabName: registration.registrationSlabName,
+            registrationSlabName: slabName,
             startDate: event.startDate
               ? new Date(event.startDate).toLocaleDateString("en-IN")
               : "N/A",
