@@ -15,6 +15,8 @@ export const createWorkshop = async (req, res) => {
       maxRegAllowed,
       startDate,
       endDate,
+      startTime,
+      endTime,
       isEventRegistrationRequired,
     } = req.body;
 
@@ -34,6 +36,8 @@ export const createWorkshop = async (req, res) => {
       maxRegAllowed,
       startDate,
       endDate,
+      startTime,
+      endTime,
       isEventRegistrationRequired,
     });
 
@@ -82,6 +86,8 @@ export const updateWorkshop = async (req, res) => {
       maxRegAllowed,
       startDate,
       endDate,
+      startTime,
+      endTime,
       isEventRegistrationRequired,
     } = req.body;
 
@@ -99,6 +105,8 @@ export const updateWorkshop = async (req, res) => {
     if (maxRegAllowed !== undefined) workshop.maxRegAllowed = maxRegAllowed;
     if (startDate) workshop.startDate = startDate;
     if (endDate) workshop.endDate = endDate;
+    if (startTime) workshop.startTime = startTime;
+    if (endTime) workshop.endTime = endTime;
     if (isEventRegistrationRequired !== undefined)
       workshop.isEventRegistrationRequired = isEventRegistrationRequired;
 

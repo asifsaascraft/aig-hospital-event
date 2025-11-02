@@ -32,16 +32,20 @@ const WorkshopSchema = new mongoose.Schema(
       required: [true, "Max Registration Allowed is required"],
     },
     startDate: {
-      type: Date,
+      type: String, // Format: DD/MM/YYYY
+      required: [true, "Start Date is required"],
     },
     endDate: {
-      type: Date,
-      validate: {
-        validator: function (value) {
-          return !this.startDate || value >= this.startDate;
-        },
-        message: "End date must be greater than or equal to start date",
-      },
+      type: String, // Format: DD/MM/YYYY
+      required: [true, "End Date is required"],
+    },
+    startTime: {
+      type: String, // Format: hh:mm A (e.g., 09:00 AM)
+      required: [true, "Start Time is required"],
+    },
+    endTime: {
+      type: String, // Format: hh:mm A (e.g., 05:00 PM)
+      required: [true, "End Time is required"],
     },
     isEventRegistrationRequired: {
       type: Boolean,
