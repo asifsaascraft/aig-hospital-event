@@ -93,9 +93,8 @@ export const verifyPayment = async (req, res) => {
     if (!payment)
       return res.status(404).json({ message: "Payment record not found" });
 
-    const registration = await EventRegistration.findById(
-      payment.eventRegistrationId
-    );
+    const registration = await EventRegistration.findById(payment.eventRegistrationId)
+  .populate("registrationSlabId", "slabName");
     if (!registration)
       return res.status(404).json({ message: "Event registration not found" });
 
