@@ -94,7 +94,7 @@ export const verifyPayment = async (req, res) => {
       return res.status(404).json({ message: "Payment record not found" });
 
     const registration = await EventRegistration.findById(payment.eventRegistrationId)
-  .populate("registrationSlabId", "slabName");
+      .populate("registrationSlabId", "slabName");
     if (!registration)
       return res.status(404).json({ message: "Event registration not found" });
 
@@ -443,9 +443,72 @@ export const verifyAccompanyPayment = async (req, res) => {
     payment.status = "paid";
     await payment.save();
 
+    // ==============================================
+    // Send Emails (2 templates)
+    // ==============================================
+    try {
+      const event = await Event.findById(registration.eventId);
+      const userName = registration.name;
+      const userEmail = registration.email;
+
+      // Prepare accompany list for merge
+      const accompanyList = accompany.accompanies
+        .filter((a) => a.isPaid && a.regNumGenerated)
+        .map((a, idx) => ({
+          index: idx + 1,
+          fullName: a.fullName || "N/A",
+          relation: a.relation || "N/A",
+          gender: a.gender || "N/A",
+          age: a.age || "N/A",
+          mealPreference: a.mealPreference || "N/A",
+          regNum: a.regNum || "N/A",
+        }));
+
+      // Send both emails parallelly
+      const [accompanyEmail, accompanyPaymentEmail] = await Promise.allSettled([
+        //  1. Accompany registration email
+        sendEmailWithTemplate({
+          to: userEmail,
+          name: userName,
+          templateKey: "2518b.554b0da719bc314.k1.490cc270-b7d7-11f0-87d4-ae9c7e0b6a9f.19a44208017",
+          mergeInfo: {
+            userName,
+            userEmail,
+            eventName: event.eventName,
+            registrationNumber: registration.regNum,
+            startDate: event.startDate
+              ? new Date(event.startDate).toLocaleDateString("en-IN")
+              : "N/A",
+            endDate: event.endDate
+              ? new Date(event.endDate).toLocaleDateString("en-IN")
+              : "N/A",
+            accompanies: accompanyList,
+          },
+        }),
+
+        //  2. Accompany payment success email (reuse payment success template)
+        sendEmailWithTemplate({
+          to: userEmail,
+          name: userName,
+          templateKey: "2518b.554b0da719bc314.k1.2f2232e0-a7f2-11f0-8b9c-8e9a6c33ddc2.199dbf53d0e",
+          mergeInfo: {
+            name: userName,
+            eventName: event.eventName,
+            registrationNumber: registration.regNum,
+            paymentAmount: payment.amount,
+            razorpayPaymentId: payment.razorpayPaymentId,
+            razorpayOrderId: payment.razorpayOrderId,
+            paymentStatus: payment.status,
+          },
+        }),
+      ]);
+
+    } catch (emailErr) {
+      console.error("Accompany email sending error:", emailErr);
+    }
     res.status(200).json({
       success: true,
-      message: "Accompany payment verified successfully",
+      message: "Accompany payment verified and emails sent successfully",
       data: { payment, accompany },
     });
   } catch (error) {
