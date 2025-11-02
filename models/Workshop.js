@@ -12,14 +12,24 @@ const WorkshopSchema = new mongoose.Schema(
       required: [true, "Workshop name is required"],
       trim: true,
     },
+    workshopType: {
+      type: String,
+      required: [true, "Workshop Type is required"],
+      trim: true,
+    },
+    hallName: {
+      type: String,
+      required: [true, "Hall name is required"],
+      trim: true,
+    },
     amount: {
       type: Number,
       required: [true, "Amount is required"],
       min: [0, "Amount must be a positive number"],
     },
-    inventory: {
+    maxRegAllowed: {
       type: Number,
-      required: [true, "Inventory is required"],
+      required: [true, "Max Registration Allowed is required"],
     },
     startDate: {
       type: Date,
@@ -37,11 +47,6 @@ const WorkshopSchema = new mongoose.Schema(
       type: Boolean,
       required: true,
       default: false,
-    },
-    status: {
-      type: String,
-      enum: ["Active", "Inactive"],
-      default: "Active",
     },
   },
   { timestamps: true }
