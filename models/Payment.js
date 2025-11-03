@@ -24,7 +24,7 @@ const PaymentSchema = new mongoose.Schema(
     ],
     paymentCategory: {
       type: String,
-      enum: ["eventRegistration", "accompany"],
+      enum: ["Event Registration", "Accompany"],
       required: [true, "Payment type is required"],
     },
     razorpayOrderId: {
