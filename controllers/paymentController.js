@@ -444,15 +444,15 @@ export const verifyAccompanyPayment = async (req, res) => {
     payment.status = "paid";
     await payment.save();
 
-    // ==============================================
-    // Send Emails (2 templates)
-    // ==============================================
+    // ===============================
+    // Send Single ZeptoMail Template
+    // ===============================
     try {
       const event = await Event.findById(registration.eventId);
       const userName = registration.name;
       const userEmail = registration.email;
 
-      // Prepare accompany list for merge
+      // Prepare accompany list
       const accompanyList = accompany.accompanies
         .filter((a) => a.isPaid && a.regNumGenerated)
         .map((a, idx) => ({
@@ -465,45 +465,31 @@ export const verifyAccompanyPayment = async (req, res) => {
           regNum: a.regNum || "N/A",
         }));
 
-      // Send both emails parallelly
-      const [accompanyEmail, accompanyPaymentEmail] = await Promise.allSettled([
-        //  1. Accompany registration email
-        sendEmailWithTemplate({
-          to: userEmail,
-          name: userName,
-          templateKey: "2518b.554b0da719bc314.k1.490cc270-b7d7-11f0-87d4-ae9c7e0b6a9f.19a44208017",
-          mergeInfo: {
-            userName,
-            userEmail,
-            eventName: event.eventName,
-            startDate: event.startDate
-              ? moment(event.startDate, "DD/MM/YYYY").format("DD MMM YYYY")
-              : "N/A",
-            endDate: event.endDate
-              ? moment(event.endDate, "DD/MM/YYYY").format("DD MMM YYYY")
-              : "N/A",
-          },
-        }),
-
-        //  2. Accompany payment success email (reuse payment success template)
-        sendEmailWithTemplate({
-          to: userEmail,
-          name: userName,
-          templateKey: "2518b.554b0da719bc314.k1.2f2232e0-a7f2-11f0-8b9c-8e9a6c33ddc2.199dbf53d0e",
-          mergeInfo: {
-            name: userName,
-            eventName: event.eventName,
-            registrationNumber: registration.regNum,
-            paymentAmount: payment.amount,
-            razorpayPaymentId: payment.razorpayPaymentId,
-            razorpayOrderId: payment.razorpayOrderId,
-            paymentStatus: payment.status,
-          },
-        }),
-      ]);
-
+      // Send new merged email
+      await sendEmailWithTemplate({
+        to: userEmail,
+        name: userName,
+        templateKey: "2518b.554b0da719bc314.k1.490cc270-b7d7-11f0-87d4-ae9c7e0b6a9f.19a44208017",
+        mergeInfo: {
+          userName,
+          userEmail,
+          eventName: event.eventName,
+          registrationNumber: registration.regNum,
+          paymentAmount: payment.amount,
+          razorpayPaymentId: payment.razorpayPaymentId,
+          razorpayOrderId: payment.razorpayOrderId,
+          paymentStatus: payment.status,
+          startDate: event.startDate
+            ? moment(event.startDate, "DD/MM/YYYY").format("DD MMM YYYY")
+            : "N/A",
+          endDate: event.endDate
+            ? moment(event.endDate, "DD/MM/YYYY").format("DD MMM YYYY")
+            : "N/A",
+          accompanies: accompanyList,
+        },
+      });
     } catch (emailErr) {
-      console.error("Accompany email sending error:", emailErr);
+      console.error("Error sending merged accompany email:", emailErr);
     }
     res.status(200).json({
       success: true,
