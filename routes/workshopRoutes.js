@@ -2,6 +2,7 @@ import express from "express";
 import {
   createWorkshop,
   getWorkshopsByEvent,
+  getActiveWorkshopsByEvent,
   updateWorkshop,
   deleteWorkshop,
 } from "../controllers/workshopController.js";
@@ -23,6 +24,12 @@ router.post(
 // Public/User: Get All Workshops by Event ID
 // =======================
 router.get("/events/:eventId/workshops", getWorkshopsByEvent);
+
+// =======================
+// Public/User: Get Only Active Workshops by Event ID
+// =======================
+router.get("/events/:eventId/active-workshops", getActiveWorkshopsByEvent);
+
 
 // =======================
 // EventAdmin: Update Workshop

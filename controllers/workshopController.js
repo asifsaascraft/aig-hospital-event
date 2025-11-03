@@ -73,6 +73,43 @@ export const getWorkshopsByEvent = async (req, res) => {
 };
 
 // =======================
+// Get Active (Upcoming) Workshops for Users
+// =======================
+export const getActiveWorkshopsByEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    const workshops = await Workshop.find({ eventId });
+
+    // Current date/time
+    const now = new Date();
+
+    // Filter workshops whose endDate + endTime is still in the future
+    const activeWorkshops = workshops.filter((ws) => {
+      try {
+        // Convert DD/MM/YYYY to ISO format for parsing
+        const [day, month, year] = ws.endDate.split("/");
+        const endDateTime = new Date(`${year}-${month}-${day} ${ws.endTime}`);
+
+        return endDateTime > now;
+      } catch {
+        return false;
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Active workshops fetched successfully",
+      data: activeWorkshops,
+    });
+  } catch (error) {
+    console.error("Get active workshops error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+
+// =======================
 // Update Workshop (EventAdmin Only)
 // =======================
 export const updateWorkshop = async (req, res) => {
