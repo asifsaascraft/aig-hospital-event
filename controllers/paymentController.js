@@ -48,7 +48,7 @@ export const createOrder = async (req, res) => {
       userId,
       eventRegistrationId,
       amount,
-      paymentCategory: "eventRegistration",
+      paymentCategory: "Event Registration",
       razorpayOrderId: order.id,
       status: "initiated",
     });
@@ -342,7 +342,7 @@ export const createAccompanyOrder = async (req, res) => {
       accompanyId,
       accompanyItemIds: unpaidItems.map((a) => a._id),
       amount,
-      paymentCategory: "accompany",
+      paymentCategory: "Accompany",
       razorpayOrderId: order.id,
       status: "initiated",
     });
