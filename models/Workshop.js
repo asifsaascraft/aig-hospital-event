@@ -22,9 +22,14 @@ const WorkshopSchema = new mongoose.Schema(
       required: [true, "Hall name is required"],
       trim: true,
     },
+    workshopRegistrationType: {
+      type: String,
+      required: [true, "Workshop Registration Type is required"], //either paid or free
+      trim: true,
+    },
     amount: {
       type: Number,
-      required: [true, "Amount is required"],
+      default: 0,
       min: [0, "Amount must be a positive number"],
     },
     maxRegAllowed: {

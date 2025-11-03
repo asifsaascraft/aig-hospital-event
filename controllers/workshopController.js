@@ -1,3 +1,4 @@
+// controllers/workshopController.js
 import Workshop from "../models/Workshop.js";
 import Event from "../models/Event.js";
 
@@ -11,6 +12,7 @@ export const createWorkshop = async (req, res) => {
       workshopName,
       workshopType,
       hallName,
+      workshopRegistrationType,
       amount,
       maxRegAllowed,
       startDate,
@@ -26,13 +28,28 @@ export const createWorkshop = async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
+    // Validate workshopRegistrationType
+    if (!["paid", "free"].includes(workshopRegistrationType.toLowerCase())) {
+      return res.status(400).json({
+        message: "Invalid Workshop Registration Type. Must be 'paid' or 'free'.",
+      });
+    }
+
+    // Validate amount for paid workshops
+    if (workshopRegistrationType.toLowerCase() === "paid" && (!amount || amount <= 0)) {
+      return res
+        .status(400)
+        .json({ message: "Amount is required and must be greater than 0 for paid workshops." });
+    }
+
     // Create new workshop
     const workshop = await Workshop.create({
       eventId,
       workshopName,
       workshopType,
       hallName,
-      amount,
+      workshopRegistrationType,
+      amount: workshopRegistrationType.toLowerCase() === "free" ? 0 : amount,
       maxRegAllowed,
       startDate,
       endDate,
@@ -78,19 +95,15 @@ export const getWorkshopsByEvent = async (req, res) => {
 export const getActiveWorkshopsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
-
     const workshops = await Workshop.find({ eventId });
 
-    // Current date/time
     const now = new Date();
 
-    // Filter workshops whose endDate + endTime is still in the future
+    // Filter workshops still active based on endDate + endTime
     const activeWorkshops = workshops.filter((ws) => {
       try {
-        // Convert DD/MM/YYYY to ISO format for parsing
         const [day, month, year] = ws.endDate.split("/");
         const endDateTime = new Date(`${year}-${month}-${day} ${ws.endTime}`);
-
         return endDateTime > now;
       } catch {
         return false;
@@ -108,7 +121,6 @@ export const getActiveWorkshopsByEvent = async (req, res) => {
   }
 };
 
-
 // =======================
 // Update Workshop (EventAdmin Only)
 // =======================
@@ -119,6 +131,7 @@ export const updateWorkshop = async (req, res) => {
       workshopName,
       workshopType,
       hallName,
+      workshopRegistrationType,
       amount,
       maxRegAllowed,
       startDate,
@@ -128,16 +141,27 @@ export const updateWorkshop = async (req, res) => {
       isEventRegistrationRequired,
     } = req.body;
 
-    // Find existing workshop
     const workshop = await Workshop.findById(id);
     if (!workshop) {
       return res.status(404).json({ message: "Workshop not found" });
     }
 
-    // Update fields only if provided
+    // Update only provided fields
     if (workshopName) workshop.workshopName = workshopName;
     if (workshopType) workshop.workshopType = workshopType;
     if (hallName) workshop.hallName = hallName;
+    if (workshopRegistrationType) {
+      if (!["paid", "free"].includes(workshopRegistrationType.toLowerCase())) {
+        return res.status(400).json({
+          message: "Invalid Workshop Registration Type. Must be 'paid' or 'free'.",
+        });
+      }
+      workshop.workshopRegistrationType = workshopRegistrationType;
+      // Reset amount if free
+      if (workshopRegistrationType.toLowerCase() === "free") {
+        workshop.amount = 0;
+      }
+    }
     if (amount !== undefined) workshop.amount = amount;
     if (maxRegAllowed !== undefined) workshop.maxRegAllowed = maxRegAllowed;
     if (startDate) workshop.startDate = startDate;
