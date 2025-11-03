@@ -29,7 +29,7 @@ export const createWorkshop = async (req, res) => {
     }
 
     // Validate workshopRegistrationType
-    if (!["Paid", "Free"].includes(workshopRegistrationType.toLowerCase())) {
+    if (!["Paid", "Free"]) {
       return res.status(400).json({
         message: "Invalid Workshop Registration Type. Must be 'Paid' or 'Free'.",
       });
@@ -151,7 +151,7 @@ export const updateWorkshop = async (req, res) => {
     if (workshopType) workshop.workshopType = workshopType;
     if (hallName) workshop.hallName = hallName;
     if (workshopRegistrationType) {
-      if (!["Paid", "Free"].includes(workshopRegistrationType.toLowerCase())) {
+      if (!["Paid", "Free"]) {
         return res.status(400).json({
           message: "Invalid Workshop Registration Type. Must be 'Paid' or 'Free'.",
         });
