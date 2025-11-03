@@ -6,6 +6,7 @@ import EventRegistration from "../models/EventRegistration.js";
 import Event from "../models/Event.js";
 import Accompany from "../models/Accompany.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
+import moment from "moment";
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -149,10 +150,10 @@ export const verifyPayment = async (req, res) => {
             registrationNumber: registration.regNum,
             registrationSlabName: slabName,
             startDate: event.startDate
-              ? new Date(event.startDate).toLocaleDateString("en-IN")
+              ? moment(event.startDate, "DD/MM/YYYY").format("DD MMM YYYY")
               : "N/A",
             endDate: event.endDate
-              ? new Date(event.endDate).toLocaleDateString("en-IN")
+              ? moment(event.endDate, "DD/MM/YYYY").format("DD MMM YYYY")
               : "N/A",
             mealPreference: registration.mealPreference,
             designation: registration.designation,
@@ -475,14 +476,12 @@ export const verifyAccompanyPayment = async (req, res) => {
             userName,
             userEmail,
             eventName: event.eventName,
-            registrationNumber: registration.regNum,
             startDate: event.startDate
-              ? new Date(event.startDate).toLocaleDateString("en-IN")
+              ? moment(event.startDate, "DD/MM/YYYY").format("DD MMM YYYY")
               : "N/A",
             endDate: event.endDate
-              ? new Date(event.endDate).toLocaleDateString("en-IN")
+              ? moment(event.endDate, "DD/MM/YYYY").format("DD MMM YYYY")
               : "N/A",
-            accompanies: accompanyList,
           },
         }),
 
