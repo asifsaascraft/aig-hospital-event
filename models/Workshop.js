@@ -24,7 +24,7 @@ const WorkshopSchema = new mongoose.Schema(
     },
     workshopRegistrationType: {
       type: String,
-      required: [true, "Workshop Registration Type is required"], //either paid or free
+      required: [true, "Workshop Registration Type is required"], //either Paid or Free
       trim: true,
     },
     amount: {

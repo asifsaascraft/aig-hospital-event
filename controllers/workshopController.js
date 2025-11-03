@@ -29,14 +29,14 @@ export const createWorkshop = async (req, res) => {
     }
 
     // Validate workshopRegistrationType
-    if (!["paid", "free"].includes(workshopRegistrationType.toLowerCase())) {
+    if (!["Paid", "Free"].includes(workshopRegistrationType.toLowerCase())) {
       return res.status(400).json({
-        message: "Invalid Workshop Registration Type. Must be 'paid' or 'free'.",
+        message: "Invalid Workshop Registration Type. Must be 'Paid' or 'Free'.",
       });
     }
 
     // Validate amount for paid workshops
-    if (workshopRegistrationType.toLowerCase() === "paid" && (!amount || amount <= 0)) {
+    if (workshopRegistrationType.toLowerCase() === "Paid" && (!amount || amount <= 0)) {
       return res
         .status(400)
         .json({ message: "Amount is required and must be greater than 0 for paid workshops." });
@@ -49,7 +49,7 @@ export const createWorkshop = async (req, res) => {
       workshopType,
       hallName,
       workshopRegistrationType,
-      amount: workshopRegistrationType.toLowerCase() === "free" ? 0 : amount,
+      amount: workshopRegistrationType.toLowerCase() === "Free" ? 0 : amount,
       maxRegAllowed,
       startDate,
       endDate,
@@ -151,14 +151,14 @@ export const updateWorkshop = async (req, res) => {
     if (workshopType) workshop.workshopType = workshopType;
     if (hallName) workshop.hallName = hallName;
     if (workshopRegistrationType) {
-      if (!["paid", "free"].includes(workshopRegistrationType.toLowerCase())) {
+      if (!["Paid", "Free"].includes(workshopRegistrationType.toLowerCase())) {
         return res.status(400).json({
-          message: "Invalid Workshop Registration Type. Must be 'paid' or 'free'.",
+          message: "Invalid Workshop Registration Type. Must be 'Paid' or 'Free'.",
         });
       }
       workshop.workshopRegistrationType = workshopRegistrationType;
       // Reset amount if free
-      if (workshopRegistrationType.toLowerCase() === "free") {
+      if (workshopRegistrationType.toLowerCase() === "Free") {
         workshop.amount = 0;
       }
     }
