@@ -7,7 +7,7 @@ import Event from "../models/Event.js";
 export const createWorkshopCategory = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { WorkshopCategoryName, status } = req.body;
+    const { workshopCategoryName, status } = req.body;
 
     // Validate event existence
     const event = await Event.findById(eventId);
@@ -18,7 +18,7 @@ export const createWorkshopCategory = async (req, res) => {
     // Create new category
     const category = await WorkshopCategory.create({
       eventId,
-      WorkshopCategoryName,
+      workshopCategoryName,
       status,
     });
 
@@ -85,14 +85,14 @@ export const getActiveWorkshopCategoriesByEvent = async (req, res) => {
 export const updateWorkshopCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { WorkshopCategoryName, status } = req.body;
+    const { workshopCategoryName, status } = req.body;
 
     const category = await WorkshopCategory.findById(id);
     if (!category) {
       return res.status(404).json({ message: "Workshop Category not found" });
     }
 
-    if (WorkshopCategoryName) category.WorkshopCategoryName = WorkshopCategoryName;
+    if (workshopCategoryName) category.workshopCategoryName = workshopCategoryName;
     if (status) category.status = status;
 
     await category.save();
