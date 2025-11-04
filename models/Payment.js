@@ -22,9 +22,19 @@ const PaymentSchema = new mongoose.Schema(
         type: mongoose.Schema.Types.ObjectId,
       },
     ],
+    workshopRegistrationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "WorkshopRegistration",
+    },
+    workshopIds: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Workshop",
+      },
+    ],
     paymentCategory: {
       type: String,
-      enum: ["Event Registration", "Accompany"],
+      enum: ["Event Registration", "Accompany", "Workshop"],
       required: [true, "Payment type is required"],
     },
     razorpayOrderId: {

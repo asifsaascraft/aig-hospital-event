@@ -7,6 +7,8 @@ import {
   markPaymentFailed,
   createAccompanyOrder,
   verifyAccompanyPayment,
+  createWorkshopOrder,
+  verifyWorkshopPayment,
 } from "../controllers/paymentController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -63,5 +65,21 @@ router.post(
   authorizeRoles("user"),
   verifyAccompanyPayment
 );
+
+// Workshop Payments
+router.post(
+  "/payments/workshop/create-order",
+  protect,
+  authorizeRoles("user"),
+  createWorkshopOrder
+);
+
+router.post(
+  "/payments/workshop/verify",
+  protect,
+  authorizeRoles("user"),
+  verifyWorkshopPayment
+);
+
 
 export default router;

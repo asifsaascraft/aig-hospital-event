@@ -5,6 +5,8 @@ import Payment from "../models/Payment.js";
 import EventRegistration from "../models/EventRegistration.js";
 import Event from "../models/Event.js";
 import Accompany from "../models/Accompany.js";
+import Workshop from "../models/Workshop.js";
+import WorkshopRegistration from "../models/WorkshopRegistration.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
 import moment from "moment";
 
@@ -502,3 +504,141 @@ export const verifyAccompanyPayment = async (req, res) => {
   }
 };
 
+
+/* ========================================================
+   7. Create Workshop Payment Order
+   Route: POST /api/payments/workshop/create-order
+======================================================== */
+export const createWorkshopOrder = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { workshopRegistrationId, workshopIds, amount } = req.body;
+
+    if (!workshopRegistrationId || !Array.isArray(workshopIds) || workshopIds.length === 0)
+      return res.status(400).json({ message: "workshopRegistrationId and workshopIds are required" });
+
+    const registration = await WorkshopRegistration.findById(workshopRegistrationId).populate("eventId");
+    if (!registration)
+      return res.status(404).json({ message: "Workshop registration not found" });
+
+    if (registration.paymentStatus === "Completed")
+      return res.status(400).json({ message: "Payment already completed for these workshops" });
+
+    // Create Razorpay Order
+    const receiptId = `wrk_${workshopRegistrationId}_${Date.now().toString().slice(-6)}`.slice(0, 40);
+    const options = {
+      amount: Math.round(Number(amount) * 100),
+      currency: "INR",
+      receipt: receiptId,
+    };
+
+    const order = await razorpay.orders.create(options);
+
+    // Create Payment Record
+    const payment = await Payment.create({
+      userId,
+      workshopRegistrationId,
+      workshopIds,
+      amount,
+      paymentCategory: "Workshop",
+      razorpayOrderId: order.id,
+      status: "initiated",
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Workshop payment order created successfully",
+      data: {
+        orderId: order.id,
+        amount,
+        currency: order.currency,
+        paymentId: payment._id,
+        razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+      },
+    });
+  } catch (error) {
+    console.error("Create workshop order error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+/* ========================================================
+   8. Verify Workshop Payment
+   Route: POST /api/payments/workshop/verify
+======================================================== */
+export const verifyWorkshopPayment = async (req, res) => {
+  try {
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, paymentId } = req.body;
+
+    // Verify Signature
+    const body = razorpayOrderId + "|" + razorpayPaymentId;
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_SECRET)
+      .update(body.toString())
+      .digest("hex");
+
+    if (expectedSignature !== razorpaySignature)
+      return res.status(400).json({ message: "Invalid payment signature" });
+
+    const payment = await Payment.findById(paymentId);
+    if (!payment)
+      return res.status(404).json({ message: "Payment record not found" });
+
+    const registration = await WorkshopRegistration.findById(payment.workshopRegistrationId).populate([
+      { path: "eventId", select: "eventName startDate endDate" },
+      { path: "workshopIds", select: "workshopName" },
+    ]);
+
+    if (!registration)
+      return res.status(404).json({ message: "Workshop registration not found" });
+
+    // Mark registration as paid
+    registration.paymentStatus = "Completed";
+    await registration.save();
+
+    // Update payment
+    payment.razorpayPaymentId = razorpayPaymentId;
+    payment.razorpaySignature = razorpaySignature;
+    payment.status = "paid";
+    await payment.save();
+
+    //  Send confirmation email
+    // try {
+    //   const userEmail = req.user.email;
+    //   const userName = req.user.name || "Participant";
+    //   const event = registration.eventId;
+
+    //   const workshopNames = registration.workshopIds.map((w) => w.workshopName).join(", ");
+
+    //   await sendEmailWithTemplate({
+    //     to: userEmail,
+    //     name: userName,
+    //     templateKey: "2518b.554b0da719bc314.k1.workshop-payment-success", // replace with your ZeptoMail key
+    //     mergeInfo: {
+    //       userName,
+    //       eventName: event.eventName,
+    //       paymentAmount: payment.amount,
+    //       paymentStatus: payment.status,
+    //       workshopNames,
+    //       startDate: event.startDate
+    //         ? moment(event.startDate, "DD/MM/YYYY").format("DD MMM YYYY")
+    //         : "N/A",
+    //       endDate: event.endDate
+    //         ? moment(event.endDate, "DD/MM/YYYY").format("DD MMM YYYY")
+    //         : "N/A",
+    //     },
+    //   });
+    // } catch (emailErr) {
+    //   console.error("Workshop email send error:", emailErr);
+    // }
+
+    res.status(200).json({
+      success: true,
+      message: "Workshop payment verified successfully",
+      data: { payment, registration },
+    });
+  } catch (error) {
+    console.error("Verify workshop payment error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};

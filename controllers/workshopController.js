@@ -10,7 +10,7 @@ export const createWorkshop = async (req, res) => {
     const { eventId } = req.params;
     const {
       workshopName,
-      workshopType,
+      workshopCategory,
       hallName,
       workshopRegistrationType,
       amount,
@@ -29,14 +29,14 @@ export const createWorkshop = async (req, res) => {
     }
 
     // Validate workshopRegistrationType
-    if (!["Paid", "Free"]) {
+    if (!["Paid", "Free"].includes(workshopRegistrationType)) {
       return res.status(400).json({
         message: "Invalid Workshop Registration Type. Must be 'Paid' or 'Free'.",
       });
     }
 
     // Validate amount for paid workshops
-    if (workshopRegistrationType.toLowerCase() === "Paid" && (!amount || amount <= 0)) {
+    if (workshopRegistrationType === "Paid" && (!amount || amount <= 0)) {
       return res
         .status(400)
         .json({ message: "Amount is required and must be greater than 0 for paid workshops." });
@@ -46,7 +46,7 @@ export const createWorkshop = async (req, res) => {
     const workshop = await Workshop.create({
       eventId,
       workshopName,
-      workshopType,
+      workshopCategory,
       hallName,
       workshopRegistrationType,
       amount: workshopRegistrationType.toLowerCase() === "Free" ? 0 : amount,
@@ -129,7 +129,7 @@ export const updateWorkshop = async (req, res) => {
     const { id } = req.params;
     const {
       workshopName,
-      workshopType,
+      workshopCategory,
       hallName,
       workshopRegistrationType,
       amount,
@@ -148,10 +148,10 @@ export const updateWorkshop = async (req, res) => {
 
     // Update only provided fields
     if (workshopName) workshop.workshopName = workshopName;
-    if (workshopType) workshop.workshopType = workshopType;
+    if (workshopCategory) workshop.workshopCategory = workshopCategory;
     if (hallName) workshop.hallName = hallName;
     if (workshopRegistrationType) {
-      if (!["Paid", "Free"]) {
+      if (!["Paid", "Free"].includes(workshopRegistrationType)) {
         return res.status(400).json({
           message: "Invalid Workshop Registration Type. Must be 'Paid' or 'Free'.",
         });

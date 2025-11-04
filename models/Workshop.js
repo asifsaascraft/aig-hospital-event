@@ -12,9 +12,9 @@ const WorkshopSchema = new mongoose.Schema(
       required: [true, "Workshop name is required"],
       trim: true,
     },
-    workshopType: {
+    workshopCategory: {
       type: String,
-      required: [true, "Workshop Type is required"],
+      required: [true, "Workshop Category is required"],
       trim: true,
     },
     hallName: {
