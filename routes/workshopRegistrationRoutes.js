@@ -22,7 +22,7 @@ router.post(
   registerForWorkshops
 );
 
-// 2️ Get All Workshop Registrations of Logged-in User
+// 2️ Get All Completed Workshop Registrations of Logged-in User
 router.get(
   "/my-registrations",
   protect,

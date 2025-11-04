@@ -85,19 +85,24 @@ export const registerForWorkshops = async (req, res) => {
 };
 
 // =======================
-// Get all workshop registrations for logged-in user
+// Get all COMPLETED workshop registrations for logged-in user
 // =======================
 export const getUserWorkshopRegistrations = async (req, res) => {
   try {
     const userId = req.user._id;
-    const registrations = await WorkshopRegistration.find({ userId })
+
+    // Fetch only completed workshop registrations
+    const registrations = await WorkshopRegistration.find({
+      userId,
+      paymentStatus: "Completed",
+    })
       .populate("eventId")
       .populate("workshopIds")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
-      message: "Workshop registrations fetched successfully",
+      message: "Completed workshop registrations fetched successfully",
       data: registrations,
     });
   } catch (error) {
@@ -105,3 +110,4 @@ export const getUserWorkshopRegistrations = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
