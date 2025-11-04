@@ -49,7 +49,7 @@ export const createWorkshop = async (req, res) => {
       workshopCategory,
       hallName,
       workshopRegistrationType,
-      amount: workshopRegistrationType.toLowerCase() === "Free" ? 0 : amount,
+      amount: workshopRegistrationType === "Free" ? 0 : amount,
       maxRegAllowed,
       startDate,
       endDate,
@@ -158,7 +158,7 @@ export const updateWorkshop = async (req, res) => {
       }
       workshop.workshopRegistrationType = workshopRegistrationType;
       // Reset amount if free
-      if (workshopRegistrationType.toLowerCase() === "Free") {
+      if (workshopRegistrationType === "Free") {
         workshop.amount = 0;
       }
     }
