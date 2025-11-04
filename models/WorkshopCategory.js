@@ -7,7 +7,7 @@ const WorkshopCategorySchema = new mongoose.Schema(
       ref: "Event",
       required: true,
     },
-    WorkshopCategoryName: {
+    workshopCategoryName: {
       type: String,
       required: [true, "Workshop Category Name is required"],
       trim: true,
