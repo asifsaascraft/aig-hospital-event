@@ -8,6 +8,10 @@ const PaymentSchema = new mongoose.Schema(
       required: [true, "User reference is required"],
       index: true,
     },
+    eventId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Event",
+    },
     eventRegistrationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "EventRegistration",

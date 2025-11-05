@@ -215,6 +215,11 @@ export const getMyPayments = async (req, res) => {
           path: "eventId",
           select: "eventName shortName startDate endDate",
         },
+        path: "workshopRegistrationId",
+        populate: {
+          path: "eventId",
+          select: "eventName shortName startDate endDate",
+        },
       })
       .sort({ createdAt: -1 });
 
@@ -537,6 +542,7 @@ export const createWorkshopOrder = async (req, res) => {
     // Create Payment Record
     const payment = await Payment.create({
       userId,
+      eventId: workshopRegistrationId.eventId,
       workshopRegistrationId,
       workshopIds,
       amount,
