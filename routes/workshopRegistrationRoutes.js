@@ -2,7 +2,7 @@
 import express from "express";
 import {
   registerForWorkshops,
-  getUserWorkshopRegistrations,
+  getUserWorkshopRegistrationsByEvent,
 } from "../controllers/workshopRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -22,12 +22,12 @@ router.post(
   registerForWorkshops
 );
 
-// 2️ Get All Completed Workshop Registrations of Logged-in User
+// 2 Get Completed Workshop Registrations for Specific Event
 router.get(
-  "/my-registrations",
+  "/my-registrations/event/:eventId",
   protect,
   authorizeRoles("user"),
-  getUserWorkshopRegistrations
+  getUserWorkshopRegistrationsByEvent
 );
 
 export default router;

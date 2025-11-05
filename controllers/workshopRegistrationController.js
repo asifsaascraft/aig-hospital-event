@@ -10,7 +10,7 @@ export const registerForWorkshops = async (req, res) => {
     const userId = req.user._id;
     const { eventId } = req.params;
     const { workshopIds } = req.body; // array of workshop IDs
-    
+
     // Validate event
     const event = await Event.findById(eventId);
     if (!event) {
@@ -22,7 +22,7 @@ export const registerForWorkshops = async (req, res) => {
       return res.status(400).json({ message: "Workshop IDs are required" });
     }
 
-    
+
     // Fetch workshops
     const workshops = await Workshop.find({ _id: { $in: workshopIds }, eventId });
 
@@ -85,15 +85,23 @@ export const registerForWorkshops = async (req, res) => {
 };
 
 // =======================
-// Get all COMPLETED workshop registrations for logged-in user
+// Get completed workshop registrations for specific event
 // =======================
-export const getUserWorkshopRegistrations = async (req, res) => {
+export const getUserWorkshopRegistrationsByEvent = async (req, res) => {
   try {
     const userId = req.user._id;
+    const { eventId } = req.params;
 
-    // Fetch only completed workshop registrations
+    // Validate event
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    // Fetch completed workshop registrations for this event
     const registrations = await WorkshopRegistration.find({
       userId,
+      eventId,
       paymentStatus: "Completed",
     })
       .populate("eventId")
@@ -106,8 +114,7 @@ export const getUserWorkshopRegistrations = async (req, res) => {
       data: registrations,
     });
   } catch (error) {
-    console.error("Get user workshop registrations error:", error);
+    console.error("Get user workshop registrations by event error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
-
