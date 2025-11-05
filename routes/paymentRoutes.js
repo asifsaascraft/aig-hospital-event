@@ -22,7 +22,7 @@ const router = express.Router();
 
 // Create Razorpay Order
 router.post(
-  "/payments/create-order",
+  "/payments/create-order/:eventId",
   protect,
   authorizeRoles("user"),
   createOrder
@@ -54,7 +54,7 @@ router.post(
 
 // Accompany Payments
 router.post(
-  "/payments/accompany/create-order",
+  "/payments/accompany/create-order/:eventId",
   protect,
   authorizeRoles("user"),
   createAccompanyOrder
@@ -68,7 +68,7 @@ router.post(
 
 // Workshop Payments
 router.post(
-  "/payments/workshop/create-order",
+  "/payments/workshop/create-order/:eventId",
   protect,
   authorizeRoles("user"),
   createWorkshopOrder

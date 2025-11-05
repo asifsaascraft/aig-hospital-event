@@ -24,7 +24,13 @@ const razorpay = new Razorpay({
 export const createOrder = async (req, res) => {
   try {
     const userId = req.user._id;
+    const { eventId } = req.params;
     const { eventRegistrationId, amount } = req.body;
+
+    // Verify event exists
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: "Event not found" });
+
 
     const registration = await EventRegistration.findById(eventRegistrationId);
     if (!registration)
@@ -48,6 +54,7 @@ export const createOrder = async (req, res) => {
 
     const payment = await Payment.create({
       userId,
+      eventId,
       eventRegistrationId,
       amount,
       paymentCategory: "Event Registration",
@@ -208,40 +215,29 @@ export const getMyPayments = async (req, res) => {
   try {
     const userId = req.user._id;
 
+    //  Fetch payments and populate eventId directly
     const payments = await Payment.find({ userId })
       .populate({
-        path: "eventRegistrationId",
-        populate: {
-          path: "eventId",
-          select: "eventName shortName startDate endDate",
-        },
-        path: "workshopRegistrationId",
-        populate: {
-          path: "eventId",
-          select: "eventName shortName startDate endDate",
-        },
+        path: "eventId",
+        select: "eventName shortName eventCode startDate endDate",
       })
       .sort({ createdAt: -1 });
-
-    // Fetch payment mode from Razorpay for each payment
     const paymentsWithMode = await Promise.all(
       payments.map(async (payment) => {
+        let paymentMode = "Unknown";
         if (payment.razorpayPaymentId) {
           try {
             const razorpayPayment = await razorpay.payments.fetch(payment.razorpayPaymentId);
-            return {
-              ...payment.toObject(),
-              paymentMode: razorpayPayment.method || "Unknown", // e.g., 'card', 'netbanking', 'upi'
-            };
+            paymentMode = razorpayPayment.method || "Unknown";
           } catch (err) {
             console.error("Razorpay fetch error:", err);
-            return {
-              ...payment.toObject(),
-              paymentMode: "Unknown",
-            };
           }
         }
-        return { ...payment.toObject(), paymentMode: "Unknown" };
+
+        return {
+          ...payment.toObject(),
+          paymentMode,
+        };
       })
     );
 
@@ -294,7 +290,13 @@ export const markPaymentFailed = async (req, res) => {
 export const createAccompanyOrder = async (req, res) => {
   try {
     const userId = req.user._id;
+    const { eventId } = req.params;
     const { eventRegistrationId, accompanyId, accompanyItemIds, amount } = req.body;
+
+    // Verify event exists
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: "Event not found" });
+
 
     if (!accompanyId || !Array.isArray(accompanyItemIds) || accompanyItemIds.length === 0) {
       return res.status(400).json({ message: "accompanyId and accompanyItemIds are required" });
@@ -345,6 +347,7 @@ export const createAccompanyOrder = async (req, res) => {
     // Create a new Payment record
     const payment = await Payment.create({
       userId,
+      eventId,
       eventRegistrationId,
       accompanyId,
       accompanyItemIds: unpaidItems.map((a) => a._id),
@@ -517,7 +520,12 @@ export const verifyAccompanyPayment = async (req, res) => {
 export const createWorkshopOrder = async (req, res) => {
   try {
     const userId = req.user._id;
+    const { eventId } = req.params;
     const { workshopRegistrationId, workshopIds, amount } = req.body;
+
+    // Verify event exists
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: "Event not found" });
 
     if (!workshopRegistrationId || !Array.isArray(workshopIds) || workshopIds.length === 0)
       return res.status(400).json({ message: "workshopRegistrationId and workshopIds are required" });
@@ -542,7 +550,7 @@ export const createWorkshopOrder = async (req, res) => {
     // Create Payment Record
     const payment = await Payment.create({
       userId,
-      eventId: workshopRegistrationId.eventId,
+      eventId,
       workshopRegistrationId,
       workshopIds,
       amount,

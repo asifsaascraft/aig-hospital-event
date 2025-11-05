@@ -11,6 +11,7 @@ const PaymentSchema = new mongoose.Schema(
     eventId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Event",
+      required: [true, "Event ID is required"],
     },
     eventRegistrationId: {
       type: mongoose.Schema.Types.ObjectId,
