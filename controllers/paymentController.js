@@ -616,36 +616,6 @@ export const verifyWorkshopPayment = async (req, res) => {
     payment.status = "paid";
     await payment.save();
 
-    //  Send confirmation email
-    // try {
-    //   const userEmail = req.user.email;
-    //   const userName = req.user.name || "Participant";
-    //   const event = registration.eventId;
-
-    //   const workshopNames = registration.workshopIds.map((w) => w.workshopName).join(", ");
-
-    //   await sendEmailWithTemplate({
-    //     to: userEmail,
-    //     name: userName,
-    //     templateKey: "2518b.554b0da719bc314.k1.workshop-payment-success", // replace with your ZeptoMail key
-    //     mergeInfo: {
-    //       userName,
-    //       eventName: event.eventName,
-    //       paymentAmount: payment.amount,
-    //       paymentStatus: payment.status,
-    //       workshopNames,
-    //       startDate: event.startDate
-    //         ? moment(event.startDate, "DD/MM/YYYY").format("DD MMM YYYY")
-    //         : "N/A",
-    //       endDate: event.endDate
-    //         ? moment(event.endDate, "DD/MM/YYYY").format("DD MMM YYYY")
-    //         : "N/A",
-    //     },
-    //   });
-    // } catch (emailErr) {
-    //   console.error("Workshop email send error:", emailErr);
-    // }
-
     res.status(200).json({
       success: true,
       message: "Workshop payment verified successfully",
