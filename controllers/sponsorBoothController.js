@@ -63,6 +63,29 @@ export const getSponsorBoothsByEvent = async (req, res) => {
 };
 
 // =======================
+// Get Active Sponsor Booths by Event ID (Public/User)
+// =======================
+export const getActiveSponsorBoothsByEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    const booths = await SponsorBooth.find({
+      eventId,
+      status: "Active",
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      message: "Active Sponsor Booths fetched successfully",
+      data: booths,
+    });
+  } catch (error) {
+    console.error("Get Active Sponsor Booths error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// =======================
 // Update Sponsor Booth (EventAdmin Only)
 // =======================
 export const updateSponsorBooth = async (req, res) => {

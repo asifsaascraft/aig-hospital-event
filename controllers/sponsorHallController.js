@@ -54,6 +54,29 @@ export const getSponsorHallsByEvent = async (req, res) => {
 };
 
 // =======================
+// Get Active Halls by Event ID (Public/User)
+// =======================
+export const getActiveSponsorHallsByEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    const activeHalls = await SponsorHall.find({
+      eventId,
+      status: "Active",
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      message: "Active Sponsor Halls fetched successfully",
+      data: activeHalls,
+    });
+  } catch (error) {
+    console.error("Get Active Sponsor Halls error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// =======================
 // Update Hall (EventAdmin Only)
 // =======================
 export const updateSponsorHall = async (req, res) => {

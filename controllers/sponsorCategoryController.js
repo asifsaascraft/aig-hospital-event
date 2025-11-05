@@ -56,6 +56,29 @@ export const getSponsorCategoriesByEvent = async (req, res) => {
 };
 
 // =======================
+// Get Active Sponsor Categories by Event ID (Public/User)
+// =======================
+export const getActiveSponsorCategoriesByEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    const activeCategories = await SponsorCategory.find({
+      eventId,
+      status: "Active",
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      message: "Active sponsor categories fetched successfully",
+      data: activeCategories,
+    });
+  } catch (error) {
+    console.error("Get Active Sponsor Categories error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// =======================
 // Update Sponsor Category (EventAdmin Only)
 // =======================
 export const updateSponsorCategory = async (req, res) => {

@@ -2,6 +2,7 @@ import express from "express";
 import {
   createSponsorHall,
   getSponsorHallsByEvent,
+  getActiveSponsorHallsByEvent,
   updateSponsorHall,
   deleteSponsorHall,
 } from "../controllers/sponsorHallController.js";
@@ -23,6 +24,11 @@ router.post(
 // Public/User: Get All Halls by Event ID
 // =======================
 router.get("/events/:eventId/halls", getSponsorHallsByEvent);
+
+// =======================
+// Public/User: Get Only Active Halls by Event ID
+// =======================
+router.get("/events/:eventId/halls/active", getActiveSponsorHallsByEvent);
 
 // =======================
 // EventAdmin: Update Hall

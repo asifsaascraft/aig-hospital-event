@@ -2,6 +2,7 @@ import express from "express";
 import {
   createSponsorCategory,
   getSponsorCategoriesByEvent,
+  getActiveSponsorCategoriesByEvent,
   updateSponsorCategory,
   deleteSponsorCategory,
 } from "../controllers/sponsorCategoryController.js";
@@ -23,6 +24,14 @@ router.post(
 // Public/User: Get All Sponsor Categories by Event ID
 // =======================
 router.get("/events/:eventId/sponsor-categories", getSponsorCategoriesByEvent);
+
+// =======================
+// Public/User: Get Active Sponsor Categories by Event ID
+// =======================
+router.get(
+  "/events/:eventId/sponsor-categories/active",
+  getActiveSponsorCategoriesByEvent
+);
 
 // =======================
 // EventAdmin: Update Sponsor Category

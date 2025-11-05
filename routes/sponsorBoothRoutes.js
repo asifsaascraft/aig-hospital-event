@@ -2,6 +2,7 @@ import express from "express";
 import {
   createSponsorBooth,
   getSponsorBoothsByEvent,
+  getActiveSponsorBoothsByEvent,
   updateSponsorBooth,
   deleteSponsorBooth,
 } from "../controllers/sponsorBoothController.js";
@@ -25,6 +26,11 @@ router.post(
 // Public/User: Get All Sponsor Booths by Event ID
 // =======================
 router.get("/events/:eventId/booths", getSponsorBoothsByEvent);
+
+// =======================
+// Public/User: Get Active Sponsor Booths by Event ID
+// =======================
+router.get("/events/:eventId/booths/active", getActiveSponsorBoothsByEvent);
 
 // =======================
 // EventAdmin: Update Sponsor Booth

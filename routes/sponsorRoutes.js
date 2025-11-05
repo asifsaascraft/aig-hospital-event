@@ -2,6 +2,7 @@ import express from "express";
 import {
   createSponsor,
   getSponsorsByEvent,
+  getActiveSponsorsByEvent,
   updateSponsor,
   deleteSponsor,
 } from "../controllers/sponsorController.js";
@@ -28,6 +29,15 @@ router.get(
   "/events/:eventId/sponsors",
   getSponsorsByEvent
 );
+
+// =======================
+// Public/User: Get Active Sponsors by Event ID
+// =======================
+router.get(
+  "/events/:eventId/sponsors/active",
+  getActiveSponsorsByEvent
+);
+
 
 // =======================
 // EventAdmin: Update Sponsor

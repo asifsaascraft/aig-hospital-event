@@ -40,6 +40,34 @@ export const getSponsorsByEvent = async (req, res) => {
 };
 
 // =======================
+// Get active sponsors by Event ID (Public/User)
+// =======================
+export const getActiveSponsorsByEvent = async (req, res) => {
+    try {
+        const { eventId } = req.params;
+
+        const sponsors = await Sponsor.find({
+            eventId,
+            status: "Active",
+        })
+            .sort({ createdAt: -1 })
+            .populate("eventId sponsorBooth");
+
+        res.json({
+            success: true,
+            data: sponsors,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch active sponsors",
+            error: error.message,
+        });
+    }
+};
+
+
+// =======================
 // Create sponsor (eventAdmin only)
 // =======================
 export const createSponsor = async (req, res) => {
