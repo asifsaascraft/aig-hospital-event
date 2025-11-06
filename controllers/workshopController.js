@@ -108,6 +108,7 @@ export const getActiveWorkshopsByEvent = async (req, res) => {
       } catch {
         return false;
       }
+      
     });
 
     res.status(200).json({

@@ -56,6 +56,35 @@ export const getBanquetsByEvent = async (req, res) => {
 };
 
 // =======================
+// Get Active Banquets by Event ID (Public/User)
+// - Shows banquets where endDate is null OR endDate >= now
+// - (Start date is NOT enforced here; only endDate governs visibility)
+// =======================
+export const getActiveBanquetsByEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const now = new Date();
+
+    const banquets = await Banquet.find({
+      eventId,
+      $or: [
+        { endDate: { $gte: now } }, // not expired
+        { endDate: null },          // open-ended banquet
+      ],
+    }).sort({ startDate: 1 });
+
+    res.status(200).json({
+      success: true,
+      message: "Active banquets fetched successfully",
+      data: banquets,
+    });
+  } catch (error) {
+    console.error("Get active banquets error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// =======================
 // Update Banquet (EventAdmin Only)
 // =======================
 export const updateBanquet = async (req, res) => {

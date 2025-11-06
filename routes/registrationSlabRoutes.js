@@ -2,6 +2,7 @@ import express from "express";
 import {
   createRegistrationSlab,
   getRegistrationSlabsByEvent,
+  getActiveRegistrationSlabsByEvent,
   deleteRegistrationSlab,
   updateRegistrationSlab,
 } from "../controllers/registrationSlabController.js";
@@ -23,6 +24,12 @@ router.post(
 // Public/User: Get All Registration Slabs by Event ID
 // =======================
 router.get("/events/:eventId/slabs", getRegistrationSlabsByEvent);
+
+// =======================
+// Public/User: Get Active Registration Slabs by Event ID
+// =======================
+router.get("/events/:eventId/slabs/active", getActiveRegistrationSlabsByEvent);
+
 
 // =======================
 // EventAdmin: Update Registration Slab

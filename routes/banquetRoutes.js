@@ -2,6 +2,7 @@ import express from "express";
 import {
   createBanquet,
   getBanquetsByEvent,
+  getActiveBanquetsByEvent,
   updateBanquet,
   deleteBanquet,
 } from "../controllers/banquetController.js";
@@ -23,6 +24,11 @@ router.post(
 // Public/User: Get All Banquets by Event ID
 // =======================
 router.get("/events/:eventId/banquets", getBanquetsByEvent);
+
+// =======================
+// Public/User: Get Active Banquets by Event ID
+// =======================
+router.get("/events/:eventId/banquets/active", getActiveBanquetsByEvent);
 
 // =======================
 // EventAdmin: Update Banquet

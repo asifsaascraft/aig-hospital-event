@@ -57,6 +57,35 @@ export const getRegistrationSlabsByEvent = async (req, res) => {
 };
 
 // =======================
+// Get Active Registration Slabs by Event ID (Public/User)
+// - Shows slabs where endDate is null OR endDate >= now
+// - (Start date is NOT enforced here; only endDate governs visibility)
+// =======================
+export const getActiveRegistrationSlabsByEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const now = new Date();
+
+    const slabs = await RegistrationSlab.find({
+      eventId,
+      $or: [
+        { endDate: { $gte: now } }, // not expired
+        { endDate: null },          // open-ended slab
+      ],
+    }).sort({ startDate: 1 });
+
+    res.status(200).json({
+      success: true,
+      message: "Active registration slabs fetched successfully",
+      data: slabs,
+    });
+  } catch (error) {
+    console.error("Get active registration slabs error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// =======================
 // Update Registration Slab (EventAdmin Only)
 // =======================
 export const updateRegistrationSlab = async (req, res) => {
