@@ -26,7 +26,7 @@ export const createDiscountCode = async (req, res) => {
     }
 
     //  Validate discount type
-    if (!["percentage", "fixed"].includes(discountType)) {
+    if (!["Percentage", "Fixed"].includes(discountType)) {
       return res.status(400).json({
         message: "Invalid Discount Type. Must be 'percentage' or 'fixed'.",
       });
@@ -139,7 +139,7 @@ export const updateDiscountCode = async (req, res) => {
     }
 
     // Validate discount type if provided
-    if (discountType && !["percentage", "fixed"].includes(discountType)) {
+    if (discountType && !["Percentage", "Fixed"].includes(discountType)) {
       return res.status(400).json({
         message: "Invalid Discount Type. Must be 'percentage' or 'fixed'.",
       });

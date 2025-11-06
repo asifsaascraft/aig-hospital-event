@@ -3,7 +3,7 @@ import express from "express";
 import {
   getAccompanyAmount,
   addAccompanies,
-  getAllPaidAccompanies,
+  getAllPaidAccompaniesByEvent,
   editPaidAccompanies,
 } from "../controllers/accompanyController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
@@ -30,12 +30,12 @@ router.post(
   addAccompanies
 );
 
-// Get all paid accompanies for logged-in user
+// Get all paid accompanies for logged-in user (specific event)
 router.get(
-  "/accompanies/paid",
+  "/accompanies/paid/events/:eventId",
   protect,
   authorizeRoles("user"),
-  getAllPaidAccompanies
+  getAllPaidAccompaniesByEvent
 );
 
 // Edit paid accompanies (only editable fields)

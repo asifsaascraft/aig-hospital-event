@@ -125,18 +125,25 @@ export const addAccompanies = async (req, res) => {
 
 /* 
 ========================================================
-  3️ Get All Paid Accompanies for Logged-in User
+  3️ Get All Paid Accompanies for Logged-in User (Specific Event)
 ========================================================
-  @route   GET /api/accompanies/paid
+  @route   GET /api/accompanies/paid/:eventId
   @access  Protected (user)
 ========================================================
 */
-export const getAllPaidAccompanies = async (req, res) => {
+export const getAllPaidAccompaniesByEvent = async (req, res) => {
   try {
     const userId = req.user._id;
+    const { eventId } = req.params;
 
-    // Find accompany records belonging to the user
-    const accompanies = await Accompany.find({ userId })
+    // Validate event
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    // Find accompany records for this event and user
+    const accompanies = await Accompany.find({ userId, eventId })
       .populate({
         path: "eventId",
         select: "eventName eventCode startDate endDate",
@@ -161,12 +168,12 @@ export const getAllPaidAccompanies = async (req, res) => {
         }
         return null;
       })
-      .filter(Boolean); // remove nulls
+      .filter(Boolean);
 
     if (paidAccompanies.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "No paid accompanies found",
+        message: "No paid accompanies found for this event",
       });
     }
 
@@ -176,10 +183,11 @@ export const getAllPaidAccompanies = async (req, res) => {
       data: paidAccompanies,
     });
   } catch (error) {
-    console.error("Get all paid accompanies error:", error);
+    console.error("Get all paid accompanies by event error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
+
 
 
 /* 
