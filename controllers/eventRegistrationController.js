@@ -194,3 +194,41 @@ export const getRegistrationById = async (req, res) => {
   }
 };
 
+/* 
+========================================================
+  5. Get All Paid Registrations for an Event (Event Admin)
+========================================================
+*/
+export const getAllRegistrationsByEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    // Validate event
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    // Fetch all paid registrations for this event
+    const registrations = await EventRegistration.find({
+      eventId,
+      isPaid: true,
+    })
+      .populate({
+        path: "registrationSlabId",
+        select: "slabName amount",
+      })
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      message: "All paid registrations fetched successfully",
+      event: { id: event._id, name: event.eventName },
+      totalRegistrations: registrations.length,
+      data: registrations,
+    });
+  } catch (error) {
+    console.error("Get all registrations by event error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};

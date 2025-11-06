@@ -5,6 +5,7 @@ import {
   registerForEvent,
   getMyRegistrations,
   getRegistrationById,
+  getAllRegistrationsByEvent,
 } from "../controllers/eventRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -40,12 +41,21 @@ router.get(
   getMyRegistrations
 );
 
-// Get a registration by ID
+// 4 Get a registration by ID
 router.get(
   "/registrations/:registrationId",
   protect,
   authorizeRoles("user"),
   getRegistrationById
 );
+
+// 5️ Get All Paid Registrations for an Event (Event Admin)
+router.get(
+  "/event-admin/events/:eventId/registrations",
+  protect,
+  authorizeRoles("eventAdmin"),
+  getAllRegistrationsByEvent
+);
+
 
 export default router;
