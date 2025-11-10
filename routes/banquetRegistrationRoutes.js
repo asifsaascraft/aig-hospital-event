@@ -2,6 +2,7 @@ import express from "express";
 import {
   registerBanquet,
   getAllPaidBanquetsByEvent,
+  editPaidBanquets,
 } from "../controllers/banquetRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -25,6 +26,14 @@ router.get(
   protect,
   authorizeRoles("user"),
   getAllPaidBanquetsByEvent
+);
+
+// Edit paid banquets (only update otherName)
+router.put(
+  "/banquet-registrations/:banquetRegistrationId/edit",
+  protect,
+  authorizeRoles("user"),
+  editPaidBanquets
 );
 
 export default router;

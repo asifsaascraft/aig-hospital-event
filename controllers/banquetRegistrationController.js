@@ -185,3 +185,60 @@ export const getAllPaidBanquetsByEvent = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
+/* 
+========================================================
+  3️ Edit Paid Banquets (Only update otherName)
+========================================================
+  @route   PUT /api/banquet-registrations/:banquetRegistrationId/edit
+  @access  Protected (user)
+========================================================
+*/
+export const editPaidBanquets = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { banquetRegistrationId } = req.params;
+    const { banquets } = req.body; // array of objects with _id + otherName
+
+    if (!Array.isArray(banquets) || banquets.length === 0) {
+      return res.status(400).json({ message: "No banquet data provided for edit" });
+    }
+
+    // Fetch banquet registration document
+    const banquetDoc = await BanquetRegistration.findOne({
+      _id: banquetRegistrationId,
+      userId,
+    });
+
+    if (!banquetDoc) {
+      return res.status(404).json({ message: "Banquet registration not found" });
+    }
+
+    let updatedCount = 0;
+
+    banquets.forEach((item) => {
+      const sub = banquetDoc.banquets.id(item._id);
+      if (sub && sub.isPaid) {
+        if (item.otherName !== undefined) sub.otherName = item.otherName.trim();
+        updatedCount++;
+      }
+    });
+
+    if (updatedCount === 0) {
+      return res.status(400).json({
+        message: "No valid paid banquet records found to edit or invalid IDs provided",
+      });
+    }
+
+    await banquetDoc.save();
+
+    res.status(200).json({
+      success: true,
+      message: `${updatedCount} paid banquet record(s) updated successfully`,
+      data: banquetDoc,
+    });
+  } catch (error) {
+    console.error("Edit paid banquets error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
