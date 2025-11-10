@@ -3,6 +3,7 @@ import {
   registerBanquet,
   getAllPaidBanquetsByEvent,
   editPaidBanquets,
+  getAllPaidBanquetsByEvent_Admin,
 } from "../controllers/banquetRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -35,5 +36,14 @@ router.put(
   authorizeRoles("user"),
   editPaidBanquets
 );
+
+// Get all paid banquets for an event (Event Admin)
+router.get(
+  "/banquet-registrations/event-admin/events/:eventId/paid",
+  protect,
+  authorizeRoles("eventAdmin"),
+  getAllPaidBanquetsByEvent_Admin
+);
+
 
 export default router;

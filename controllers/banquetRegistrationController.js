@@ -242,3 +242,107 @@ export const editPaidBanquets = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
+
+/* 
+========================================================
+  4️ Get All Paid Banquets for an Event (Event Admin)
+========================================================
+  @route   GET /api/banquet-registrations/event-admin/events/:eventId/paid
+  @access  Protected (eventAdmin)
+========================================================
+*/
+export const getAllPaidBanquetsByEvent_Admin = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    // Validate event
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    // Fetch banquet registrations for this event
+    const banquetRegs = await BanquetRegistration.find({ eventId })
+      .populate({
+        path: "userId",
+        select: "name email mobile", // Adjust field names as per your User model
+      })
+      .populate({
+        path: "eventRegistrationId",
+        select: "regNum isPaid registrationSlabId",
+        populate: {
+          path: "registrationSlabId",
+          select: "slabName amount",
+        },
+      })
+      .populate({
+        path: "banquetId",
+        select: "banquetName date time venue",
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Filter out only paid banquets inside the nested array
+    const allPaidBanquets = [];
+
+    for (const reg of banquetRegs) {
+      const paidEntries = [];
+
+      for (const b of reg.banquets) {
+        if (b.isPaid) {
+          const banquetData = { ...b };
+
+          // If accompanySubId exists → fetch accompany details
+          if (b.accompanySubId) {
+            const parent = await Accompany.findOne({
+              "accompanies._id": b.accompanySubId,
+            }).lean();
+
+            if (parent) {
+              const sub = parent.accompanies.find(
+                (a) => a._id.toString() === b.accompanySubId.toString()
+              );
+              if (sub) {
+                banquetData.accompanyDetails = {
+                  parentAccompanyId: parent._id,
+                  ...sub,
+                };
+              }
+            }
+          }
+
+          paidEntries.push(banquetData);
+        }
+      }
+
+      if (paidEntries.length > 0) {
+        allPaidBanquets.push({
+          _id: reg._id,
+          user: reg.userId,
+          registration: reg.eventRegistrationId,
+          banquet: reg.banquetId,
+          paidBanquets: paidEntries,
+        });
+      }
+    }
+
+    if (allPaidBanquets.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No paid banquet registrations found for this event",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "All paid banquets fetched successfully (Admin)",
+      event: { id: event._id, name: event.eventName },
+      totalBanquetRegistrations: allPaidBanquets.length,
+      data: allPaidBanquets,
+    });
+  } catch (error) {
+    console.error("Get all paid banquets by event (admin) error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
