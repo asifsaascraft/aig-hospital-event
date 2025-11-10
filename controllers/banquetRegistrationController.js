@@ -119,7 +119,7 @@ export const getAllPaidBanquetsByEvent = async (req, res) => {
       })
       .populate({
         path: "banquets.userId",
-        select: "fullName email",
+        select: "name email",
       })
       .sort({ createdAt: -1 })
       .lean();
