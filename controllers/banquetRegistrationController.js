@@ -115,7 +115,7 @@ export const getAllPaidBanquetsByEvent = async (req, res) => {
       })
       .populate({
         path: "banquetId",
-        select: "banquetName date time venue",
+        select: "banquetslabName amount startDate endDate",
       })
       .populate({
         path: "banquets.userId",
@@ -278,7 +278,7 @@ export const getAllPaidBanquetsByEvent_Admin = async (req, res) => {
       })
       .populate({
         path: "banquetId",
-        select: "banquetName date time venue",
+        select: "banquetslabName amount startDate endDate",
       })
       .sort({ createdAt: -1 })
       .lean();
