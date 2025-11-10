@@ -9,6 +9,8 @@ import {
   verifyAccompanyPayment,
   createWorkshopOrder,
   verifyWorkshopPayment,
+  createBanquetOrder,
+  verifyBanquetPayment,
 } from "../controllers/paymentController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -79,6 +81,21 @@ router.post(
   protect,
   authorizeRoles("user"),
   verifyWorkshopPayment
+);
+
+// Banquet Payments
+router.post(
+  "/payments/banquet/create-order/:eventId",
+  protect,
+  authorizeRoles("user"),
+  createBanquetOrder
+);
+
+router.post(
+  "/payments/banquet/verify",
+  protect,
+  authorizeRoles("user"),
+  verifyBanquetPayment
 );
 
 

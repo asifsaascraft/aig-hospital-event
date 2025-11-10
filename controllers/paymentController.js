@@ -5,6 +5,7 @@ import Payment from "../models/Payment.js";
 import EventRegistration from "../models/EventRegistration.js";
 import Event from "../models/Event.js";
 import Accompany from "../models/Accompany.js";
+import BanquetRegistration from "../models/BanquetRegistration.js";
 import Workshop from "../models/Workshop.js";
 import WorkshopRegistration from "../models/WorkshopRegistration.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
@@ -18,7 +19,7 @@ const razorpay = new Razorpay({
 
 /* ========================================================
    1. Create Razorpay Order
-   Route: POST /api/payments/create-order
+   Route: POST /api/payments/create-order/:eventId
    Access: Private (User)
 ======================================================== */
 export const createOrder = async (req, res) => {
@@ -283,7 +284,7 @@ export const markPaymentFailed = async (req, res) => {
 
 /* ========================================================
    5. Create Razorpay Order for Accompany Payment
-   Route: POST /api/payments/accompany/create-order
+   Route: POST /api/payments/accompany/create-order/:eventId
    Access: Private (User)
 ======================================================== */
 
@@ -515,7 +516,7 @@ export const verifyAccompanyPayment = async (req, res) => {
 
 /* ========================================================
    7. Create Workshop Payment Order
-   Route: POST /api/payments/workshop/create-order
+   Route: POST /api/payments/workshop/create-order/:eventId
 ======================================================== */
 export const createWorkshopOrder = async (req, res) => {
   try {
@@ -623,6 +624,135 @@ export const verifyWorkshopPayment = async (req, res) => {
     });
   } catch (error) {
     console.error("Verify workshop payment error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+/* ========================================================
+   9. Create Banquet Payment Order
+   Route: POST /api/payments/banquet/create-order/:eventId
+   Access: Private (User)
+======================================================== */
+export const createBanquetOrder = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { eventId } = req.params;
+    const { banquetRegistrationId, banquetItemIds, amount } = req.body;
+
+    // Validate Event
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: "Event not found" });
+
+    if (!banquetRegistrationId || !Array.isArray(banquetItemIds) || banquetItemIds.length === 0) {
+      return res.status(400).json({
+        message: "banquetRegistrationId and banquetItemIds are required",
+      });
+    }
+
+    const banquetReg = await BanquetRegistration.findById(banquetRegistrationId);
+    if (!banquetReg)
+      return res.status(404).json({ message: "Banquet registration not found" });
+
+    // Check unpaid banquet items
+    const unpaidItems = banquetReg.banquets.filter(
+      (b) => banquetItemIds.includes(b._id.toString()) && !b.isPaid
+    );
+
+    if (unpaidItems.length === 0) {
+      return res.status(400).json({
+        message: "No unpaid banquet items found. Please check selection.",
+      });
+    }
+
+    // Create Razorpay Order
+    const receiptId = `bnq_${banquetRegistrationId}_${Date.now().toString().slice(-6)}`.slice(0, 40);
+    const options = {
+      amount: Math.round(Number(amount) * 100),
+      currency: "INR",
+      receipt: receiptId,
+    };
+
+    const order = await razorpay.orders.create(options);
+
+    // Create Payment Record
+    const payment = await Payment.create({
+      userId,
+      eventId,
+      banquetRegistrationId,
+      banquetItemIds: unpaidItems.map((b) => b._id),
+      amount,
+      paymentCategory: "Banquet",
+      razorpayOrderId: order.id,
+      status: "initiated",
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Banquet payment order created successfully",
+      data: {
+        orderId: order.id,
+        amount,
+        currency: order.currency,
+        paymentId: payment._id,
+        razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+      },
+    });
+  } catch (error) {
+    console.error("Create banquet order error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+/* ========================================================
+   10. Verify Banquet Payment
+   Route: POST /api/payments/banquet/verify
+   Access: Private (User)
+======================================================== */
+export const verifyBanquetPayment = async (req, res) => {
+  try {
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, paymentId } = req.body;
+
+    // Verify Signature
+    const body = razorpayOrderId + "|" + razorpayPaymentId;
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_SECRET)
+      .update(body.toString())
+      .digest("hex");
+
+    if (expectedSignature !== razorpaySignature)
+      return res.status(400).json({ message: "Invalid payment signature" });
+
+    const payment = await Payment.findById(paymentId);
+    if (!payment)
+      return res.status(404).json({ message: "Payment record not found" });
+
+    const banquetReg = await BanquetRegistration.findById(payment.banquetRegistrationId);
+    if (!banquetReg)
+      return res.status(404).json({ message: "Banquet registration not found" });
+
+    // Mark banquet items as paid
+    const idsToMark = payment.banquetItemIds.map((id) => id.toString());
+    banquetReg.banquets.forEach((b) => {
+      if (idsToMark.includes(b._id.toString())) {
+        b.isPaid = true;
+      }
+    });
+
+    await banquetReg.save();
+
+    // Update payment record
+    payment.razorpayPaymentId = razorpayPaymentId;
+    payment.razorpaySignature = razorpaySignature;
+    payment.status = "paid";
+    await payment.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Banquet payment verified successfully",
+      data: { payment, banquetReg },
+    });
+  } catch (error) {
+    console.error("Verify banquet payment error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
