@@ -4,6 +4,7 @@ import crypto from "crypto";
 import Payment from "../models/Payment.js";
 import EventRegistration from "../models/EventRegistration.js";
 import Event from "../models/Event.js";
+import Banquet from "../models/Banquet.js";
 import Accompany from "../models/Accompany.js";
 import BanquetRegistration from "../models/BanquetRegistration.js";
 import Workshop from "../models/Workshop.js";
@@ -723,12 +724,11 @@ export const verifyBanquetPayment = async (req, res) => {
       return res.status(400).json({ message: "Invalid payment signature" });
 
     const payment = await Payment.findById(paymentId);
-    if (!payment)
-      return res.status(404).json({ message: "Payment record not found" });
+    if (!payment) return res.status(404).json({ message: "Payment record not found" });
 
     const banquetReg = await BanquetRegistration.findById(payment.banquetRegistrationId)
       .populate("eventId", "eventName startDate endDate")
-      .populate("banquetId", "banquetName date time venue")
+      .populate("banquetId") // full banquet details
       .populate("eventRegistrationId", "regNum email name")
       .lean();
 
@@ -743,7 +743,9 @@ export const verifyBanquetPayment = async (req, res) => {
       }
     });
 
-    await BanquetRegistration.findByIdAndUpdate(banquetReg._id, { banquets: banquetReg.banquets });
+    await BanquetRegistration.findByIdAndUpdate(banquetReg._id, {
+      banquets: banquetReg.banquets,
+    });
 
     // Update payment record
     payment.razorpayPaymentId = razorpayPaymentId;
@@ -760,22 +762,58 @@ export const verifyBanquetPayment = async (req, res) => {
       const userName = registration.name;
       const userEmail = registration.email;
 
-      // Prepare banquet list for email
-      const banquetList = banquetReg.banquets
-        .filter((b) => b.isPaid)
-        .map((b, idx) => ({
-          index: idx + 1,
-          banquetName: banquetReg.banquetId?.banquetName || "N/A",
-          date: banquetReg.banquetId?.date || "N/A",
-          time: banquetReg.banquetId?.time || "N/A",
-          venue: banquetReg.banquetId?.venue || "N/A",
-          otherName: b.otherName || "N/A",
-        }));
+      //  Fetch banquet details
+      const banquetDetails = await Banquet.findById(banquetReg.banquetId);
+      const banquetName =
+        banquetDetails?.banquetslabName || banquetDetails?.banquetName || "N/A";
+      const banquetStart = banquetDetails?.startDate
+        ? moment(banquetDetails.startDate).format("DD MMM YYYY")
+        : "N/A";
+      const banquetEnd = banquetDetails?.endDate
+        ? moment(banquetDetails.endDate).format("DD MMM YYYY")
+        : "N/A";
+      const banquetVenue = banquetDetails?.venue || "N/A";
 
+      //  Prepare banquet list
+      const banquetList = [];
+
+      for (const [index, b] of banquetReg.banquets.entries()) {
+        if (b.isPaid) {
+          let registeredFor = "User";
+
+          // If accompanySubId exists, find accompany details
+          if (b.accompanySubId) {
+            const parent = await Accompany.findOne({
+              "accompanies._id": b.accompanySubId,
+            }).lean();
+
+            if (parent) {
+              const sub = parent.accompanies.find(
+                (a) => a._id.toString() === b.accompanySubId.toString()
+              );
+              if (sub) {
+                registeredFor = `${sub.fullName} (${sub.relation})`;
+              }
+            }
+          }
+
+          banquetList.push({
+            index: index + 1,
+            banquetName,
+            date: `${banquetStart} - ${banquetEnd}`,
+            venue: banquetVenue,
+            otherName: b.otherName || "N/A",
+            registeredFor,
+          });
+        }
+      }
+
+      //  Send ZeptoMail
       await sendEmailWithTemplate({
         to: userEmail,
         name: userName,
-        templateKey: "2518b.554b0da719bc314.k1.d3e59360-be29-11f0-ad57-ae9c7e0b6a9f.19a6d8fc796",
+        templateKey:
+          "2518b.554b0da719bc314.k1.6cde8920-b9d7-11f0-87d4-ae9c7e0b6a9f.19a47b9ab10", // replace with your ZeptoMail Template ID
         mergeInfo: {
           userName,
           userEmail,
@@ -786,10 +824,10 @@ export const verifyBanquetPayment = async (req, res) => {
           razorpayOrderId: payment.razorpayOrderId,
           paymentStatus: payment.status,
           startDate: event.startDate
-            ? moment(event.startDate, "DD/MM/YYYY").format("DD MMM YYYY")
+            ? moment(event.startDate).format("DD MMM YYYY")
             : "N/A",
           endDate: event.endDate
-            ? moment(event.endDate, "DD/MM/YYYY").format("DD MMM YYYY")
+            ? moment(event.endDate).format("DD MMM YYYY")
             : "N/A",
           banquets: banquetList,
         },
@@ -808,4 +846,5 @@ export const verifyBanquetPayment = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
 
