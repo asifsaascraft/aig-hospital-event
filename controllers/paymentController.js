@@ -813,7 +813,7 @@ export const verifyBanquetPayment = async (req, res) => {
         to: userEmail,
         name: userName,
         templateKey:
-          "2518b.554b0da719bc314.k1.6cde8920-b9d7-11f0-87d4-ae9c7e0b6a9f.19a47b9ab10", // replace with your ZeptoMail Template ID
+          "2518b.554b0da719bc314.k1.d3e59360-be29-11f0-ad57-ae9c7e0b6a9f.19a6d8fc796", 
         mergeInfo: {
           userName,
           userEmail,
