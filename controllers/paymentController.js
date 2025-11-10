@@ -726,7 +726,12 @@ export const verifyBanquetPayment = async (req, res) => {
     if (!payment)
       return res.status(404).json({ message: "Payment record not found" });
 
-    const banquetReg = await BanquetRegistration.findById(payment.banquetRegistrationId);
+    const banquetReg = await BanquetRegistration.findById(payment.banquetRegistrationId)
+      .populate("eventId", "eventName startDate endDate")
+      .populate("banquetId", "banquetName date time venue")
+      .populate("eventRegistrationId", "regNum email name")
+      .lean();
+
     if (!banquetReg)
       return res.status(404).json({ message: "Banquet registration not found" });
 
@@ -738,7 +743,7 @@ export const verifyBanquetPayment = async (req, res) => {
       }
     });
 
-    await banquetReg.save();
+    await BanquetRegistration.findByIdAndUpdate(banquetReg._id, { banquets: banquetReg.banquets });
 
     // Update payment record
     payment.razorpayPaymentId = razorpayPaymentId;
@@ -746,9 +751,56 @@ export const verifyBanquetPayment = async (req, res) => {
     payment.status = "paid";
     await payment.save();
 
+    /* =====================================================
+       Send ZeptoMail Email — Banquet Payment Successful
+    ===================================================== */
+    try {
+      const event = banquetReg.eventId;
+      const registration = banquetReg.eventRegistrationId;
+      const userName = registration.name;
+      const userEmail = registration.email;
+
+      // Prepare banquet list for email
+      const banquetList = banquetReg.banquets
+        .filter((b) => b.isPaid)
+        .map((b, idx) => ({
+          index: idx + 1,
+          banquetName: banquetReg.banquetId?.banquetName || "N/A",
+          date: banquetReg.banquetId?.date || "N/A",
+          time: banquetReg.banquetId?.time || "N/A",
+          venue: banquetReg.banquetId?.venue || "N/A",
+          otherName: b.otherName || "N/A",
+        }));
+
+      await sendEmailWithTemplate({
+        to: userEmail,
+        name: userName,
+        templateKey: "2518b.554b0da719bc314.k1.d3e59360-be29-11f0-ad57-ae9c7e0b6a9f.19a6d8fc796",
+        mergeInfo: {
+          userName,
+          userEmail,
+          eventName: event.eventName,
+          registrationNumber: registration.regNum,
+          paymentAmount: payment.amount,
+          razorpayPaymentId: payment.razorpayPaymentId,
+          razorpayOrderId: payment.razorpayOrderId,
+          paymentStatus: payment.status,
+          startDate: event.startDate
+            ? moment(event.startDate, "DD/MM/YYYY").format("DD MMM YYYY")
+            : "N/A",
+          endDate: event.endDate
+            ? moment(event.endDate, "DD/MM/YYYY").format("DD MMM YYYY")
+            : "N/A",
+          banquets: banquetList,
+        },
+      });
+    } catch (emailErr) {
+      console.error("Error sending Banquet Payment Email:", emailErr);
+    }
+
     res.status(200).json({
       success: true,
-      message: "Banquet payment verified successfully",
+      message: "Banquet payment verified and email sent successfully",
       data: { payment, banquetReg },
     });
   } catch (error) {
@@ -756,3 +808,4 @@ export const verifyBanquetPayment = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
