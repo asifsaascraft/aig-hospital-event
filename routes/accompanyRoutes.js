@@ -5,6 +5,7 @@ import {
   addAccompanies,
   getAllPaidAccompaniesByEvent,
   editPaidAccompanies,
+  getAllPaidAccompaniesByEvent_Admin,
 } from "../controllers/accompanyController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -44,6 +45,14 @@ router.put(
   protect,
   authorizeRoles("user"),
   editPaidAccompanies
+);
+
+//  Get all paid accompanies for an event (Event Admin)
+router.get(
+  "/accompanies/event-admin/events/:eventId/paid",
+  protect,
+  authorizeRoles("eventAdmin"),
+  getAllPaidAccompaniesByEvent_Admin
 );
 
 
