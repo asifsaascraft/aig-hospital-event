@@ -3,6 +3,7 @@ import express from "express";
 import {
   registerForWorkshops,
   getUserWorkshopRegistrationsByEvent,
+  getAllWorkshopRegistrationsByEvent,
 } from "../controllers/workshopRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -29,5 +30,15 @@ router.get(
   authorizeRoles("user"),
   getUserWorkshopRegistrationsByEvent
 );
+
+// 3️ Get All Valid Workshop Registrations for an Event (Event Admin)
+router.get(
+  "/event-admin/events/:eventId/workshop-registrations",
+  protect,
+  authorizeRoles("eventAdmin"),
+  getAllWorkshopRegistrationsByEvent
+);
+
+
 
 export default router;

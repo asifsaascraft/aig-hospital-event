@@ -118,3 +118,50 @@ export const getUserWorkshopRegistrationsByEvent = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// =======================
+// Get All Valid Workshop Registrations for an Event (Event Admin)
+// =======================
+export const getAllWorkshopRegistrationsByEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    // Validate event
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    // Fetch all valid workshop registrations:
+    // Include:
+    // - Free workshops (always)
+    // - Paid workshops where paymentStatus is Completed
+    const registrations = await WorkshopRegistration.find({
+      eventId,
+      $or: [
+        { registrationType: "Free" },
+        { registrationType: "Paid", paymentStatus: "Completed" },
+      ],
+    })
+      .populate({
+        path: "userId",
+        select: "prefix name email mobile gender",
+      })
+      .populate({
+        path: "workshopIds",
+        select: "workshopName amount workshopRegistrationType",
+      })
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      message: "All valid workshop registrations fetched successfully",
+      event: { id: event._id, name: event.eventName },
+      totalRegistrations: registrations.length,
+      data: registrations,
+    });
+  } catch (error) {
+    console.error("Get all workshop registrations by event error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
