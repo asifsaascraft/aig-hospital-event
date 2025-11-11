@@ -6,6 +6,7 @@ import {
   getMyRegistrations,
   getRegistrationById,
   getAllRegistrationsByEvent,
+  updateRegistrationSuspension,
 } from "../controllers/eventRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -55,6 +56,14 @@ router.get(
   protect,
   authorizeRoles("eventAdmin"),
   getAllRegistrationsByEvent
+);
+
+// 6️ Update Registration Suspension Status (Event Admin)
+router.patch(
+  "/event-admin/registrations/:registrationId/suspension",
+  protect,
+  authorizeRoles("eventAdmin"),
+  updateRegistrationSuspension
 );
 
 

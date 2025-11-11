@@ -81,6 +81,21 @@ export const registerForEvent = async (req, res) => {
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ message: "Event not found" });
 
+    // Check for suspended registration first
+    const suspendedReg = await EventRegistration.findOne({
+      userId,
+      eventId,
+      isSuspended: true,
+    });
+
+    if (suspendedReg) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Your previous registration for this event is suspended. Please contact the Event Admin.",
+      });
+    }
+
     //  Only check for existing **paid** registration
     const existingPaidReg = await EventRegistration.findOne({
       userId,
@@ -112,6 +127,7 @@ export const registerForEvent = async (req, res) => {
       address,
       isPaid: false,
       regNumGenerated: false,
+      isSuspended: false,
     });
 
     res.status(201).json({
@@ -133,7 +149,11 @@ export const getMyRegistrations = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    const registrations = await EventRegistration.find({ userId, isPaid: true })
+    const registrations = await EventRegistration.find({
+      userId,
+      isPaid: true,
+      isSuspended: false,
+    })
       .populate({
         path: "eventId",
         select: "eventName shortName startDate endDate dynamicStatus",
@@ -169,6 +189,7 @@ export const getRegistrationById = async (req, res) => {
       _id: registrationId,
       userId,
       isPaid: true,
+      isSuspended: false,
     })
       .populate({
         path: "eventId",
@@ -215,6 +236,7 @@ export const getAllRegistrationsByEvent = async (req, res) => {
       isPaid: true,
     })
       .populate({
+
         path: "registrationSlabId",
         select: "slabName amount",
       })
@@ -229,6 +251,47 @@ export const getAllRegistrationsByEvent = async (req, res) => {
     });
   } catch (error) {
     console.error("Get all registrations by event error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+/* 
+========================================================
+  6. Update Registration Suspension Status (Event Admin)
+========================================================
+*/
+export const updateRegistrationSuspension = async (req, res) => {
+  try {
+    const { registrationId } = req.params;
+    const { isSuspended } = req.body;
+
+    // Validate input
+    if (typeof isSuspended !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid value for isSuspended. Must be true or false.",
+      });
+    }
+
+    // Find and update registration
+    const registration = await EventRegistration.findById(registrationId);
+    if (!registration) {
+      return res.status(404).json({
+        success: false,
+        message: "Event registration not found",
+      });
+    }
+
+    registration.isSuspended = isSuspended;
+    await registration.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Registration ${isSuspended ? "suspended" : "unsuspended"} successfully`,
+      data: registration,
+    });
+  } catch (error) {
+    console.error("Update registration suspension error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };

@@ -34,6 +34,7 @@ export const registerBanquet = async (req, res) => {
       eventId,
       userId,
       isPaid: true, // Only allow if user registration is paid
+      isSuspended: false, //  Only non-suspended registration
     });
 
     if (!registration)

@@ -28,6 +28,8 @@ export const getAccompanyAmount = async (req, res) => {
       _id: eventRegistrationId,
       eventId,
       userId,
+      isPaid: true,
+      isSuspended: false, //  Only non-suspended registration
     });
 
     if (!registration) {
@@ -87,6 +89,7 @@ export const addAccompanies = async (req, res) => {
       eventId,
       userId,
       isPaid: true, // user must have paid registration first
+      isSuspended: false, //  Only non-suspended registration
     });
     if (!registration)
       return res.status(400).json({ message: "You must complete event registration first" });
