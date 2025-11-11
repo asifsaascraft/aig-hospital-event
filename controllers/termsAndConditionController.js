@@ -15,6 +15,14 @@ export const createTermsAndCondition = async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
+    // Check if a terms and conditions already exists for this event
+    const existingTermsAndConditions = await TermsAndCondition.findOne({ eventId });
+    if (existingTermsAndConditions) {
+      return res.status(400).json({
+        message: "Terms and conditions already exists for this event",
+      });
+    }
+
     // Create new Terms & Condition
     const terms = await TermsAndCondition.create({
       eventId,
