@@ -60,6 +60,7 @@ export const createOrder = async (req, res) => {
       eventRegistrationId,
       amount,
       paymentCategory: "Event Registration",
+
       razorpayOrderId: order.id,
       status: "initiated",
     });
@@ -779,10 +780,15 @@ export const verifyBanquetPayment = async (req, res) => {
 
       for (const [index, b] of banquetReg.banquets.entries()) {
         if (b.isPaid) {
-          let registeredFor = "User";
+          let registeredFor = "Other";
 
-          // If accompanySubId exists, find accompany details
-          if (b.accompanySubId) {
+          //  Check if userId exists → Self
+          if (b.userId) {
+            registeredFor = "Self";
+          }
+
+          //  Else if accompanySubId exists → Fetch accompany details
+          else if (b.accompanySubId) {
             const parent = await Accompany.findOne({
               "accompanies._id": b.accompanySubId,
             }).lean();
@@ -802,18 +808,19 @@ export const verifyBanquetPayment = async (req, res) => {
             banquetName,
             date: `${banquetStart} - ${banquetEnd}`,
             venue: banquetVenue,
-            otherName: b.otherName || "N/A",
+            otherName: b.otherName,
             registeredFor,
           });
         }
       }
+
 
       //  Send ZeptoMail
       await sendEmailWithTemplate({
         to: userEmail,
         name: userName,
         templateKey:
-          "2518b.554b0da719bc314.k1.d3e59360-be29-11f0-ad57-ae9c7e0b6a9f.19a6d8fc796", 
+          "2518b.554b0da719bc314.k1.d3e59360-be29-11f0-ad57-ae9c7e0b6a9f.19a6d8fc796",
         mergeInfo: {
           userName,
           userEmail,
