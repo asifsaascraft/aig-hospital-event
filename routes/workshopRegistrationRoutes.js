@@ -4,7 +4,6 @@ import {
   registerForWorkshops,
   getUserWorkshopRegistrationsByEvent,
   getAllWorkshopRegistrationsByEvent,
-  updateWorkshopRegistrationSuspension,
 } from "../controllers/workshopRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -38,14 +37,6 @@ router.get(
   protect,
   authorizeRoles("eventAdmin"),
   getAllWorkshopRegistrationsByEvent
-);
-
-// 4️ Update Suspension Status for a Workshop Registration (Event Admin)
-router.put(
-  "/event-admin/workshop-registrations/:registrationId/suspension",
-  protect,
-  authorizeRoles("eventAdmin"),
-  updateWorkshopRegistrationSuspension
 );
 
 

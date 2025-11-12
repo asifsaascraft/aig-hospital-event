@@ -46,7 +46,10 @@ export const registerBanquet = async (req, res) => {
     const banquetEntries = [];
 
     for (const b of banquets) {
-      const entry = { ...b };
+      const entry = {
+        ...b,
+        isSuspended: false, 
+      };
 
       // If accompanySubId is provided → find parent accompany doc
       if (b.accompanySubId) {
@@ -132,7 +135,7 @@ export const getAllPaidBanquetsByEvent = async (req, res) => {
       const paidEntries = [];
 
       for (const b of reg.banquets) {
-        if (b.isPaid) {
+        if (b.isPaid && b.isSuspended === false) {
           const banquetData = { ...b };
 
           // If accompanySubId exists, fetch accompany details
@@ -344,6 +347,60 @@ export const getAllPaidBanquetsByEvent_Admin = async (req, res) => {
     });
   } catch (error) {
     console.error("Get all paid banquets by event (admin) error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+/* 
+========================================================
+  5️ Update Suspension Status of a Single Banquet Entry (Event Admin)
+========================================================
+  @route   PATCH /api/banquet-registrations/event-admin/:banquetRegistrationId/suspend/:banquetSubId
+  @access  Protected (eventAdmin)
+========================================================
+*/
+export const updateBanquetSuspension = async (req, res) => {
+  try {
+    const { banquetRegistrationId, banquetSubId } = req.params;
+    const { isSuspended } = req.body;
+
+    // Validate input
+    if (typeof isSuspended !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid value for isSuspended. Must be true or false.",
+      });
+    }
+
+    // Find the main banquet registration document
+    const banquetDoc = await BanquetRegistration.findById(banquetRegistrationId);
+    if (!banquetDoc) {
+      return res.status(404).json({
+        success: false,
+        message: "Banquet registration record not found",
+      });
+    }
+
+    // Find the specific banquet subdocument by its _id
+    const subBanquet = banquetDoc.banquets.id(banquetSubId);
+    if (!subBanquet) {
+      return res.status(404).json({
+        success: false,
+        message: "Banquet sub-entry not found",
+      });
+    }
+
+    // Update suspension status
+    subBanquet.isSuspended = isSuspended;
+    await banquetDoc.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Banquet entry ${isSuspended ? "suspended" : "unsuspended"} successfully`,
+      data: subBanquet,
+    });
+  } catch (error) {
+    console.error("Update banquet suspension error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };

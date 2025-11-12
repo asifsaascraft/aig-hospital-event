@@ -69,7 +69,6 @@ export const registerForWorkshops = async (req, res) => {
       registrationType,
       totalAmount,
       paymentStatus: registrationType === "Free" ? "Completed" : "Pending",
-      isSuspended: false,
     });
     
 
@@ -103,7 +102,6 @@ export const getUserWorkshopRegistrationsByEvent = async (req, res) => {
       userId,
       eventId,
       paymentStatus: "Completed",
-      isSuspended: false,
     })
       .populate("eventId")
       .populate("workshopIds")
@@ -168,43 +166,4 @@ export const getAllWorkshopRegistrationsByEvent = async (req, res) => {
 };
 
 
-// =======================
-// Update Workshop Registration Suspension (Event Admin)
-// =======================
-export const updateWorkshopRegistrationSuspension = async (req, res) => {
-  try {
-    const { registrationId } = req.params;
-    const { isSuspended } = req.body;
 
-    // Validate input
-    if (typeof isSuspended !== "boolean") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid value for isSuspended. Must be true or false.",
-      });
-    }
-
-    // Find and update registration
-    const registration = await WorkshopRegistration.findById(registrationId);
-    if (!registration) {
-      return res.status(404).json({
-        success: false,
-        message: "Workshop registration not found",
-      });
-    }
-
-    registration.isSuspended = isSuspended;
-    await registration.save();
-
-    res.status(200).json({
-      success: true,
-      message: `Workshop registration ${
-        isSuspended ? "suspended" : "unsuspended"
-      } successfully`,
-      data: registration,
-    });
-  } catch (error) {
-    console.error("Update workshop registration suspension error:", error);
-    res.status(500).json({ message: "Server Error" });
-  }
-};

@@ -45,6 +45,11 @@ const BanquetRegistrationSchema = new mongoose.Schema(
           type: Boolean,
           default: false,
         },
+        isSuspended: {
+          type: Boolean,
+          required: true,
+          default: false,
+        },
       },
     ],
   },

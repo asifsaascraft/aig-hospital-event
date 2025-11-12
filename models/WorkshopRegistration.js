@@ -33,11 +33,6 @@ const WorkshopRegistrationSchema = new mongoose.Schema(
       enum: ["Pending", "Completed"],
       default: "Pending",
     },
-    isSuspended: {
-      type: Boolean,
-      required: true,
-      default: false,
-    },
   },
   { timestamps: true }
 );

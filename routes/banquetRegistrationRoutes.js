@@ -4,6 +4,7 @@ import {
   getAllPaidBanquetsByEvent,
   editPaidBanquets,
   getAllPaidBanquetsByEvent_Admin,
+  updateBanquetSuspension,
 } from "../controllers/banquetRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -43,6 +44,14 @@ router.get(
   protect,
   authorizeRoles("eventAdmin"),
   getAllPaidBanquetsByEvent_Admin
+);
+
+// Update suspension status of a single banquet (Event Admin)
+router.patch(
+  "/banquet-registrations/event-admin/:banquetRegistrationId/suspend/:banquetSubId",
+  protect,
+  authorizeRoles("eventAdmin"),
+  updateBanquetSuspension
 );
 
 
