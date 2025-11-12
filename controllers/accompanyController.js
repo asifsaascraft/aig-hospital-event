@@ -110,8 +110,13 @@ export const addAccompanies = async (req, res) => {
       });
     }
 
-    // Add accompanies
-    accompanyDoc.accompanies.push(...accompanies);
+    // Add accompanies (force isSuspended=false for each)
+    accompanies.forEach((a) => {
+      accompanyDoc.accompanies.push({
+        ...a,
+        isSuspended: false, // ensure consistent default
+      });
+    });
     await accompanyDoc.save();
 
     res.status(201).json({
@@ -160,7 +165,7 @@ export const getAllPaidAccompaniesByEvent = async (req, res) => {
     // Filter out only paid accompanies (inside the array)
     const paidAccompanies = accompanies
       .map((doc) => {
-        const paidList = doc.accompanies.filter((a) => a.isPaid === true);
+        const paidList = doc.accompanies.filter((a) => a.isPaid === true && a.isSuspended === false);
         if (paidList.length > 0) {
           return {
             _id: doc._id,
@@ -322,6 +327,62 @@ export const getAllPaidAccompaniesByEvent_Admin = async (req, res) => {
     });
   } catch (error) {
     console.error("Get all paid accompanies by event (admin) error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+/* 
+========================================================
+  6️ Update Suspension Status of a Single Accompany (Event Admin)
+========================================================
+  @route   PATCH /api/accompanies/event-admin/:accompanyId/suspend/:subId
+  @access  Protected (eventAdmin)
+========================================================
+*/
+export const updateAccompanySuspension = async (req, res) => {
+  try {
+    const { accompanyId, subId } = req.params;
+    const { isSuspended } = req.body;
+
+    // Validate input
+    if (typeof isSuspended !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid value for isSuspended. Must be true or false.",
+      });
+    }
+
+    // Find the main accompany document
+    const accompanyDoc = await Accompany.findById(accompanyId);
+    if (!accompanyDoc) {
+      return res.status(404).json({
+        success: false,
+        message: "Accompany record not found",
+      });
+    }
+
+    // Find the specific accompany subdocument by its _id
+    const subAccompany = accompanyDoc.accompanies.id(subId);
+    if (!subAccompany) {
+      return res.status(404).json({
+        success: false,
+        message: "Accompany member not found",
+      });
+    }
+
+    // Update suspension status
+    subAccompany.isSuspended = isSuspended;
+    await accompanyDoc.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Accompany member ${
+        isSuspended ? "suspended" : "unsuspended"
+      } successfully`,
+      data: subAccompany,
+    });
+  } catch (error) {
+    console.error("Update accompany suspension error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };

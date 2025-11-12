@@ -6,6 +6,7 @@ import {
   getAllPaidAccompaniesByEvent,
   editPaidAccompanies,
   getAllPaidAccompaniesByEvent_Admin,
+  updateAccompanySuspension,
 } from "../controllers/accompanyController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -53,6 +54,14 @@ router.get(
   protect,
   authorizeRoles("eventAdmin"),
   getAllPaidAccompaniesByEvent_Admin
+);
+
+// Update suspension status of a single accompany (Event Admin)
+router.patch(
+  "/accompanies/event-admin/:accompanyId/suspend/:subId",
+  protect,
+  authorizeRoles("eventAdmin"),
+  updateAccompanySuspension
 );
 
 
