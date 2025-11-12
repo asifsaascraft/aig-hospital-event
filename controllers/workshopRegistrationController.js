@@ -1,7 +1,6 @@
 import Workshop from "../models/Workshop.js";
 import Event from "../models/Event.js";
 import WorkshopRegistration from "../models/WorkshopRegistration.js";
-import sendEmailWithTemplate from "../utils/sendEmail.js";
 
 // =======================
 // Register user for workshops (User)
@@ -70,44 +69,9 @@ export const registerForWorkshops = async (req, res) => {
       registrationType,
       totalAmount,
       paymentStatus: registrationType === "Free" ? "Completed" : "Pending",
+      isSuspended: false,
     });
     
-    // -----------------------------
-    // Send confirmation email (ZeptoMail template)
-    // -----------------------------
-    try {
-      // Build workshopListHTML for the template (simple <ul> markup).
-      // Adjust markup if your template expects different structure.
-      const workshopListHTML = `<ul>
-        ${workshops
-          .map(
-            (w) =>
-              `<li><strong>${w.workshopName}</strong> — ${w.startDate} ${w.startTime} to ${w.endTime} (${w.hallName})${w.amount ? ` — ₹${w.amount}` : ""}</li>`
-          )
-          .join("")}
-      </ul>`;
-
-      // Prepare merge variables for your template
-      const mergeInfo = {
-        eventName: event.eventName || "",
-        name: req.user.name || req.user.email || "Participant",
-        workshopListHTML,
-        registrationNumber: registration._id.toString(), 
-        startDate: event.startDate || "",
-        endDate: event.endDate || "",
-        
-      };
-
-      await sendEmailWithTemplate({
-        to: req.user.email,
-        name: req.user.name || "",
-        templateKey: "2518b.554b0da719bc314.k1.d03e4850-ba2e-11f0-87d4-ae9c7e0b6a9f.19a53799155",
-        mergeInfo,
-      });
-    } catch (emailError) {
-      // don't fail the registration if email fails — just log it for debugging
-      console.error("Error sending workshop confirmation email:", emailError);
-    }
 
     res.status(201).json({
       success: true,
@@ -139,6 +103,7 @@ export const getUserWorkshopRegistrationsByEvent = async (req, res) => {
       userId,
       eventId,
       paymentStatus: "Completed",
+      isSuspended: false,
     })
       .populate("eventId")
       .populate("workshopIds")
@@ -198,6 +163,48 @@ export const getAllWorkshopRegistrationsByEvent = async (req, res) => {
     });
   } catch (error) {
     console.error("Get all workshop registrations by event error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+
+// =======================
+// Update Workshop Registration Suspension (Event Admin)
+// =======================
+export const updateWorkshopRegistrationSuspension = async (req, res) => {
+  try {
+    const { registrationId } = req.params;
+    const { isSuspended } = req.body;
+
+    // Validate input
+    if (typeof isSuspended !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid value for isSuspended. Must be true or false.",
+      });
+    }
+
+    // Find and update registration
+    const registration = await WorkshopRegistration.findById(registrationId);
+    if (!registration) {
+      return res.status(404).json({
+        success: false,
+        message: "Workshop registration not found",
+      });
+    }
+
+    registration.isSuspended = isSuspended;
+    await registration.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Workshop registration ${
+        isSuspended ? "suspended" : "unsuspended"
+      } successfully`,
+      data: registration,
+    });
+  } catch (error) {
+    console.error("Update workshop registration suspension error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
