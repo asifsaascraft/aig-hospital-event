@@ -587,7 +587,7 @@ export const verifyWorkshopPayment = async (req, res) => {
   try {
     const { razorpayOrderId, razorpayPaymentId, razorpaySignature, paymentId } = req.body;
 
-    // Verify Signature
+    // 1️ Verify Razorpay Signature
     const body = razorpayOrderId + "|" + razorpayPaymentId;
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_SECRET)
@@ -597,28 +597,32 @@ export const verifyWorkshopPayment = async (req, res) => {
     if (expectedSignature !== razorpaySignature)
       return res.status(400).json({ message: "Invalid payment signature" });
 
+    // 2️ Fetch Payment record
     const payment = await Payment.findById(paymentId);
     if (!payment)
       return res.status(404).json({ message: "Payment record not found" });
 
-    const registration = await WorkshopRegistration.findById(payment.workshopRegistrationId).populate([
-      { path: "eventId", select: "eventName startDate endDate" },
-      { path: "workshopIds", select: "workshopName" },
-    ]);
+    // 3️ Fetch Workshop Registration
+    const registration = await WorkshopRegistration.findById(payment.workshopRegistrationId)
+      .populate([
+        { path: "eventId", select: "eventName startDate endDate" },
+        { path: "workshops.workshopIds", select: "workshopName" },
+      ]);
 
     if (!registration)
       return res.status(404).json({ message: "Workshop registration not found" });
 
-    // Mark registration as paid
+    // 4️ Update registration payment status
     registration.paymentStatus = "Completed";
     await registration.save();
 
-    // Update payment
+    // 5️ Update Payment details
     payment.razorpayPaymentId = razorpayPaymentId;
     payment.razorpaySignature = razorpaySignature;
     payment.status = "paid";
     await payment.save();
 
+    // 6️ Response
     res.status(200).json({
       success: true,
       message: "Workshop payment verified successfully",
