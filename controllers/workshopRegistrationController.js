@@ -2,9 +2,14 @@ import Workshop from "../models/Workshop.js";
 import Event from "../models/Event.js";
 import WorkshopRegistration from "../models/WorkshopRegistration.js";
 
-// =======================
-// Register user for workshops (User)
-// =======================
+/* 
+========================================================
+  1️ Register user for workshops (User)
+========================================================
+  @route   POST /api/workshops/events/:eventId/workshop-register
+  @access  Protected (user)
+========================================================
+*/
 export const registerForWorkshops = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -13,19 +18,15 @@ export const registerForWorkshops = async (req, res) => {
 
     // Validate event
     const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ message: "Event not found" });
-    }
+    if (!event) return res.status(404).json({ message: "Event not found" });
 
     // Validate input
     if (!Array.isArray(workshopIds) || workshopIds.length === 0) {
       return res.status(400).json({ message: "Workshop IDs are required" });
     }
 
-
     // Fetch workshops
     const workshops = await Workshop.find({ _id: { $in: workshopIds }, eventId });
-
     if (workshops.length !== workshopIds.length) {
       return res.status(400).json({ message: "One or more workshops not found for this event" });
     }
@@ -49,9 +50,9 @@ export const registerForWorkshops = async (req, res) => {
     // Check max registration limit for each workshop
     for (const ws of workshops) {
       const regCount = await WorkshopRegistration.countDocuments({
-        workshopIds: ws._id,
-        registrationType,
+        "workshops.workshopIds": ws._id,
         eventId,
+        registrationType,
       });
 
       if (regCount >= ws.maxRegAllowed) {
@@ -61,7 +62,7 @@ export const registerForWorkshops = async (req, res) => {
       }
     }
 
-    // Create registration record
+    // Create registration record with nested workshops
     const registration = await WorkshopRegistration.create({
       eventId,
       userId,
@@ -70,7 +71,6 @@ export const registerForWorkshops = async (req, res) => {
       totalAmount,
       paymentStatus: registrationType === "Free" ? "Completed" : "Pending",
     });
-    
 
     res.status(201).json({
       success: true,
@@ -83,29 +83,30 @@ export const registerForWorkshops = async (req, res) => {
   }
 };
 
-// =======================
-// Get completed workshop registrations for specific event
-// =======================
+/* 
+========================================================
+  2️ Get completed workshop registrations for specific event
+========================================================
+  @route   GET /api/workshops/my-registrations/event/:eventId
+  @access  Protected (user)
+========================================================
+*/
 export const getUserWorkshopRegistrationsByEvent = async (req, res) => {
   try {
     const userId = req.user._id;
     const { eventId } = req.params;
 
-    // Validate event
     const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ message: "Event not found" });
-    }
+    if (!event) return res.status(404).json({ message: "Event not found" });
 
-    // Fetch completed workshop registrations for this event
     const registrations = await WorkshopRegistration.find({
       userId,
       eventId,
       paymentStatus: "Completed",
-      isSuspended: false
+      "workshops.isSuspended": false,
     })
       .populate("eventId")
-      .populate("workshopIds")
+      .populate("workshops.workshopIds")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -119,23 +120,20 @@ export const getUserWorkshopRegistrationsByEvent = async (req, res) => {
   }
 };
 
-// =======================
-// Get All Valid Workshop Registrations for an Event (Event Admin)
-// =======================
+/* 
+========================================================
+  3️ Get all valid workshop registrations for an event (Event Admin)
+========================================================
+  @route   GET /api/workshops/event-admin/events/:eventId/workshop-registrations
+  @access  Protected (eventAdmin)
+========================================================
+*/
 export const getAllWorkshopRegistrationsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
-
-    // Validate event
     const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ message: "Event not found" });
-    }
+    if (!event) return res.status(404).json({ message: "Event not found" });
 
-    // Fetch all valid workshop registrations:
-    // Include:
-    // - Free workshops (always)
-    // - Paid workshops where paymentStatus is Completed
     const registrations = await WorkshopRegistration.find({
       eventId,
       $or: [
@@ -148,7 +146,7 @@ export const getAllWorkshopRegistrationsByEvent = async (req, res) => {
         select: "prefix name email mobile gender",
       })
       .populate({
-        path: "workshopIds",
+        path: "workshops.workshopIds",
         select: "workshopName amount workshopRegistrationType",
       })
       .sort({ createdAt: -1 });

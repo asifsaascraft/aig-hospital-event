@@ -1,4 +1,3 @@
-// routes/workshopRegistrationRoutes.js
 import express from "express";
 import {
   registerForWorkshops,
@@ -10,13 +9,11 @@ import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-/* 
-========================================================
-  Workshop Registration Routes — Accessible only by "user"
-========================================================
-*/
+/* ========================================================
+   Workshop Registration Routes
+======================================================== */
 
-// 1️ Register for Multiple Workshops under a Single Event (eventId in URL)
+// 1️ Register for Multiple Workshops under a Single Event
 router.post(
   "/events/:eventId/workshop-register",
   protect,
@@ -24,7 +21,7 @@ router.post(
   registerForWorkshops
 );
 
-// 2 Get Completed Workshop Registrations for Specific Event
+// 2️ Get Completed Workshop Registrations for Specific Event
 router.get(
   "/my-registrations/event/:eventId",
   protect,
@@ -42,7 +39,7 @@ router.get(
 
 // 4️ Update Suspension Status of a Single Workshop (Event Admin)
 router.patch(
-  "/workshop-registrations/event-admin/:registrationId/suspend/:subId",
+  "/event-admin/:registrationId/suspend/:subId",
   protect,
   authorizeRoles("eventAdmin"),
   updateWorkshopSuspension
