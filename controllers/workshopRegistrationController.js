@@ -65,7 +65,7 @@ export const registerForWorkshops = async (req, res) => {
     const registration = await WorkshopRegistration.create({
       eventId,
       userId,
-      workshopIds,
+      workshops: workshopIds.map((id) => ({ workshopIds: id, isSuspended: false })),
       registrationType,
       totalAmount,
       paymentStatus: registrationType === "Free" ? "Completed" : "Pending",
@@ -102,6 +102,7 @@ export const getUserWorkshopRegistrationsByEvent = async (req, res) => {
       userId,
       eventId,
       paymentStatus: "Completed",
+      isSuspended: false
     })
       .populate("eventId")
       .populate("workshopIds")
@@ -165,5 +166,46 @@ export const getAllWorkshopRegistrationsByEvent = async (req, res) => {
   }
 };
 
+/* 
+========================================================
+  4️ Update Suspension Status of a Single Workshop (Event Admin)
+========================================================
+  @route   PATCH /api/workshops/event-admin/:registrationId/suspend/:subId
+  @access  Protected (eventAdmin)
+========================================================
+*/
+export const updateWorkshopSuspension = async (req, res) => {
+  try {
+    const { registrationId, subId } = req.params;
+    const { isSuspended } = req.body;
 
+    if (typeof isSuspended !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid value for isSuspended. Must be true or false.",
+      });
+    }
 
+    const registration = await WorkshopRegistration.findById(registrationId);
+    if (!registration) {
+      return res.status(404).json({ success: false, message: "Workshop registration not found" });
+    }
+
+    const workshopSub = registration.workshops.id(subId);
+    if (!workshopSub) {
+      return res.status(404).json({ success: false, message: "Workshop entry not found" });
+    }
+
+    workshopSub.isSuspended = isSuspended;
+    await registration.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Workshop entry ${isSuspended ? "suspended" : "unsuspended"} successfully`,
+      data: workshopSub,
+    });
+  } catch (error) {
+    console.error("Update workshop suspension error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};

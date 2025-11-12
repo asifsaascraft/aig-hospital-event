@@ -12,12 +12,21 @@ const WorkshopRegistrationSchema = new mongoose.Schema(
       ref: "Event",
       required: true,
     },
-    workshopIds: [
+    workshops: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Workshop",
-        required: true,
-      },
+        workshopIds:
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Workshop",
+          required: true,
+        },
+        isSuspended: 
+        {
+          type: Boolean,
+          required: true,
+          default: false,
+        },
+      }
     ],
     registrationType: {
       type: String,
