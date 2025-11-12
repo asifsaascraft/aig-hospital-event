@@ -1,6 +1,7 @@
 import Workshop from "../models/Workshop.js";
 import Event from "../models/Event.js";
 import WorkshopRegistration from "../models/WorkshopRegistration.js";
+import sendEmailWithTemplate from "../utils/sendEmail.js";
 
 // =======================
 // Register user for workshops (User)
@@ -70,8 +71,43 @@ export const registerForWorkshops = async (req, res) => {
       totalAmount,
       paymentStatus: registrationType === "Free" ? "Completed" : "Pending",
     });
+    
+    // -----------------------------
+    // Send confirmation email (ZeptoMail template)
+    // -----------------------------
+    try {
+      // Build workshopListHTML for the template (simple <ul> markup).
+      // Adjust markup if your template expects different structure.
+      const workshopListHTML = `<ul>
+        ${workshops
+          .map(
+            (w) =>
+              `<li><strong>${w.workshopName}</strong> — ${w.startDate} ${w.startTime} to ${w.endTime} (${w.hallName})${w.amount ? ` — ₹${w.amount}` : ""}</li>`
+          )
+          .join("")}
+      </ul>`;
 
-    // Future: payment handling for Paid workshops can be added here
+      // Prepare merge variables for your template
+      const mergeInfo = {
+        eventName: event.eventName || "",
+        name: req.user.name || req.user.email || "Participant",
+        workshopListHTML,
+        registrationNumber: registration._id.toString(), 
+        startDate: event.startDate || "",
+        endDate: event.endDate || "",
+        
+      };
+
+      await sendEmailWithTemplate({
+        to: req.user.email,
+        name: req.user.name || "",
+        templateKey: "2518b.554b0da719bc314.k1.d03e4850-ba2e-11f0-87d4-ae9c7e0b6a9f.19a53799155",
+        mergeInfo,
+      });
+    } catch (emailError) {
+      // don't fail the registration if email fails — just log it for debugging
+      console.error("Error sending workshop confirmation email:", emailError);
+    }
 
     res.status(201).json({
       success: true,
