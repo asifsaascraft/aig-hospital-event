@@ -154,11 +154,18 @@ export const getUserWorkshopRegistrationsByEvent = async (req, res) => {
       userId,
       eventId,
       paymentStatus: "Completed",
-      "workshops.isSuspended": false,
     })
       .populate("eventId")
       .populate("workshops.workshopIds")
       .sort({ createdAt: -1 });
+
+    // Filter out suspended workshops in each registration
+    const filteredRegistrations = registrations
+      .map((reg) => ({
+        ...reg.toObject(),
+        workshops: reg.workshops.filter((ws) => ws.isSuspended === false),
+      }))
+      .filter((reg) => reg.workshops.length > 0); // remove entries with all suspended
 
     res.status(200).json({
       success: true,
@@ -198,7 +205,7 @@ export const getAllWorkshopRegistrationsByEvent = async (req, res) => {
       })
       .populate({
         path: "workshops.workshopIds",
-        select: "workshopName amount workshopRegistrationType",
+        select: "workshopName amount workshopRegistrationType workshopCategory hallName",
       })
       .sort({ createdAt: -1 });
 

@@ -606,7 +606,7 @@ export const verifyWorkshopPayment = async (req, res) => {
     const registration = await WorkshopRegistration.findById(payment.workshopRegistrationId)
       .populate([
         { path: "eventId", select: "eventName startDate endDate" },
-        { path: "workshops.workshopIds", select: "workshopName" },
+        { path: "workshops.workshopIds", select: "workshopName hallName startDate startTime endDate endTime workshopRegistrationType workshopCategory" },
       ]);
 
     if (!registration)
