@@ -1,7 +1,7 @@
 import Workshop from "../models/Workshop.js";
 import Event from "../models/Event.js";
 import WorkshopRegistration from "../models/WorkshopRegistration.js";
-
+import sendEmailWithTemplate from "../utils/sendEmail.js";
 /* 
 ========================================================
   1️ Register user for workshops (User)
@@ -12,6 +12,7 @@ import WorkshopRegistration from "../models/WorkshopRegistration.js";
 */
 export const registerForWorkshops = async (req, res) => {
   try {
+    const user = req.user; // to access name and email for sending email
     const userId = req.user._id;
     const { eventId } = req.params;
     const { workshopIds } = req.body; // array of workshop IDs
@@ -71,6 +72,56 @@ export const registerForWorkshops = async (req, res) => {
       totalAmount,
       paymentStatus: registrationType === "Free" ? "Completed" : "Pending",
     });
+
+    /* ============================================================
+        Send Email Notification (Only for Free Workshop)
+       - send structured array `workshopList` 
+       - set `ifMultiple` to "s" or "" so template prints Workshop vs Workshops
+    ============================================================ */
+    if (registrationType === "Free") {
+      try {
+        // Build structured workshop list for template
+        const workshopList = workshops.map((ws) => ({
+          workshopName: ws.workshopName || "",
+          hallName: ws.hallName || "",
+          startDate: ws.startDate || "",
+          startTime: ws.startTime || "",
+          endDate: ws.endDate || "",
+          endTime: ws.endTime || "",
+        }));
+
+        const displayName =
+          user.name ||
+          [user.fname, user.mname, user.lname].filter(Boolean).join(" ").trim() ||
+          "Participant";
+
+        const registrationDate = new Date().toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+
+        const ifMultiple = workshopList.length > 1 ? "s" : "";
+
+        const mergeInfo = {
+          name: displayName,
+          eventName: event.eventName || "",
+          registrationDate,
+          workshopList, // array expected by your ZeptoMail template
+          ifMultiple, // "s" or ""
+        };
+
+        await sendEmailWithTemplate({
+          to: user.email,
+          name: displayName,
+          templateKey: "2518b.554b0da719bc314.k1.d03e4850-ba2e-11f0-87d4-ae9c7e0b6a9f.19a53799155",
+          mergeInfo,
+        });
+      } catch (emailErr) {
+        // Log email error but do not block registration success
+        console.error("Error sending Free Workshop email:", emailErr);
+      }
+    }
 
     res.status(201).json({
       success: true,

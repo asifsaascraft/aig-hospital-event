@@ -622,7 +622,48 @@ export const verifyWorkshopPayment = async (req, res) => {
     payment.status = "paid";
     await payment.save();
 
-    // 6️ Response
+    // 6 Send ZeptoMail Email (Paid Workshop Confirmation)
+    try {
+      const event = registration.eventId;
+      const workshops = registration.workshops.map((item) => item.workshopIds);
+      const workshopList = workshops.map((ws) => ({
+        workshopName: ws.workshopName || "",
+        hallName: ws.hallName || "",
+        startDate: ws.startDate || "",
+        startTime: ws.startTime || "",
+        endDate: ws.endDate || "",
+        endTime: ws.endTime || "",
+      }));
+
+      const ifMultiple = workshopList.length > 1 ? "s" : "";
+      const displayName = req.user.name || "Participant";
+      const paymentDate = new Date().toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+
+      await sendEmailWithTemplate({
+        to: req.user.email,
+        name: displayName,
+        templateKey: "2518b.554b0da719bc314.k1.efde7181-ba2e-11f0-87d4-ae9c7e0b6a9f.19a537a6095",
+        mergeInfo: {
+          name: displayName,
+          eventName: event.eventName || "",
+          workshopList,
+          ifMultiple,
+          paymentAmount: payment.amount || 0,
+          razorpayPaymentId: payment.razorpayPaymentId || "",
+          razorpayOrderId: payment.razorpayOrderId || "",
+          paymentStatus: payment.status || "paid",
+          paymentDate,
+        },
+      });
+    } catch (emailErr) {
+      console.error("Error sending Paid Workshop email:", emailErr);
+    }
+    
+    // 7 Response
     res.status(200).json({
       success: true,
       message: "Workshop payment verified successfully",
