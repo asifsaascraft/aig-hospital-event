@@ -39,7 +39,7 @@ router.get(
 
 // 4️ Update Suspension Status of a Single Workshop (Event Admin)
 router.patch(
-  "/event-admin/:registrationId/suspend/:subId",
+  "/workshop-registrations/event-admin/:registrationId/suspend/:subId",
   protect,
   authorizeRoles("eventAdmin"),
   updateWorkshopSuspension
