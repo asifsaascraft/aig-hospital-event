@@ -170,7 +170,7 @@ export const getUserWorkshopRegistrationsByEvent = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Completed workshop registrations fetched successfully",
-      data: registrations,
+      data: filteredRegistrations,
     });
   } catch (error) {
     console.error("Get user workshop registrations by event error:", error);
