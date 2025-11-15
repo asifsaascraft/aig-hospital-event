@@ -359,13 +359,12 @@ export const getAllPaidBanquetsByEvent_Admin = async (req, res) => {
   @access  Protected (eventAdmin)
 ========================================================
 */
-// New Code by Adil
-
 export const updateBanquetSuspension = async (req, res) => {
   try {
     const { banquetRegistrationId, banquetSubId } = req.params;
     const { isSuspended } = req.body;
 
+    // Validate input
     if (typeof isSuspended !== "boolean") {
       return res.status(400).json({
         success: false,
@@ -373,6 +372,7 @@ export const updateBanquetSuspension = async (req, res) => {
       });
     }
 
+    // Find the main banquet registration document
     const banquetDoc = await BanquetRegistration.findById(banquetRegistrationId);
     if (!banquetDoc) {
       return res.status(404).json({
@@ -393,6 +393,7 @@ export const updateBanquetSuspension = async (req, res) => {
       });
     }
 
+    // Update suspension status
     subBanquet.isSuspended = isSuspended;
     await banquetDoc.save();
 
@@ -401,58 +402,8 @@ export const updateBanquetSuspension = async (req, res) => {
       message: `Banquet entry ${isSuspended ? "suspended" : "unsuspended"} successfully`,
       data: subBanquet,
     });
-
   } catch (error) {
     console.error("Update banquet suspension error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
-
-
-
-// Old Code
-// export const updateBanquetSuspension = async (req, res) => {
-//   try {
-//     const { banquetRegistrationId, banquetSubId } = req.params;
-//     const { isSuspended } = req.body;
-
-//     // Validate input
-//     if (typeof isSuspended !== "boolean") {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Invalid value for isSuspended. Must be true or false.",
-//       });
-//     }
-
-//     // Find the main banquet registration document
-//     const banquetDoc = await BanquetRegistration.findById(banquetRegistrationId);
-//     if (!banquetDoc) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Banquet registration record not found",
-//       });
-//     }
-
-//     // Find the specific banquet subdocument by its _id
-//     const subBanquet = banquetDoc.banquets.id(banquetSubId);
-//     if (!subBanquet) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Banquet sub-entry not found",
-//       });
-//     }
-
-//     // Update suspension status
-//     subBanquet.isSuspended = isSuspended;
-//     await banquetDoc.save();
-
-//     res.status(200).json({
-//       success: true,
-//       message: `Banquet entry ${isSuspended ? "suspended" : "unsuspended"} successfully`,
-//       data: subBanquet,
-//     });
-//   } catch (error) {
-//     console.error("Update banquet suspension error:", error);
-//     res.status(500).json({ message: "Server Error" });
-//   }
-// };
