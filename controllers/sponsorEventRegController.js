@@ -45,7 +45,7 @@ export const checkEmailExists = async (req, res) => {
     }
 
     return res.status(200).json({
-      success: true,
+      success: false,
       message: "Email not registered for this event",
     });
   } catch (error) {

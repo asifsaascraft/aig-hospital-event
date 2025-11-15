@@ -86,6 +86,11 @@ const EventRegistrationSchema = new mongoose.Schema(
       required: [true, "Address is required"],
       trim: true,
     },
+    pincode: {
+      type: String,
+      required: [true, "Pin Code is required"],
+      trim: true,
+    },
     isPaid: {
       type: Boolean,
       default: false,

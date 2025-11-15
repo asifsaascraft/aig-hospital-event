@@ -19,7 +19,7 @@ export const getPrefilledRegistrationForm = async (req, res) => {
     if (!event) return res.status(404).json({ message: "Event not found" });
 
     const user = await User.findById(userId).select(
-      "name prefix gender email mobile designation affiliation medicalCouncilState medicalCouncilRegistration mealPreference country city state pincode"
+      "name prefix gender email mobile designation affiliation medicalCouncilState medicalCouncilRegistration mealPreference country city state address pincode"
     );
     if (!user) return res.status(404).json({ message: "User not found" });
 
@@ -38,6 +38,7 @@ export const getPrefilledRegistrationForm = async (req, res) => {
       country: user.country || "",
       state: user.state || "",
       city: user.city || "",
+      address: user.address || "",
       pincode: user.pincode || "",
     };
 
@@ -76,6 +77,7 @@ export const registerForEvent = async (req, res) => {
       city,
       state,
       address,
+      pincode,
     } = req.body;
 
     const event = await Event.findById(eventId);
@@ -125,6 +127,7 @@ export const registerForEvent = async (req, res) => {
       city,
       state,
       address,
+      pincode,
       isPaid: false,
       regNumGenerated: false,
       isSuspended: false,
