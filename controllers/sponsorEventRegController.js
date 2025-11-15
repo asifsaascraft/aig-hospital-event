@@ -1,13 +1,5 @@
 import EventRegistration from "../models/EventRegistration.js";
-import Event from "../models/Event.js";
-import Sponsor from "../models/Sponsor.js";
 
-
-
-// =======================
-// Validate User Already Exist or not
-// =======================
-import EventRegistration from "../models/EventRegistration.js";
 
 export const checkEmailExists = async (req, res) => {
   try {

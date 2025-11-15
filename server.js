@@ -42,6 +42,8 @@ import exhibitorBoothRoutes from "./routes/exhibitorBoothRoutes.js";
 import exhibitorCategoryRoutes from "./routes/exhibitorCategoryRoutes.js";
 import eventRegistrationRoutes from "./routes/eventRegistrationRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import sponsorEventRegRoutes from "./routes/sponsorEventRegRoutes.js";
+
 await connectDB();
 
 const app = express();
@@ -116,6 +118,8 @@ app.use("/api", exhibitorBoothRoutes);
 app.use("/api", exhibitorCategoryRoutes);
 app.use("/api", eventRegistrationRoutes);
 app.use("/api", paymentRoutes);
+app.use("/api", sponsorEventRegRoutes);
+
 // =======================
 // Start server
 // =======================
