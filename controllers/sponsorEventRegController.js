@@ -339,3 +339,72 @@ export const getSponsorQuotaSummary = async (req, res) => {
     });
   }
 };
+
+// ======================================
+// 5. UPDATE SPONSOR EVENT REGISTRATION
+// ======================================
+export const updateSponsorEventRegistration = async (req, res) => {
+  try {
+    const sponsorId = req.sponsor._id;
+    const { eventId, registrationId } = req.params;
+
+    // Step 1: Validate event
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found"
+      });
+    }
+
+    // Step 2: Check registration belongs to this sponsor
+    const registration = await EventRegistration.findOne({
+      _id: registrationId,
+      eventId,
+      sponsorId,
+    });
+
+    if (!registration) {
+      return res.status(404).json({
+        success: false,
+        message: "Registration not found or not authorized"
+      });
+    }
+
+    // Step 3: Remove non-editable fields from request
+    const notAllowed = [
+      "email",
+      "regNum",
+      "regNumGenerated",
+      "isPaid",
+      "isSuspended",
+    ];
+
+    notAllowed.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        delete req.body[field];
+      }
+    });
+
+    // Step 4: Update registration
+    const updatedRegistration = await EventRegistration.findByIdAndUpdate(
+      registrationId,
+      req.body,
+      { new: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Registration updated successfully",
+      data: updatedRegistration
+    });
+
+  } catch (error) {
+    console.error("Update registration error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while updating registration"
+    });
+  }
+};
+

@@ -4,6 +4,7 @@ import {
   sponsorRegisterForEvent,
   getAllRegistrationsByEvent,
   getSponsorQuotaSummary,
+  updateSponsorEventRegistration,
 
  } from "../controllers/sponsorEventRegController.js";
 import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
@@ -64,6 +65,20 @@ router.get(
   "/sponsor/event/:eventId/quota-summary",
   protectSponsor,
   getSponsorQuotaSummary
+);
+
+/*
+==============================================================
+  5. UPDATE SPONSOR EVENT REGISTRATION (Protected)
+==============================================================
+  @route   PUT /api/sponsor/event/:eventId/registration/:registrationId
+  @access  Protected (Sponsor only)
+==============================================================
+*/
+router.put(
+  "/sponsor/event/:eventId/registration/:registrationId",
+  protectSponsor,
+  updateSponsorEventRegistration
 );
 
 
