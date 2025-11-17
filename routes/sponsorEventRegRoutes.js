@@ -1,5 +1,11 @@
 import express from "express";
-import { checkEmailExists } from "../controllers/sponsorEventRegController.js";
+import { 
+  checkEmailExists,
+  sponsorRegisterForEvent,
+  getAllRegistrationsByEvent,
+  getSponsorQuotaSummary,
+
+ } from "../controllers/sponsorEventRegController.js";
 import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
 
 const router = express.Router();
@@ -20,22 +26,45 @@ router.post(
 
 /*
 ==============================================================
-  2. (Future) ADD SPONSOR EVENT REGISTRATION (Protected)
+  2. ADD SPONSOR EVENT REGISTRATION (Protected)
 ==============================================================
   @route   POST /api/sponsor/event/:eventId/register
   @access  Protected (Sponsor only)
 ==============================================================
 */
-// router.post("/event/:eventId/register", protectSponsor, registerSponsorForEvent);
+router.post(
+  "/sponsor/event/:eventId/register",
+  protectSponsor,
+  sponsorRegisterForEvent
+);
 
 /*
 ==============================================================
-  3. (Future) GET SPONSOR'S EVENT REGISTRATIONS (Protected)
+  3. GET ALL REGISTRATIONS BY EVENT (Protected)
 ==============================================================
-  @route   GET /api/sponsor/event/my-registrations
+  @route   GET /api/sponsor/event/:eventId/registrations
   @access  Protected (Sponsor only)
 ==============================================================
 */
-// router.get("/event/my-registrations", protectSponsor, getMyEventRegistrations);
+router.get(
+  "/sponsor/event/:eventId/registrations",
+  protectSponsor,
+  getAllRegistrationsByEvent
+);
+
+/*
+==============================================================
+  4. GET SPONSOR QUOTA SUMMARY (Protected)
+==============================================================
+  @route   GET /api/sponsor/event/:eventId/quota-summary
+  @access  Protected (Sponsor only)
+==============================================================
+*/
+router.get(
+  "/sponsor/event/:eventId/quota-summary",
+  protectSponsor,
+  getSponsorQuotaSummary
+);
+
 
 export default router;

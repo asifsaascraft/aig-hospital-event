@@ -6,7 +6,10 @@ const EventRegistrationSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+    },
+    sponsorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Sponsor",
     },
     eventId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -16,7 +19,6 @@ const EventRegistrationSchema = new mongoose.Schema(
     registrationSlabId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "RegistrationSlab",
-      required: true,
     },
     prefix: {
       type: String,
