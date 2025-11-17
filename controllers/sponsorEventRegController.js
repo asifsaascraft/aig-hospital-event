@@ -262,7 +262,12 @@ export const getAllRegistrationsByEvent = async (req, res) => {
     const registrations = await EventRegistration.find({
       sponsorId,
       eventId,
-    }).sort({ createdAt: -1 });
+    })
+    .populate({
+        path: "eventId",
+        select: "eventName startDate endDate",
+      })
+    .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
