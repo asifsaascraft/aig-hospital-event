@@ -381,10 +381,17 @@ export const updateBanquetSuspension = async (req, res) => {
       });
     }
 
-    // FIX ✔ robust matching
+    // 1. Try normal banquet id match
     let subBanquet =
       banquetDoc.banquets.id(banquetSubId) ||
       banquetDoc.banquets.find((b) => b._id.toString() === banquetSubId);
+
+    // 2. If accompany entry, match by accompanySubId
+    if (!subBanquet) {
+      subBanquet = banquetDoc.banquets.find(
+        (b) => b.accompanySubId?.toString() === banquetSubId
+      );
+    }
 
     if (!subBanquet) {
       return res.status(404).json({
