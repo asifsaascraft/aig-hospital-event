@@ -34,6 +34,7 @@ import discountCodeRoutes from "./routes/discountCodeRoutes.js";
 import registrationSettingRoutes from "./routes/registrationSettingRoutes.js";
 import abstractCategoryRoutes from "./routes/abstractCategoryRoutes.js";
 import abstractTypeRoutes from "./routes/abstractTypeRoutes.js";
+import abstractSettingRoutes from "./routes/abstractSettingRoutes.js";
 import sponsorHallRoutes from "./routes/sponsorHallRoutes.js";
 import sponsorBoothRoutes from "./routes/sponsorBoothRoutes.js";
 import sponsorCategoryRoutes from "./routes/sponsorCategoryRoutes.js";
@@ -58,6 +59,7 @@ const allowedOrigins = [
   process.env.ADMIN_FRONTEND_URL,
   process.env.EVENT_ADMIN_FRONTEND_URL,
   process.env.USER_FRONTEND_URL,
+  process.env.SPONSOR_FRONTEND_URL,
 ];
 
 const corsOptions = {
@@ -112,6 +114,7 @@ app.use("/api", discountCodeRoutes);
 app.use("/api", registrationSettingRoutes);
 app.use("/api", abstractCategoryRoutes);
 app.use("/api", abstractTypeRoutes);
+app.use("/api", abstractSettingRoutes);
 app.use("/api", sponsorHallRoutes);
 app.use("/api", sponsorBoothRoutes);
 app.use("/api", sponsorCategoryRoutes);
