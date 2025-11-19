@@ -16,6 +16,18 @@ const SponsorRegistrationQuotaSchema = new mongoose.Schema(
       type: Number,
       required: [true, "Quota is required"],
     },
+    startDate: {
+      type: Date,
+    },
+    endDate: {
+      type: Date,
+      validate: {
+        validator: function (value) {
+          return !this.startDate || value >= this.startDate;
+        },
+        message: "End date must be greater than or equal to start date",
+      },
+    },
     status: {
       type: String,
       enum: ["Active", "Inactive"], //  restricts to these values

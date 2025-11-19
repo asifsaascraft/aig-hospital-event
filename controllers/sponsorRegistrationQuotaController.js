@@ -8,7 +8,7 @@ import Sponsor from "../models/Sponsor.js";
 export const createSponsorRegistrationQuota = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { sponsorId, quota, status } = req.body;
+    const { sponsorId, quota, status, startDate, endDate } = req.body;
 
     // Validate event
     const event = await Event.findById(eventId);
@@ -36,6 +36,8 @@ export const createSponsorRegistrationQuota = async (req, res) => {
       eventId,
       sponsorId,
       quota,
+      startDate,
+      endDate,
       status,
     });
 
@@ -78,7 +80,7 @@ export const getSponsorRegistrationQuotasByEvent = async (req, res) => {
 export const updateSponsorRegistrationQuota = async (req, res) => {
   try {
     const { id } = req.params;
-    const { sponsorId, quota, status } = req.body;
+    const { sponsorId, quota, status, startDate, endDat } = req.body;
 
     const quotaRecord = await SponsorRegistrationQuota.findById(id);
     if (!quotaRecord) {
@@ -100,6 +102,8 @@ export const updateSponsorRegistrationQuota = async (req, res) => {
     }
 
     if (quota !== undefined) quotaRecord.quota = quota;
+    if (startDate !== undefined) quotaRecord.startDate = startDate;
+    if (endDate !== undefined) quotaRecord.endDate = endDate;
     if (status) quotaRecord.status = status;
 
     await quotaRecord.save();

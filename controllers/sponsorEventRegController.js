@@ -332,6 +332,8 @@ export const getSponsorQuotaSummary = async (req, res) => {
         totalQuota: quotaRecord.quota,
         usedRegistrations,
         remainingQuota: remaining,
+        startDate: quotaRecord.startDate,
+        endDate: quotaRecord.endDate,
         status: quotaRecord.status,
       },
     });
