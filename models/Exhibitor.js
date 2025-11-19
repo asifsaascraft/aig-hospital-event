@@ -1,20 +1,15 @@
 import mongoose from "mongoose";
 
-const SponsorSchema = new mongoose.Schema(
+const ExhibitorSchema = new mongoose.Schema(
   {
     eventId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Event",
       required: true,
     },
-    sponsorName: {
+    exhibitorName: {
       type: String,
-      required: [true, "Sponsor name is required"],
-      trim: true,
-    },
-    sponsorImage: {
-      type: String, // store file path or URL
-      required: [true, "Sponsor image is required"],
+      required: [true, "Exhibitor name is required"],
       trim: true,
     },
     contactPersonName: {
@@ -53,12 +48,12 @@ const SponsorSchema = new mongoose.Schema(
       required: [true, "Company Address is required"],
       trim: true,
     },
-    sponsorBooth: {
+    exhibitorBooth: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "SponsorBooth",
-      required: [true, "Sponsor booth is required"],
+      ref: "ExhibitorBooth",
+      required: [true, "Exhibitor booth is required"],
     },
-    sponsorCategory: {
+    exhibitorCategory: {
       type: String,
       required: [true, "Category is required"],
     },
@@ -78,4 +73,4 @@ const SponsorSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.models.Sponsor || mongoose.model("Sponsor", SponsorSchema);
+export default mongoose.models.Exhibitor || mongoose.model("Exhibitor", ExhibitorSchema);

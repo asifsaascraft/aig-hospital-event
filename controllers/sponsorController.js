@@ -10,7 +10,10 @@ import { generateStrongPassword } from "../utils/generatePassword.js";
 export const getSponsorsByEvent = async (req, res) => {
     try {
         const { eventId } = req.params;
-        const sponsors = await Sponsor.find({ eventId }).sort({ createdAt: -1 }).populate("eventId sponsorBooth");
+        const sponsors = await Sponsor.find({ eventId })
+            .sort({ createdAt: -1 })
+            .populate("eventId sponsorBooth");
+
         res.json({ success: true, data: sponsors });
     } catch (error) {
         res.status(500).json({

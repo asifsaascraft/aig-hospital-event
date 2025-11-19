@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const announcementSchema = new mongoose.Schema(
+const AnnouncementSchema = new mongoose.Schema(
   {
     heading: {
       type: String,
@@ -21,6 +21,6 @@ const announcementSchema = new mongoose.Schema(
   { timestamps: true } // auto adds createdAt & updatedAt
 );
 
-const Announcement = mongoose.models.Announcement || mongoose.model("Announcement", announcementSchema);
+const Announcement = mongoose.models.Announcement || mongoose.model("Announcement", AnnouncementSchema);
 
 export default Announcement;
