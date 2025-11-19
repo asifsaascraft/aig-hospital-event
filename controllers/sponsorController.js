@@ -1,26 +1,8 @@
 import Sponsor from "../models/Sponsor.js";
 import bcrypt from "bcryptjs";
+import { generateStrongPassword } from "../utils/generatePassword.js";
 
-//  Generate strong random password (8–14 chars)
-function generateStrongPassword() {
-    const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    const lower = "abcdefghijklmnopqrstuvwxyz";
-    const digits = "0123456789";
-    const symbols = "!@#$%^&*";
-    const all = upper + lower + digits + symbols;
-    const length = Math.floor(Math.random() * (14 - 8 + 1)) + 8;
 
-    let password = "";
-    password += upper[Math.floor(Math.random() * upper.length)];
-    password += digits[Math.floor(Math.random() * digits.length)];
-    password += symbols[Math.floor(Math.random() * symbols.length)];
-
-    for (let i = password.length; i < length; i++) {
-        password += all[Math.floor(Math.random() * all.length)];
-    }
-
-    return password.split("").sort(() => Math.random() - 0.5).join("");
-}
 
 // =======================
 // Get all sponsors by Event ID (Public/User)
