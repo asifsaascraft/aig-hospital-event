@@ -61,7 +61,13 @@ export const getTravelByEvent = async (req, res) => {
     const { eventId } = req.params;
 
     const travels = await Travel.find({ eventId })
-      .populate("eventRegistrationId")
+      .populate({
+        path: "eventRegistrationId",
+        populate: {
+          path: "registrationSlabId",
+          select: "slabName"
+        }
+      })
       .populate("travelAgentId")
       .sort({ createdAt: -1 });
 
