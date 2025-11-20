@@ -136,4 +136,5 @@ UserSchema.methods.getJwtToken = function () {
   );
 };
 
-export default mongoose.models.User || mongoose.model("User", UserSchema);
+export default mongoose.models.User ||
+  mongoose.model("User", UserSchema);

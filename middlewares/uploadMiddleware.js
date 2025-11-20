@@ -16,7 +16,7 @@ export const createUploader = (folder, fileFilter = null) => {
 
     //  Automatically detect file type (PDF, image, etc.)
     contentType: multerS3.AUTO_CONTENT_TYPE,
-    
+
     //  Unique file name pattern
     key: (req, file, cb) => {
       const fileName = `${folder}/${Date.now().toString()}-${file.originalname}`;

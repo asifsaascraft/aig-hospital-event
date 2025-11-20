@@ -38,7 +38,6 @@ const DepartmentSchema = new mongoose.Schema(
 );
 
 // Avoid model overwrite during hot-reload
-const Department =
-  mongoose.models.Department || mongoose.model("Department", DepartmentSchema);
+export default mongoose.models.Department ||
+  mongoose.model("Department", DepartmentSchema);
 
-export default Department;

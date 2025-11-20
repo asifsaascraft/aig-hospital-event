@@ -26,7 +26,6 @@ const RoomCategorySchema = new mongoose.Schema(
 );
 
 // Avoid model overwrite during hot-reload
-const RoomCategory =
-  mongoose.models.RoomCategory || mongoose.model("RoomCategory", RoomCategorySchema);
+export default mongoose.models.RoomCategory ||
+  mongoose.model("RoomCategory", RoomCategorySchema);
 
-export default RoomCategory;

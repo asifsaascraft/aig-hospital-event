@@ -61,6 +61,7 @@ const HotelSchema = new mongoose.Schema(
 );
 
 // Avoid model overwrite during hot-reload
-const Hotel = mongoose.models.Hotel || mongoose.model("Hotel", HotelSchema);
+export default mongoose.models.Hotel ||
+  mongoose.model("Hotel", HotelSchema);
 
-export default Hotel;
+

@@ -36,7 +36,7 @@ const ExhibitorSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
     },
-    plainPassword: {         
+    plainPassword: {
       type: String,
     },
     gstNumber: {
@@ -73,4 +73,5 @@ const ExhibitorSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.models.Exhibitor || mongoose.model("Exhibitor", ExhibitorSchema);
+export default mongoose.models.Exhibitor ||
+  mongoose.model("Exhibitor", ExhibitorSchema);

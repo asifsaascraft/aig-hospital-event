@@ -117,5 +117,5 @@ const EventRegistrationSchema = new mongoose.Schema(
 
 
 // Avoid model overwrite during hot-reload
-export default mongoose.models.EventRegistration || 
-    mongoose.model("EventRegistration", EventRegistrationSchema);
+export default mongoose.models.EventRegistration ||
+  mongoose.model("EventRegistration", EventRegistrationSchema);

@@ -61,6 +61,7 @@ const VenueSchema = new mongoose.Schema(
 );
 
 // Avoid model overwrite during hot reload
-const Venue = mongoose.models.Venue || mongoose.model("Venue", VenueSchema);
+export default mongoose.models.Venue ||
+  mongoose.model("Venue", VenueSchema);
 
-export default Venue;
+

@@ -125,6 +125,6 @@ EventSchema.virtual("dynamicStatus").get(function () {
 });
 
 // Avoid model overwrite during hot-reload
-const Event = mongoose.models.Event || mongoose.model("Event", EventSchema);
+export default mongoose.models.Event ||
+  mongoose.model("Event", EventSchema);
 
-export default Event;

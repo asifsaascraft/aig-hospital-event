@@ -22,7 +22,7 @@ const ReviewerSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
     },
-    plainPassword: {         
+    plainPassword: {
       type: String,
     },
     abstractCategory: {
@@ -45,4 +45,5 @@ const ReviewerSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.models.Reviewer || mongoose.model("Reviewer", ReviewerSchema);
+export default mongoose.models.Reviewer ||
+  mongoose.model("Reviewer", ReviewerSchema);

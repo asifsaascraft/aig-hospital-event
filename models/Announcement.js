@@ -21,6 +21,6 @@ const AnnouncementSchema = new mongoose.Schema(
   { timestamps: true } // auto adds createdAt & updatedAt
 );
 
-const Announcement = mongoose.models.Announcement || mongoose.model("Announcement", AnnouncementSchema);
+export default mongoose.models.Announcement ||
+  mongoose.model("Announcement", AnnouncementSchema);
 
-export default Announcement;

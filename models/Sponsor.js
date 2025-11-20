@@ -41,7 +41,7 @@ const SponsorSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
     },
-    plainPassword: {         
+    plainPassword: {
       type: String,
     },
     gstNumber: {
@@ -78,4 +78,5 @@ const SponsorSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.models.Sponsor || mongoose.model("Sponsor", SponsorSchema);
+export default mongoose.models.Sponsor ||
+  mongoose.model("Sponsor", SponsorSchema);

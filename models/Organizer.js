@@ -39,7 +39,8 @@ const OrganizerSchema = new mongoose.Schema(
 );
 
 // Avoid model overwrite during hot-reload
-const Organizer =
-  mongoose.models.Organizer || mongoose.model("Organizer", OrganizerSchema);
 
-export default Organizer;
+export default mongoose.models.Organizer ||
+  mongoose.model("Organizer", OrganizerSchema);
+
+

@@ -44,7 +44,7 @@ const SupplierSchema = new mongoose.Schema(
 );
 
 // Avoid model overwrite during hot-reload
-const Supplier =
-  mongoose.models.Supplier || mongoose.model("Supplier", SupplierSchema);
+export default mongoose.models.Supplier ||
+  mongoose.model("Supplier", SupplierSchema);
 
-export default Supplier;
+

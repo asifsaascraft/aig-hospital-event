@@ -20,7 +20,7 @@ const WorkshopRegistrationSchema = new mongoose.Schema(
           ref: "Workshop",
           required: true,
         },
-        isSuspended: 
+        isSuspended:
         {
           type: Boolean,
           required: true,
