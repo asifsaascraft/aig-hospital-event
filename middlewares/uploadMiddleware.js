@@ -46,8 +46,8 @@ export const uploadHotelImage = createUploader("hotels");
 export const uploadProfileImage = createUploader("profile-pictures");
 export const uploadSponsorImage = createUploader("sponsors");
 
-//  Booth PDF uploader with inline viewing enabled
-export const uploadBoothPDF = createUploader("sponsor-booths", pdfFileFilter);
+//  Booth PDF (Sponsor Booth & Exhibitor Booth) uploader with inline viewing enabled
+export const uploadBoothPDF = createUploader("booths", pdfFileFilter);
 
 
 
