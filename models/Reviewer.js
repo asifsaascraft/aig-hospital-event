@@ -26,8 +26,9 @@ const ReviewerSchema = new mongoose.Schema(
       type: String,
     },
     abstractCategory: {
-      type: String,
-      required: [true, "Category is required"],
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AbstractCategory",
+      required: true,
     },
     status: {
       type: String,

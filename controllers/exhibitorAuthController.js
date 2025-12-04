@@ -15,12 +15,20 @@ export const loginExhibitor = async (req, res) => {
 
     const exhibitor = await Exhibitor.findOne({ email });
     if (!exhibitor) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res.status(400).json({ message: "Email does not exist" });
+    }
+
+    // Check status
+    if (exhibitor.status !== "Active") {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Your account is inactive. Please contact event admin." 
+      });
     }
 
     const isMatch = await bcrypt.compare(password, exhibitor.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res.status(400).json({ message: "You Entered Wrong password" });
     }
 
     const { accessToken, refreshToken } = generateTokens(

@@ -15,12 +15,20 @@ export const loginSponsor = async (req, res) => {
 
     const sponsor = await Sponsor.findOne({ email });
     if (!sponsor) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res.status(400).json({ message: "Email does not exist" });
+    }
+
+    // Check status
+    if (sponsor.status !== "Active") {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Your account is inactive. Please contact event admin." 
+      });
     }
 
     const isMatch = await bcrypt.compare(password, sponsor.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res.status(400).json({ message: "You Entered Wrong password" });
     }
 
     const { accessToken, refreshToken } = generateTokens(sponsor._id, "sponsor");

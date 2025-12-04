@@ -1,16 +1,18 @@
 import Reviewer from "../models/Reviewer.js";
+import AbstractCategory from "../models/AbstractCategory.js";
 import bcrypt from "bcryptjs";
 import { generateStrongPassword } from "../utils/generatePassword.js";
 
 // =======================
-// Get all reviewers by Event ID (Public/User)
+// Get all reviewers by Event ID
 // =======================
 export const getReviewersByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
     const reviewers = await Reviewer.find({ eventId })
       .sort({ createdAt: -1 })
-      .populate("eventId");
+      .populate("eventId")
+      .populate("abstractCategory");
 
     res.json({ success: true, data: reviewers });
   } catch (error) {
@@ -23,7 +25,7 @@ export const getReviewersByEvent = async (req, res) => {
 };
 
 // =======================
-// Get active reviewers by Event ID (Public/User)
+// Get ACTIVE reviewers by Event ID
 // =======================
 export const getActiveReviewersByEvent = async (req, res) => {
   try {
@@ -34,7 +36,8 @@ export const getActiveReviewersByEvent = async (req, res) => {
       status: "Active",
     })
       .sort({ createdAt: -1 })
-      .populate("eventId");
+      .populate("eventId")
+      .populate("abstractCategory");
 
     res.json({
       success: true,
@@ -50,27 +53,35 @@ export const getActiveReviewersByEvent = async (req, res) => {
 };
 
 // =======================
-// Create reviewer (eventAdmin only)
+// Create reviewer
 // =======================
 export const createReviewer = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const {
-      reviewerName,
-      email,
-      abstractCategory,
-      status,
-    } = req.body;
+    const { reviewerName, email, abstractCategory, status } = req.body;
 
     if (!eventId || !reviewerName || !email || !abstractCategory) {
       return res.status(400).json({
         success: false,
-        message:
-          "Required fields: eventId, reviewerName, email, abstractCategory",
+        message: "Required: eventId, reviewerName, email, abstractCategory",
       });
     }
 
-    // Check if an active reviewer with this email already exists
+    // Verify Abstract Category Exists & Is Active
+    const categoryExists = await AbstractCategory.findOne({
+      _id: abstractCategory,
+      eventId,
+      status: "Active",
+    });
+
+    if (!categoryExists) {
+      return res.status(400).json({
+        success: false,
+        message: "Selected abstract category not found or Inactive for this event",
+      });
+    }
+
+    // Check if an active reviewer exists with same email
     const existingActiveReviewer = await Reviewer.findOne({
       email,
       status: "Active",
@@ -79,8 +90,7 @@ export const createReviewer = async (req, res) => {
     if (existingActiveReviewer) {
       return res.status(400).json({
         success: false,
-        message:
-          "A reviewer with this email is already Active. Please deactivate the existing reviewer before adding a new one.",
+        message: "Reviewer with this email already Active. Deactivate first.",
       });
     }
 
@@ -114,17 +124,60 @@ export const createReviewer = async (req, res) => {
 };
 
 // =======================
-// Update reviewer (eventAdmin only)
+// Update reviewer
 // =======================
 export const updateReviewer = async (req, res) => {
   try {
     const { id } = req.params;
     const updatedData = { ...req.body };
 
+    // Check if making user Active OR updating email
+    if ((updatedData.status === "Active") || updatedData.email) {
+      const reviewerToBeUpdated = await Reviewer.findById(id);
+
+      if (!reviewerToBeUpdated) {
+        return res.status(404).json({
+          success: false,
+          message: "Reviewer not found",
+        });
+      }
+
+      const newEmail = updatedData.email || reviewerToBeUpdated.email;
+
+      // Check for another active reviewer with same email
+      const existingActiveReviewer = await Reviewer.findOne({
+        _id: { $ne: id }, // Exclude current reviewer
+        email: newEmail,
+        status: "Active",
+      });
+
+      if (existingActiveReviewer) {
+        return res.status(400).json({
+          success: false,
+          message: "Another active reviewer already exists with this email",
+        });
+      }
+    }
+
+    // If updating abstractCategory, validate it
+    if (updatedData.abstractCategory) {
+      const validCategory = await AbstractCategory.findOne({
+        _id: updatedData.abstractCategory,
+        status: "Active",
+      });
+
+      if (!validCategory) {
+        return res.status(400).json({
+          success: false,
+          message: "Selected abstract category does not exist or inactive",
+        });
+      }
+    }
+
     const reviewer = await Reviewer.findByIdAndUpdate(id, updatedData, {
       new: true,
       runValidators: true,
-    });
+    }).populate("abstractCategory");
 
     if (!reviewer) {
       return res.status(404).json({
@@ -134,6 +187,7 @@ export const updateReviewer = async (req, res) => {
     }
 
     res.json({ success: true, data: reviewer });
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -143,13 +197,13 @@ export const updateReviewer = async (req, res) => {
   }
 };
 
+
 // =======================
-// Delete reviewer (eventAdmin only)
+// Delete reviewer
 // =======================
 export const deleteReviewer = async (req, res) => {
   try {
     const { id } = req.params;
-
     const reviewer = await Reviewer.findByIdAndDelete(id);
 
     if (!reviewer) {
