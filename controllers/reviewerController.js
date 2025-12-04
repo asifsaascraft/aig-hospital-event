@@ -67,6 +67,31 @@ export const createReviewer = async (req, res) => {
       });
     }
 
+    // STEP: Get Abstract Setting
+    const abstractSetting = await AbstractSetting.findOne({ eventId });
+    if (!abstractSetting) {
+      return res.status(400).json({
+        success: false,
+        message: "Abstract settings not defined for this event, Please set the abstract setting first",
+      });
+    }
+
+    const limit = abstractSetting.numberOfReviewerPerCategory;
+
+    // Count existing reviewers
+    const activeReviewerCount = await Reviewer.countDocuments({
+      eventId,
+      abstractCategory,
+      status: "Active"
+    });
+
+    if ((status === "Active" || !status) && activeReviewerCount >= limit) {
+      return res.status(400).json({
+        success: false,
+        message: `Maximum limit reached. Only ${limit} reviewers allowed for this category.`,
+      });
+    }
+
     // Verify Abstract Category Exists & Is Active
     const categoryExists = await AbstractCategory.findOne({
       _id: abstractCategory,
@@ -77,7 +102,7 @@ export const createReviewer = async (req, res) => {
     if (!categoryExists) {
       return res.status(400).json({
         success: false,
-        message: "Selected abstract category not found or Inactive for this event",
+        message: "Selected abstract category not found or inactive for this event",
       });
     }
 
@@ -90,11 +115,11 @@ export const createReviewer = async (req, res) => {
     if (existingActiveReviewer) {
       return res.status(400).json({
         success: false,
-        message: "Reviewer with this email already Active. Deactivate first.",
+        message: "Reviewer with this email already active. Deactivate first.",
       });
     }
 
-    // Generate password
+    // Generate Password
     const plainPassword = generateStrongPassword();
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
@@ -114,6 +139,7 @@ export const createReviewer = async (req, res) => {
       data: reviewer,
       plainPassword,
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -123,6 +149,7 @@ export const createReviewer = async (req, res) => {
   }
 };
 
+
 // =======================
 // Update reviewer
 // =======================
@@ -131,39 +158,47 @@ export const updateReviewer = async (req, res) => {
     const { id } = req.params;
     const updatedData = { ...req.body };
 
-    // Check if making user Active OR updating email
-    if ((updatedData.status === "Active") || updatedData.email) {
-      const reviewerToBeUpdated = await Reviewer.findById(id);
+    const reviewerToBeUpdated = await Reviewer.findById(id);
+    if (!reviewerToBeUpdated) {
+      return res.status(404).json({ success: false, message: "Reviewer not found" });
+    }
 
-      if (!reviewerToBeUpdated) {
-        return res.status(404).json({
-          success: false,
-          message: "Reviewer not found",
-        });
-      }
+    const newStatus = updatedData.status || reviewerToBeUpdated.status;
+    const newCategory = updatedData.abstractCategory || reviewerToBeUpdated.abstractCategory;
 
-      const newEmail = updatedData.email || reviewerToBeUpdated.email;
+    // STEP: Get Abstract Setting
+    const abstractSetting = await AbstractSetting.findOne({ eventId: reviewerToBeUpdated.eventId });
+    if (!abstractSetting) {
+      return res.status(400).json({
+        success: false,
+        message: "Abstract settings not defined for this event",
+      });
+    }
 
-      // Check for another active reviewer with same email
-      const existingActiveReviewer = await Reviewer.findOne({
-        _id: { $ne: id }, // Exclude current reviewer
-        email: newEmail,
-        status: "Active",
+    const limit = abstractSetting.numberOfReviewerPerCategory;
+
+    // Check reviewer limit only when status Active OR category changed
+    if (newStatus === "Active") {
+      const activeReviewerCount = await Reviewer.countDocuments({
+        _id: { $ne: id },
+        eventId: reviewerToBeUpdated.eventId,
+        abstractCategory: newCategory,
+        status: "Active"
       });
 
-      if (existingActiveReviewer) {
+      if (activeReviewerCount >= limit) {
         return res.status(400).json({
           success: false,
-          message: "Another active reviewer already exists with this email",
+          message: `Maximum limit reached. Only ${limit} reviewers allowed for this category.`,
         });
       }
     }
 
-    // If updating abstractCategory, validate it
+    // Validate category exists and active
     if (updatedData.abstractCategory) {
       const validCategory = await AbstractCategory.findOne({
         _id: updatedData.abstractCategory,
-        status: "Active",
+        status: "Active"
       });
 
       if (!validCategory) {
@@ -180,10 +215,7 @@ export const updateReviewer = async (req, res) => {
     }).populate("abstractCategory");
 
     if (!reviewer) {
-      return res.status(404).json({
-        success: false,
-        message: "Reviewer not found",
-      });
+      return res.status(404).json({ success: false, message: "Reviewer not found" });
     }
 
     res.json({ success: true, data: reviewer });
@@ -196,6 +228,7 @@ export const updateReviewer = async (req, res) => {
     });
   }
 };
+
 
 
 // =======================
