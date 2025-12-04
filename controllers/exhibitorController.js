@@ -142,6 +142,36 @@ export const updateExhibitor = async (req, res) => {
     const { id } = req.params;
     const updatedData = { ...req.body };
 
+    // Fetch current exhibitor
+    const existingExhibitor = await Exhibitor.findById(id);
+    if (!existingExhibitor) {
+      return res.status(404).json({
+        success: false,
+        message: "Exhibitor not found",
+      });
+    }
+
+    // Determine final email & status after update
+    const finalEmail = updatedData.email || existingExhibitor.email;
+    const finalStatus = updatedData.status || existingExhibitor.status;
+
+    // Check if same email exhibitor already active
+    if (finalStatus === "Active") {
+      const existingActiveExhibitor = await Exhibitor.findOne({
+        email: finalEmail,
+        status: "Active",
+        _id: { $ne: id },
+      });
+
+      if (existingActiveExhibitor) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "An exhibitor with this email is already Active. Please deactivate the existing exhibitor before activating this one.",
+        });
+      }
+    }
+
     const exhibitor = await Exhibitor.findByIdAndUpdate(id, updatedData, {
       new: true,
       runValidators: true,
@@ -163,6 +193,7 @@ export const updateExhibitor = async (req, res) => {
     });
   }
 };
+
 
 // =======================
 // Delete exhibitor (eventAdmin only)

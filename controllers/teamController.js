@@ -106,6 +106,34 @@ export const updateTeam = async (req, res) => {
     const { id } = req.params;
     const { name, email, mobile, companyName, status } = req.body;
 
+    // Check duplicate email (exclude same user)
+    if (email) {
+      const emailExists = await User.findOne({ 
+        email,
+        _id: { $ne: id }
+      });
+      if (emailExists) {
+        return res.status(400).json({
+          success: false,
+          message: "Email already used by another user"
+        });
+      }
+    }
+
+    // Check duplicate mobile (exclude same user)
+    if (mobile) {
+      const mobileExists = await User.findOne({ 
+        mobile,
+        _id: { $ne: id }
+      });
+      if (mobileExists) {
+        return res.status(400).json({
+          success: false,
+          message: "Mobile number already used by another user"
+        });
+      }
+    }
+
     const updatedData = { name, email, mobile, companyName, status };
 
     const eventAdmin = await User.findByIdAndUpdate(
@@ -129,6 +157,7 @@ export const updateTeam = async (req, res) => {
     });
   }
 };
+
 
 // =======================
 // Delete eventAdmin (admin only)

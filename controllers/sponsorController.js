@@ -156,10 +156,42 @@ export const updateSponsor = async (req, res) => {
         const { id } = req.params;
         const updatedData = { ...req.body };
         // Update sponsor image if a new one is uploaded 
-
+        
         if (req.file && req.file.location) {
             updatedData.sponsorImage = req.file.location;
         }
+
+        // Fetch current sponsor
+        const existingSponsor = await Sponsor.findById(id);
+        if (!existingSponsor) {
+            return res.status(404).json({
+                success: false,
+                message: "Sponsor not found",
+            });
+        }
+
+        // Determine final email & status after update
+        const finalEmail = updatedData.email || existingSponsor.email;
+        const finalStatus = updatedData.status || existingSponsor.status;
+
+        // Check if same email sponsor already active
+        if (finalStatus === "Active") {
+            const existingActiveSponsor = await Sponsor.findOne({
+                email: finalEmail,
+                status: "Active",
+                _id: { $ne: id },
+            });
+
+            if (existingActiveSponsor) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "A sponsor with this email is already Active. Please deactivate the existing sponsor before activating this one.",
+                });
+            }
+        }
+
+        // ============================
 
         const sponsor = await Sponsor.findByIdAndUpdate(id, updatedData, {
             new: true,
