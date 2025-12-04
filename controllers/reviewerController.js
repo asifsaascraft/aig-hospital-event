@@ -1,5 +1,6 @@
 import Reviewer from "../models/Reviewer.js";
 import AbstractCategory from "../models/AbstractCategory.js";
+import AbstractSetting from "../models/AbstractSetting.js";
 import bcrypt from "bcryptjs";
 import { generateStrongPassword } from "../utils/generatePassword.js";
 
