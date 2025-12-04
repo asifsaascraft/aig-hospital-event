@@ -14,10 +14,25 @@ const getSummary = async (eventId, category, res) => {
     // Calculate total amount
     const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
 
+    // Get current month and year
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+
+    // Filter payments for current month
+    const currentMonthPayments = payments.filter(p => {
+      const date = new Date(p.createdAt);
+      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    });
+
+    // Calculate current month total amount
+    const currentMonthAmount = currentMonthPayments.reduce((sum, p) => sum + p.amount, 0);
+
+
     return res.status(200).json({
       success: true,
       category,
       totalAmount,
+      currentMonthAmount
     });
 
   } catch (error) {
