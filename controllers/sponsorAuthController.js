@@ -18,11 +18,10 @@ export const loginSponsor = async (req, res) => {
       return res.status(400).json({ message: "Email does not exist" });
     }
 
-    // Check status
     if (sponsor.status !== "Active") {
-      return res.status(403).json({ 
-        success: false, 
-        message: "Your account is inactive. Please contact event admin." 
+      return res.status(403).json({
+        success: false,
+        message: "Your account is inactive. Please contact event admin."
       });
     }
 
@@ -33,26 +32,38 @@ export const loginSponsor = async (req, res) => {
 
     const { accessToken, refreshToken } = generateTokens(sponsor._id, "sponsor");
 
+    // 🔥 MUST SET ACCESS TOKEN COOKIE → Middleware depends on it
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    // Refresh Token Cookie
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      sameSite: "none",
       secure: true,
+      sameSite: "none",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
     res.json({
       success: true,
       message: "Login successful",
-      accessToken,
       data: {
         id: sponsor._id,
         sponsorName: sponsor.sponsorName,
         email: sponsor.email,
       },
     });
+
   } catch (error) {
     res.status(500).json({ message: "Login failed", error: error.message });
   }
 };
+
+
 
 // =======================
 // Sponsor Logout

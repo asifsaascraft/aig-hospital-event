@@ -1,23 +1,25 @@
-
 // controllers/eventAssignController.js
+
 import User from "../models/User.js";
 import Event from "../models/Event.js";
+import EventAssign from "../models/EventAssign.js";
+
 
 // =======================
 // Get all event assignments (admin only)
 // =======================
 export const getEventAssignments = async (req, res) => {
   try {
-    const eventAdmins = await User.find({ role: "eventAdmin" })
+    const assignments = await EventAssign.find()
       .populate({
-        path: "assignedEvents",
+        path: "assignedEvents.eventId",
         select: "_id eventName eventType",
       })
       .lean();
 
     res.json({
       success: true,
-      data: eventAdmins,
+      data: assignments,
     });
   } catch (error) {
     res.status(500).json({
@@ -28,46 +30,75 @@ export const getEventAssignments = async (req, res) => {
   }
 };
 
+
+
 // =======================
-// Assign an event to an eventAdmin (admin only)
+// Assign Event to EventAdmin (Create or Update without duplicate)
 // =======================
 export const assignEvent = async (req, res) => {
   try {
-    const { eventId, eventAdminId } = req.body;
+    const { eventAdminId, eventId, ...moduleFields } = req.body;
 
-    if (!eventId || !eventAdminId) {
+    if (!eventAdminId || !eventId) {
       return res.status(400).json({
         success: false,
-        message: "EventId and EventAdminId are required",
+        message: "eventAdminId and eventId are required",
       });
     }
 
+    // Check valid EventAdmin
     const eventAdmin = await User.findById(eventAdminId);
     if (!eventAdmin || eventAdmin.role !== "eventAdmin") {
-      return res.status(404).json({
-        success: false,
-        message: "EventAdmin not found",
-      });
+      return res.status(404).json({ success: false, message: "EventAdmin not found" });
     }
 
+    // Check Event Exists
     const event = await Event.findById(eventId);
     if (!event) {
-      return res.status(404).json({
-        success: false,
-        message: "Event not found",
-      });
+      return res.status(404).json({ success: false, message: "Event not found" });
     }
 
-    if (!eventAdmin.assignedEvents.includes(event._id)) {
-      eventAdmin.assignedEvents.push(event._id);
-      await eventAdmin.save();
+    // Create if first time
+    let assignment = await EventAssign.findOne({ eventAdminId });
+
+    if (!assignment) {
+      assignment = await EventAssign.create({
+        eventAdminId,
+        eventAdminName: eventAdmin.name,
+        assignedEvents: [{ eventId, ...moduleFields }],
+      });
+    } else {
+      // Check event already exists
+      const exists = assignment.assignedEvents.some(
+        (item) => item.eventId.toString() === eventId
+      );
+
+      if (!exists) {
+        assignment.assignedEvents.push({ eventId, ...moduleFields });
+        await assignment.save();
+      } else {
+        // Updating individual module fields
+        const updateQuery = {};
+        for (let key in moduleFields) {
+          updateQuery[`assignedEvents.$[elem].${key}`] = moduleFields[key];
+        }
+
+        await EventAssign.updateOne(
+          { eventAdminId },
+          { $set: updateQuery },
+          { arrayFilters: [{ "elem.eventId": eventId }] }
+        );
+
+        assignment = await EventAssign.findOne({ eventAdminId });
+      }
     }
 
     res.json({
       success: true,
       message: "Event assigned successfully",
-      data: eventAdmin,
+      data: assignment,
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -77,44 +108,42 @@ export const assignEvent = async (req, res) => {
   }
 };
 
+
+
 // =======================
-// Update assigned event or company
+// Update module permissions for assigned event
 // =======================
 export const updateAssignedEvent = async (req, res) => {
   try {
-    const { oldEventId, oldEventAdminId, newEventId, newEventAdminId } = req.body;
+    const { eventAdminId, eventId, ...moduleFields } = req.body;
 
-    // Remove from old company
-    const oldAdmin = await User.findById(oldEventAdminId);
-    if (oldAdmin) {
-      oldAdmin.assignedEvents = oldAdmin.assignedEvents.filter(
-        (id) => id.toString() !== oldEventId
-      );
-      await oldAdmin.save();
+    const updateQuery = {};
+    for (let key in moduleFields) {
+      updateQuery[`assignedEvents.$[elem].${key}`] = moduleFields[key];
     }
 
-    // Add to new company
-    const newAdmin = await User.findById(newEventAdminId);
-    if (!newAdmin || newAdmin.role !== "eventAdmin") {
-      return res.status(404).json({ success: false, message: "New EventAdmin not found" });
-    }
+    const updated = await EventAssign.findOneAndUpdate(
+      { eventAdminId },
+      { $set: updateQuery },
+      {
+        arrayFilters: [{ "elem.eventId": eventId }],
+        new: true,
+      }
+    );
 
-    const newEvent = await Event.findById(newEventId);
-    if (!newEvent) {
-      return res.status(404).json({ success: false, message: "New event not found" });
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: "Assignment record or event not found",
+      });
     }
-
-    if (!newAdmin.assignedEvents.includes(newEvent._id)) {
-      newAdmin.assignedEvents.push(newEvent._id);
-    }
-
-    await newAdmin.save();
 
     res.json({
       success: true,
-      message: "Assignment updated successfully",
-      data: newAdmin,
+      message: "Permissions updated successfully",
+      data: updated,
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -124,32 +153,34 @@ export const updateAssignedEvent = async (req, res) => {
   }
 };
 
+
+
 // =======================
-// Remove assigned event from eventAdmin
+// Remove Assigned event from EventAdmin
 // =======================
 export const removeAssignedEvent = async (req, res) => {
   try {
     const { eventAdminId, eventId } = req.params;
 
-    const eventAdmin = await User.findById(eventAdminId);
-    if (!eventAdmin || eventAdmin.role !== "eventAdmin") {
-      return res.status(404).json({
-        success: false,
-        message: "EventAdmin not found",
-      });
-    }
-
-    eventAdmin.assignedEvents = eventAdmin.assignedEvents.filter(
-      (eId) => eId.toString() !== eventId
+    const updated = await EventAssign.findOneAndUpdate(
+      { eventAdminId },
+      { $pull: { assignedEvents: { eventId } } },
+      { new: true }
     );
 
-    await eventAdmin.save();
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: "Assignment record not found",
+      });
+    }
 
     res.json({
       success: true,
       message: "Event removed successfully",
-      data: eventAdmin,
+      data: updated,
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,

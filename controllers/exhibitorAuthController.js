@@ -20,9 +20,9 @@ export const loginExhibitor = async (req, res) => {
 
     // Check status
     if (exhibitor.status !== "Active") {
-      return res.status(403).json({ 
-        success: false, 
-        message: "Your account is inactive. Please contact event admin." 
+      return res.status(403).json({
+        success: false,
+        message: "Your account is inactive. Please contact event admin."
       });
     }
 
@@ -36,26 +36,37 @@ export const loginExhibitor = async (req, res) => {
       "exhibitor"
     );
 
+    // 🔥 MUST SET ACCESS TOKEN COOKIE → middleware depends on it
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    // Refresh Token Cookie
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      sameSite: "none",
       secure: true,
+      sameSite: "none",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
     res.json({
       success: true,
       message: "Login successful",
-      accessToken,
       data: {
         id: exhibitor._id,
         exhibitorName: exhibitor.exhibitorName,
         email: exhibitor.email,
       },
     });
+
   } catch (error) {
     res.status(500).json({ message: "Login failed", error: error.message });
   }
 };
+
 
 // =======================
 // Exhibitor Logout
