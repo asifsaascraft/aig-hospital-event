@@ -7,7 +7,16 @@ import Event from "../models/Event.js";
 export const createRegistrationSlab = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { slabName, amount, AccompanyAmount, startDate, endDate } = req.body;
+
+    const {
+      slabName,
+      amount,
+      AccompanyAmount,
+      startDate,
+      endDate,
+      needAdditionalInfo,
+      additionalFields,
+    } = req.body;
 
     // Validate event existence
     const event = await Event.findById(eventId);
@@ -15,14 +24,18 @@ export const createRegistrationSlab = async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Create new registration slab
+    // Create slab
     const slab = await RegistrationSlab.create({
       eventId,
       slabName,
       amount,
       AccompanyAmount,
-      startDate,
-      endDate,
+      startDate: startDate ? new Date(startDate) : null,
+      endDate: endDate ? new Date(endDate) : null,
+      needAdditionalInfo: needAdditionalInfo || false,
+      additionalFields: Array.isArray(additionalFields)
+        ? additionalFields
+        : [],
     });
 
     res.status(201).json({
@@ -43,7 +56,9 @@ export const getRegistrationSlabsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
 
-    const slabs = await RegistrationSlab.find({ eventId }).sort({ createdAt: -1 });
+    const slabs = await RegistrationSlab.find({ eventId }).sort({
+      createdAt: -1,
+    });
 
     res.status(200).json({
       success: true,
@@ -57,9 +72,7 @@ export const getRegistrationSlabsByEvent = async (req, res) => {
 };
 
 // =======================
-// Get Active Registration Slabs by Event ID (Public/User)
-// - Shows slabs where endDate is null OR endDate >= now
-// - (Start date is NOT enforced here; only endDate governs visibility)
+// Get Active Registration Slabs by Event ID
 // =======================
 export const getActiveRegistrationSlabsByEvent = async (req, res) => {
   try {
@@ -68,10 +81,7 @@ export const getActiveRegistrationSlabsByEvent = async (req, res) => {
 
     const slabs = await RegistrationSlab.find({
       eventId,
-      $or: [
-        { endDate: { $gte: now } }, // not expired
-        { endDate: null },          // open-ended slab
-      ],
+      $or: [{ endDate: { $gte: now } }, { endDate: null }],
     }).sort({ startDate: 1 });
 
     res.status(200).json({
@@ -91,7 +101,16 @@ export const getActiveRegistrationSlabsByEvent = async (req, res) => {
 export const updateRegistrationSlab = async (req, res) => {
   try {
     const { id } = req.params;
-    const { slabName, amount, AccompanyAmount, startDate, endDate } = req.body;
+
+    const {
+      slabName,
+      amount,
+      AccompanyAmount,
+      startDate,
+      endDate,
+      needAdditionalInfo,
+      additionalFields,
+    } = req.body;
 
     // Find existing slab
     const slab = await RegistrationSlab.findById(id);
@@ -99,12 +118,21 @@ export const updateRegistrationSlab = async (req, res) => {
       return res.status(404).json({ message: "Registration slab not found" });
     }
 
-    // Update fields only if provided
-    if (slabName) slab.slabName = slabName;
+    // Update basic fields
+    if (slabName !== undefined) slab.slabName = slabName;
     if (amount !== undefined) slab.amount = amount;
     if (AccompanyAmount !== undefined) slab.AccompanyAmount = AccompanyAmount;
-    if (startDate) slab.startDate = startDate;
-    if (endDate) slab.endDate = endDate;
+
+    if (startDate) slab.startDate = new Date(startDate);
+    if (endDate) slab.endDate = new Date(endDate);
+
+    // Update additional info switch
+    slab.needAdditionalInfo = needAdditionalInfo || false;
+
+    // Update dynamic additional fields
+    slab.additionalFields = Array.isArray(additionalFields)
+      ? additionalFields
+      : [];
 
     await slab.save();
 
@@ -119,7 +147,6 @@ export const updateRegistrationSlab = async (req, res) => {
   }
 };
 
-
 // =======================
 // Delete Registration Slab (EventAdmin Only)
 // =======================
@@ -129,7 +156,9 @@ export const deleteRegistrationSlab = async (req, res) => {
 
     const slab = await RegistrationSlab.findById(id);
     if (!slab) {
-      return res.status(404).json({ message: "Registration slab not found" });
+      return res
+        .status(404)
+        .json({ message: "Registration slab not found" });
     }
 
     await slab.deleteOne();
