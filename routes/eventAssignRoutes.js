@@ -21,9 +21,8 @@ router.get(
 );
 
 // =======================
-// Admin-only: Assign an event (Create or Update)
+// Admin-only: Assign an event to eventAdmin
 // =======================
-// BODY → { eventAdminId, eventId, dashboard: true, registration: false ... }
 router.post(
   "/admin/event-assign",
   protect,
@@ -32,20 +31,18 @@ router.post(
 );
 
 // =======================
-// Admin-only: Update permission for assigned event
+// Admin-only: Update assigned event by eventAdmin ID
 // =======================
-// BODY → { eventAdminId, eventId, dashboard , sponsor , travel ... }
 router.put(
-  "/admin/event-assign",
+  "/admin/event-assign/:eventAdminId",
   protect,
   authorizeRoles("admin"),
   updateAssignedEvent
 );
 
 // =======================
-// Admin-only: Remove assigned event 
+// Admin-only: Remove assigned event by eventAdmin ID and event ID
 // =======================
-// PARAMS → /admin/event-assign/:eventAdminId/:eventId
 router.delete(
   "/admin/event-assign/:eventAdminId/:eventId",
   protect,
