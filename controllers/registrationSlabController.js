@@ -1,8 +1,9 @@
+
 import RegistrationSlab from "../models/RegistrationSlab.js";
 import Event from "../models/Event.js";
 
 // =======================
-// Create Registration Slab (EventAdmin Only)
+// Create Registration Slab
 // =======================
 export const createRegistrationSlab = async (req, res) => {
   try {
@@ -18,13 +19,12 @@ export const createRegistrationSlab = async (req, res) => {
       additionalFields,
     } = req.body;
 
-    // Validate event existence
+    // Check event exists
     const event = await Event.findById(eventId);
     if (!event) {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Create slab
     const slab = await RegistrationSlab.create({
       eventId,
       slabName,
@@ -33,9 +33,7 @@ export const createRegistrationSlab = async (req, res) => {
       startDate: startDate ? new Date(startDate) : null,
       endDate: endDate ? new Date(endDate) : null,
       needAdditionalInfo: needAdditionalInfo || false,
-      additionalFields: Array.isArray(additionalFields)
-        ? additionalFields
-        : [],
+      additionalFields: Array.isArray(additionalFields) ? additionalFields : [],
     });
 
     res.status(201).json({
@@ -43,6 +41,7 @@ export const createRegistrationSlab = async (req, res) => {
       message: "Registration slab created successfully",
       data: slab,
     });
+
   } catch (error) {
     console.error("Create registration slab error:", error);
     res.status(500).json({ message: "Server Error" });
@@ -50,7 +49,7 @@ export const createRegistrationSlab = async (req, res) => {
 };
 
 // =======================
-// Get All Registration Slabs by Event ID (Public/User)
+// Get All Registration Slabs
 // =======================
 export const getRegistrationSlabsByEvent = async (req, res) => {
   try {
@@ -72,7 +71,7 @@ export const getRegistrationSlabsByEvent = async (req, res) => {
 };
 
 // =======================
-// Get Active Registration Slabs by Event ID
+// Get Active Registration Slabs
 // =======================
 export const getActiveRegistrationSlabsByEvent = async (req, res) => {
   try {
@@ -90,13 +89,13 @@ export const getActiveRegistrationSlabsByEvent = async (req, res) => {
       data: slabs,
     });
   } catch (error) {
-    console.error("Get active registration slabs error:", error);
+    console.error("Get active slabs error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
 
 // =======================
-// Update Registration Slab (EventAdmin Only)
+// Update Registration Slab
 // =======================
 export const updateRegistrationSlab = async (req, res) => {
   try {
@@ -112,13 +111,12 @@ export const updateRegistrationSlab = async (req, res) => {
       additionalFields,
     } = req.body;
 
-    // Find existing slab
     const slab = await RegistrationSlab.findById(id);
+
     if (!slab) {
       return res.status(404).json({ message: "Registration slab not found" });
     }
 
-    // Update basic fields
     if (slabName !== undefined) slab.slabName = slabName;
     if (amount !== undefined) slab.amount = amount;
     if (AccompanyAmount !== undefined) slab.AccompanyAmount = AccompanyAmount;
@@ -126,10 +124,8 @@ export const updateRegistrationSlab = async (req, res) => {
     if (startDate) slab.startDate = new Date(startDate);
     if (endDate) slab.endDate = new Date(endDate);
 
-    // Update additional info switch
     slab.needAdditionalInfo = needAdditionalInfo || false;
 
-    // Update dynamic additional fields
     slab.additionalFields = Array.isArray(additionalFields)
       ? additionalFields
       : [];
@@ -148,7 +144,7 @@ export const updateRegistrationSlab = async (req, res) => {
 };
 
 // =======================
-// Delete Registration Slab (EventAdmin Only)
+// Delete Registration Slab
 // =======================
 export const deleteRegistrationSlab = async (req, res) => {
   try {

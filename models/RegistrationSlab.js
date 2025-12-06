@@ -1,6 +1,10 @@
 
 import mongoose from "mongoose";
 
+// =========================
+// Options schema
+// (Used for radio + checkbox)
+// =========================
 const OptionSchema = new mongoose.Schema(
   {
     id: { type: Number, required: true },
@@ -9,25 +13,37 @@ const OptionSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// =========================
+// Additional Field Schema
+// =========================
 const AdditionalFieldSchema = new mongoose.Schema(
   {
     id: { type: Number, required: true },
+
     type: {
       type: String,
       enum: ["textbox", "upload", "radio", "checkbox", "date"],
       required: true,
     },
+
+    // Textbox / Upload / Radio / Checkbox / Date
     label: { type: String },
 
-    // Only for upload fields
+    // Upload only
     extension: { type: String },
 
-    // Only for radio/checkbox fields
-    options: { type: [OptionSchema], default: [] },
+    // Radio or Checkbox only
+    options: {
+      type: [OptionSchema],
+      default: [],
+    },
   },
   { _id: false }
 );
 
+// =========================
+// Main Registration Slab Schema
+// =========================
 const RegistrationSlabSchema = new mongoose.Schema(
   {
     eventId: {
@@ -68,11 +84,13 @@ const RegistrationSlabSchema = new mongoose.Schema(
       },
     },
 
+    // Additional Information Switch
     needAdditionalInfo: {
       type: Boolean,
       default: false,
     },
 
+    // Dynamic Form Fields
     additionalFields: {
       type: [AdditionalFieldSchema],
       default: [],
