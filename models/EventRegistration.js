@@ -1,5 +1,15 @@
 import mongoose from "mongoose";
 
+const AdditionalAnswerSchema = new mongoose.Schema(
+  {
+    id: Number,
+    label: String,
+    type: String,
+    value: mongoose.Schema.Types.Mixed,
+    fileUrl: String,
+  },
+  { _id: false }
+);
 
 const EventRegistrationSchema = new mongoose.Schema(
   {
@@ -92,6 +102,10 @@ const EventRegistrationSchema = new mongoose.Schema(
       type: String,
       required: [true, "Pin Code is required"],
       trim: true,
+    },
+    additionalAnswers: {
+      type: [AdditionalAnswerSchema],
+      default: [],
     },
     isPaid: {
       type: Boolean,

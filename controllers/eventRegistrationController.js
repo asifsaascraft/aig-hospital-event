@@ -60,8 +60,14 @@ export const registerForEvent = async (req, res) => {
   try {
     const userId = req.user._id;
     const { eventId } = req.params;
+
+    // Get slabId from body OR query
+    let { registrationSlabId } = req.body;
+    if (!registrationSlabId && req.query.registrationSlabId) {
+      registrationSlabId = req.query.registrationSlabId;
+    }
+
     const {
-      registrationSlabId,
       prefix,
       name,
       gender,
@@ -77,12 +83,22 @@ export const registerForEvent = async (req, res) => {
       state,
       address,
       pincode,
+      additionalAnswers,
     } = req.body;
 
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ message: "Event not found" });
 
-    // Check for suspended registration first
+    const slab = await RegistrationSlab.findById(registrationSlabId);
+    if (!slab)
+      return res.status(404).json({ message: "Selected slab does not exist" });
+
+    if (slab.eventId.toString() !== eventId)
+      return res.status(400).json({
+        message: "This slab does not belong to the selected event",
+      });
+
+    // Suspended?
     const suspendedReg = await EventRegistration.findOne({
       userId,
       eventId,
@@ -92,22 +108,81 @@ export const registerForEvent = async (req, res) => {
     if (suspendedReg) {
       return res.status(403).json({
         success: false,
-        message:
-          "Your previous registration for this event is suspended. Please contact the Event Admin.",
+        message: "Your previous registration for this event is suspended.",
       });
     }
 
-    //  Only check for existing **paid** registration
+    // Already Paid?
     const existingPaidReg = await EventRegistration.findOne({
       userId,
       eventId,
-      isPaid: true
+      isPaid: true,
     });
 
     if (existingPaidReg) {
-      return res.status(400).json({ message: "You have already registered and paid for this event" });
+      return res.status(400).json({ message: "You have already paid for this event" });
     }
 
+    // ===========================
+    // Validate Dynamic Fields + Uploads
+    // ===========================
+    let validatedAdditionalAnswers = [];
+
+    if (slab.needAdditionalInfo && slab.additionalFields.length > 0) {
+
+      let parsedAdditional = [];
+      if (typeof additionalAnswers === "string") {
+        try {
+          parsedAdditional = JSON.parse(additionalAnswers);
+        } catch (error) {
+          return res.status(400).json({
+            message: "Invalid JSON format for additionalAnswers",
+          });
+        }
+      } else if (Array.isArray(additionalAnswers)) {
+        parsedAdditional = additionalAnswers;
+      }
+
+      for (const field of slab.additionalFields) {
+
+        const answered = parsedAdditional.find((a) => a.id === field.id);
+        const fileKey = `file_${field.id}`;
+        const fileData = req.files?.[fileKey]?.[0];
+
+        if (field.type === "upload") {
+          if (!fileData) {
+            return res.status(400).json({
+              message: `File upload required for: ${field.label}`,
+            });
+          }
+
+          validatedAdditionalAnswers.push({
+            id: field.id,
+            label: field.label,
+            type: field.type,
+            value: null,
+            fileUrl: fileData.location,
+          });
+
+        } else {
+          if (!answered || answered.value === undefined || answered.value === "") {
+            return res.status(400).json({
+              message: `Value required for: ${field.label}`,
+            });
+          }
+
+          validatedAdditionalAnswers.push({
+            id: field.id,
+            label: field.label,
+            type: field.type,
+            value: answered.value,
+            fileUrl: null,
+          });
+        }
+      }
+    }
+
+    // Create Registration
     const registration = await EventRegistration.create({
       userId,
       eventId,
@@ -127,6 +202,7 @@ export const registerForEvent = async (req, res) => {
       state,
       address,
       pincode,
+      additionalAnswers: validatedAdditionalAnswers,
       isPaid: false,
       regNumGenerated: false,
       isSuspended: false,
@@ -134,14 +210,17 @@ export const registerForEvent = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Event registration created successfully (Unpaid)",
+      message: "Event registration created successfully",
       data: registration,
     });
+
   } catch (error) {
     console.error("Event registration error:", error);
-    res.status(500).json({ message: "Server Error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
 
 /* 
 ========================================================

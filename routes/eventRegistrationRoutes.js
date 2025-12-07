@@ -9,6 +9,7 @@ import {
   updateRegistrationSuspension,
 } from "../controllers/eventRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
+import { dynamicEventUpload } from "../middlewares/eventDynamicUploadMiddleware.js";
 
 const router = express.Router();
 
@@ -31,6 +32,7 @@ router.post(
   "/events/:eventId/register",
   protect,
   authorizeRoles("user"),
+  dynamicEventUpload(),
   registerForEvent
 );
 
