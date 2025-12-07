@@ -69,19 +69,13 @@ const RegistrationSlabSchema = new mongoose.Schema(
     },
 
     startDate: {
-      type: Date,
-      required: true,
+      type: String, // Format: DD/MM/YYYY
+      required: [true, "Start Date is required"],
     },
-
+    
     endDate: {
-      type: Date,
-      required: true,
-      validate: {
-        validator: function (value) {
-          return !this.startDate || value >= this.startDate;
-        },
-        message: "End date must be greater than or equal to start date",
-      },
+      type: String, // Format: DD/MM/YYYY
+      required: [true, "End Date is required"],
     },
 
     // Additional Information Switch

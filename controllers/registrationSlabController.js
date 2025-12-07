@@ -30,8 +30,8 @@ export const createRegistrationSlab = async (req, res) => {
       slabName,
       amount,
       AccompanyAmount,
-      startDate: startDate ? new Date(startDate) : null,
-      endDate: endDate ? new Date(endDate) : null,
+      startDate,
+      endDate,
       needAdditionalInfo: needAdditionalInfo || false,
       additionalFields: Array.isArray(additionalFields) ? additionalFields : [],
     });
@@ -77,11 +77,15 @@ export const getActiveRegistrationSlabsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
     const now = new Date();
+    const today = `${String(now.getDate()).padStart(2, "0")}/${String(
+      now.getMonth() + 1
+    ).padStart(2, "0")}/${now.getFullYear()}`;
 
     const slabs = await RegistrationSlab.find({
       eventId,
-      $or: [{ endDate: { $gte: now } }, { endDate: null }],
+      $or: [{ endDate: { $gte: today } }, { endDate: null }],
     }).sort({ startDate: 1 });
+
 
     res.status(200).json({
       success: true,
@@ -112,7 +116,6 @@ export const updateRegistrationSlab = async (req, res) => {
     } = req.body;
 
     const slab = await RegistrationSlab.findById(id);
-
     if (!slab) {
       return res.status(404).json({ message: "Registration slab not found" });
     }
@@ -121,14 +124,17 @@ export const updateRegistrationSlab = async (req, res) => {
     if (amount !== undefined) slab.amount = amount;
     if (AccompanyAmount !== undefined) slab.AccompanyAmount = AccompanyAmount;
 
-    if (startDate) slab.startDate = new Date(startDate);
-    if (endDate) slab.endDate = new Date(endDate);
+    if (startDate) slab.startDate = startDate;
+    if (endDate) slab.endDate = endDate;
 
-    slab.needAdditionalInfo = needAdditionalInfo || false;
+    if (needAdditionalInfo !== undefined)
+      slab.needAdditionalInfo = needAdditionalInfo;
 
-    slab.additionalFields = Array.isArray(additionalFields)
-      ? additionalFields
-      : [];
+    if (additionalFields !== undefined) {
+      slab.additionalFields = Array.isArray(additionalFields)
+        ? additionalFields
+        : [];
+    }
 
     await slab.save();
 
@@ -142,6 +148,7 @@ export const updateRegistrationSlab = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
 
 // =======================
 // Delete Registration Slab
