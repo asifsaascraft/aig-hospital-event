@@ -28,6 +28,15 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ message: "Email already registered" });
     }
 
+    //  Check if mobile already exists
+    const existingMobile = await User.findOne({ mobile });
+    if (existingMobile) {
+      return res.status(400).json({
+        success: false,
+        message: "Mobile already exists",
+      });
+    }
+
     // Create user (role = 'user')
     const user = await User.create({
       name,
@@ -41,7 +50,7 @@ export const registerUser = async (req, res) => {
       role: "user",
       status: "Active",
     });
-    
+
     // =======================
     // Send Welcome Email
     // =======================
@@ -182,7 +191,7 @@ export const forgotPasswordUser = async (req, res) => {
       to: user.email,
       name: user.name,
       templateKey:
-        "2518b.554b0da719bc314.k1.01bb6360-9c50-11f0-8ac3-ae9c7e0b6a9f.1998fb77496", 
+        "2518b.554b0da719bc314.k1.01bb6360-9c50-11f0-8ac3-ae9c7e0b6a9f.1998fb77496",
       mergeInfo: {
         name: user.name,
         password_reset_link: resetUrl,
