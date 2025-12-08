@@ -5,54 +5,66 @@ import s3 from "../config/s3.js";
 import RegistrationSlab from "../models/RegistrationSlab.js";
 
 export const dynamicEventUpload = () => {
-  return async (req, res, next) => {
-    try {
-      // registrationSlabId may come from body (JSON) OR query OR form-data after multer parses
-      let registrationSlabId = req.body?.registrationSlabId || req.query?.registrationSlabId;
+  const tempStorage = multer({ storage: multer.memoryStorage() }).any(); // ALWAYS PARSE BODY FIRST
 
-      if (!registrationSlabId) {
-        return next();
+  return async (req, res, next) => {
+    tempStorage(req, res, async function (err) {
+      if (err) {
+        console.error("Multer temp parsing error:", err);
+        return res.status(400).json({ message: "Upload parsing failed" });
       }
 
-      const slab = await RegistrationSlab.findById(registrationSlabId);
-      if (!slab || !slab.additionalFields) return next();
+      try {
+        let registrationSlabId = req.body?.registrationSlabId || req.query?.registrationSlabId;
 
-      const uploadFields = slab.additionalFields
-        .filter((f) => f.type === "upload")
-        .map((f) => ({
+        if (!registrationSlabId) {
+          return next(); // No slab ID, continue request
+        }
+
+        const slab = await RegistrationSlab.findById(registrationSlabId);
+        if (!slab) return next();
+
+        // filter only upload fields
+        const uploadFields = slab.additionalFields?.filter((f) => f.type === "upload");
+
+        // If NO upload fields → Continue without multer S3
+        if (!uploadFields || uploadFields.length === 0) {
+          return next();
+        }
+
+        const s3Fields = uploadFields.map((f) => ({
           name: `file_${f.id}`,
           maxCount: 1
         }));
 
-      if (uploadFields.length === 0) return next();
+        const storage = multerS3({
+          s3,
+          bucket: process.env.AWS_BUCKET_NAME,
+          acl: "public-read",
+          contentDisposition: "inline",
+          contentType: multerS3.AUTO_CONTENT_TYPE,
+          key: (req, file, cb) => {
+            const userId = req.user?._id.toString();
+            const fieldId = file.fieldname.replace("file_", "");
+            const fileName = `event-registration/${userId}/field-${fieldId}-${Date.now()}-${file.originalname}`;
+            cb(null, fileName);
+          }
+        });
 
-      const storage = multerS3({
-        s3,
-        bucket: process.env.AWS_BUCKET_NAME,
-        acl: "public-read",
-        contentDisposition: "inline",
-        contentType: multerS3.AUTO_CONTENT_TYPE,
-        key: (req, file, cb) => {
-          const userId = req.user?._id.toString();
-          const fieldId = file.fieldname.replace("file_", "");
-          const fileName = `event-registration/${userId}/field-${fieldId}-${Date.now()}-${file.originalname}`;
-          cb(null, fileName);
-        }
-      });
+        const dynamicUpload = multer({ storage }).fields(s3Fields);
 
-      const upload = multer({ storage }).fields(uploadFields);
+        dynamicUpload(req, res, function (err2) {
+          if (err2) {
+            console.error("Upload error:", err2);
+            return res.status(400).json({ message: "File upload error", error: err2.message });
+          }
+          next();
+        });
 
-      upload(req, res, function (err) {
-        if (err) {
-          console.error("Upload error:", err);
-          return res.status(400).json({ message: "File upload error", error: err.message });
-        }
-        next();
-      });
-
-    } catch (error) {
-      console.error("Dynamic upload middleware error:", error);
-      return res.status(500).json({ message: "Internal server error" });
-    }
+      } catch (error) {
+        console.error("Dynamic upload middleware error:", error);
+        return res.status(500).json({ message: "Internal server error" });
+      }
+    });
   };
 };
