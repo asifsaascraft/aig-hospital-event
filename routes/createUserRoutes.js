@@ -4,6 +4,7 @@ import {
   getAllUsers,
   updateUser,
   deleteUser,
+  checkUserEmailExists,
 } from "../controllers/createUserController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -48,6 +49,17 @@ router.delete(
   authorizeRoles("eventAdmin"),
   deleteUser
 );
+
+// =======================
+// Check Email Exists (Role: user)
+// =======================
+router.post(
+  "/event-admin/check-user-email",
+  protect,
+  authorizeRoles("eventAdmin"),
+  checkUserEmailExists
+);
+
 
 
 export default router;

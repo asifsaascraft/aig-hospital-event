@@ -6,7 +6,7 @@ import User from "../models/User.js";
 
 /* 
 ========================================================
-  1. Get Prefilled Registration Form Data (User)
+  1. Get Prefilled Registration Form (User or EventAdmin)
 ========================================================*/
 export const getPrefilledRegistrationForm = async (req, res) => {
   try {
@@ -54,7 +54,7 @@ export const getPrefilledRegistrationForm = async (req, res) => {
 
 /* 
 ========================================================
-  2. Register for an Event (User)
+  2. Register User or EventAdmin for an Event
 ========================================================*/
 export const registerForEvent = async (req, res) => {
   try {

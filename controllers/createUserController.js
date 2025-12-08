@@ -194,3 +194,41 @@ export const deleteUser = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+
+
+// =======================
+// Check If Email Exists (Only for role = "user") 
+// =======================
+export const checkUserEmailExists = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required in body",
+      });
+    }
+
+    const user = await User.findOne({ email, role: "user" });
+
+    if (user) {
+      return res.status(200).json({
+        success: true,
+        exists: true,
+        message: "Email already registered",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      exists: false,
+      message: "Email is not exist",
+    });
+
+  } catch (error) {
+    console.error("Check email error:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};

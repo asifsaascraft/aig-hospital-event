@@ -19,19 +19,19 @@ const router = express.Router();
 ========================================================
 */
 
-// 1️ Get Prefilled Registration Form for a Particular Event
+// 1 Get Prefilled Registration Form (User or EventAdmin)
 router.get(
   "/events/:eventId/prefilled",
   protect,
-  authorizeRoles("user"),
+  authorizeRoles("user", "eventAdmin"),
   getPrefilledRegistrationForm
 );
 
-// 2️ Register User for an Event (eventId in URL, not body)
+// 2 Register User or EventAdmin for an Event
 router.post(
   "/events/:eventId/register",
   protect,
-  authorizeRoles("user"),
+  authorizeRoles("user", "eventAdmin"),
   dynamicEventUpload(),
   registerForEvent
 );
