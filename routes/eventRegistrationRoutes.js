@@ -27,11 +27,11 @@ router.get(
   getPrefilledRegistrationForm
 );
 
-// 2 Register User or EventAdmin for an Event
+// 2 Register User for an Event (eventId in URL, not body)
 router.post(
   "/events/:eventId/register",
   protect,
-  authorizeRoles("user", "eventAdmin"),
+  authorizeRoles("user"),
   dynamicEventUpload(),
   registerForEvent
 );

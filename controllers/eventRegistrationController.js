@@ -54,7 +54,7 @@ export const getPrefilledRegistrationForm = async (req, res) => {
 
 /* 
 ========================================================
-  2. Register User or EventAdmin for an Event
+  2. Register for an Event (User)
 ========================================================*/
 export const registerForEvent = async (req, res) => {
   try {
@@ -210,7 +210,7 @@ export const registerForEvent = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Event registration created successfully",
+      message: "Event registration created successfully (unpaid",
       data: registration,
     });
 
@@ -376,3 +376,4 @@ export const updateRegistrationSuspension = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
