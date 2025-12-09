@@ -97,23 +97,28 @@ export const getWorkshopsByEvent = async (req, res) => {
 export const getActiveWorkshopsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
+
     const workshops = await Workshop.find({ 
       eventId, 
-      status: "Active" 
+      status: "Active"
     });
 
     const now = new Date();
 
-    // Filter workshops still active based on endDate + endTime
-    const activeWorkshops = workshops.filter((ws) => {
+    const activeWorkshops = workshops.filter(ws => {
       try {
         const [day, month, year] = ws.endDate.split("/");
-        const endDateTime = new Date(`${year}-${month}-${day} ${ws.endTime}`);
+        const [time, meridian] = ws.endTime.split(" ");
+        let [hours, minutes] = time.split(":");
+
+        if (meridian === "PM" && hours !== "12") hours = String(Number(hours) + 12);
+        if (meridian === "AM" && hours === "12") hours = "00";
+
+        const endDateTime = new Date(year, Number(month) - 1, day, hours, minutes);
         return endDateTime > now;
       } catch {
         return false;
       }
-      
     });
 
     res.status(200).json({
@@ -177,7 +182,7 @@ export const updateWorkshop = async (req, res) => {
     if (endTime) workshop.endTime = endTime;
     if (isEventRegistrationRequired !== undefined)
       workshop.isEventRegistrationRequired = isEventRegistrationRequired;
-    if (status !== undefined) slab.status = status;  
+    if (status !== undefined) workshop.status = status;  
 
     await workshop.save();
 
