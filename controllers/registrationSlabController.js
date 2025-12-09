@@ -17,6 +17,7 @@ export const createRegistrationSlab = async (req, res) => {
       endDate,
       needAdditionalInfo,
       additionalFields,
+      status,
     } = req.body;
 
     // Check event exists
@@ -34,6 +35,7 @@ export const createRegistrationSlab = async (req, res) => {
       endDate,
       needAdditionalInfo: needAdditionalInfo || false,
       additionalFields: Array.isArray(additionalFields) ? additionalFields : [],
+      status: status || "Active", 
     });
 
     res.status(201).json({
@@ -83,6 +85,7 @@ export const getActiveRegistrationSlabsByEvent = async (req, res) => {
 
     const slabs = await RegistrationSlab.find({
       eventId,
+      status: "Active",
       $or: [{ endDate: { $gte: today } }, { endDate: null }],
     }).sort({ startDate: 1 });
 
@@ -113,6 +116,7 @@ export const updateRegistrationSlab = async (req, res) => {
       endDate,
       needAdditionalInfo,
       additionalFields,
+      status,
     } = req.body;
 
     const slab = await RegistrationSlab.findById(id);
@@ -135,6 +139,7 @@ export const updateRegistrationSlab = async (req, res) => {
         ? additionalFields
         : [];
     }
+    if (status !== undefined) slab.status = status;  
 
     await slab.save();
 
