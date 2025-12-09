@@ -57,6 +57,12 @@ const WorkshopSchema = new mongoose.Schema(
       required: true,
       default: false,
     },
+    status: {
+      type: String,
+      enum: ["Active", "Inactive"], //  restricts to these values
+      default: "Active",
+      required: [true, "Status is required"],
+    },
   },
   { timestamps: true }
 );

@@ -20,6 +20,7 @@ export const createWorkshop = async (req, res) => {
       startTime,
       endTime,
       isEventRegistrationRequired,
+      status,
     } = req.body;
 
     // Validate event existence
@@ -56,6 +57,7 @@ export const createWorkshop = async (req, res) => {
       startTime,
       endTime,
       isEventRegistrationRequired,
+      status: status || "Active", 
     });
 
     res.status(201).json({
@@ -95,7 +97,10 @@ export const getWorkshopsByEvent = async (req, res) => {
 export const getActiveWorkshopsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const workshops = await Workshop.find({ eventId });
+    const workshops = await Workshop.find({ 
+      eventId, 
+      status: "Active" 
+    });
 
     const now = new Date();
 
@@ -140,6 +145,7 @@ export const updateWorkshop = async (req, res) => {
       startTime,
       endTime,
       isEventRegistrationRequired,
+      status,
     } = req.body;
 
     const workshop = await Workshop.findById(id);
@@ -171,6 +177,7 @@ export const updateWorkshop = async (req, res) => {
     if (endTime) workshop.endTime = endTime;
     if (isEventRegistrationRequired !== undefined)
       workshop.isEventRegistrationRequired = isEventRegistrationRequired;
+    if (status !== undefined) slab.status = status;  
 
     await workshop.save();
 
