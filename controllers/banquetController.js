@@ -7,7 +7,7 @@ import Event from "../models/Event.js";
 export const createBanquet = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { banquetslabName, amount, startDate, endDate } = req.body;
+    const { banquetslabName, amount, startDate, endDate, status } = req.body;
 
     // Validate event existence
     const event = await Event.findById(eventId);
@@ -22,6 +22,7 @@ export const createBanquet = async (req, res) => {
       amount,
       startDate,
       endDate,
+      status: status || "Active", 
     });
 
     res.status(201).json({
@@ -56,27 +57,43 @@ export const getBanquetsByEvent = async (req, res) => {
 };
 
 // =======================
-// Get Active Banquets by Event ID (Public/User)
-// - Shows banquets where endDate is null OR endDate >= now
-// - (Start date is NOT enforced here; only endDate governs visibility)
+// Get Active Banquets where endDate >= Today
 // =======================
 export const getActiveBanquetsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const now = new Date();
 
-    const banquets = await Banquet.find({
-      eventId,
-      $or: [
-        { endDate: { $gte: now } }, // not expired
-        { endDate: null },          // open-ended banquet
-      ],
-    }).sort({ startDate: 1 });
+    // Today's date (only date compare)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Convert DD/MM/YYYY -> JS Date
+    const parseDate = (dateString) => {
+      if (!dateString) return null;
+      const [day, month, year] = dateString.split("/").map(Number);
+      return new Date(year, month - 1, day);
+    };
+
+    // Fetch only ACTIVE banquets
+    const banquets = await Banquet.find({ eventId, status: "Active" });
+
+    // Filter -> endDate is NOT expired
+    const filtered = banquets.filter((item) => {
+      const endDateObj = parseDate(item.endDate);
+      return endDateObj && endDateObj >= today;
+    });
+
+    // Sort -> earliest startDate first
+    filtered.sort((a, b) => {
+      const dateA = parseDate(a.startDate);
+      const dateB = parseDate(b.startDate);
+      return dateA - dateB;
+    });
 
     res.status(200).json({
       success: true,
-      message: "Active banquets fetched successfully",
-      data: banquets,
+      message: "Active and non-expired banquets fetched successfully",
+      data: filtered,
     });
   } catch (error) {
     console.error("Get active banquets error:", error);
@@ -84,13 +101,14 @@ export const getActiveBanquetsByEvent = async (req, res) => {
   }
 };
 
+
 // =======================
 // Update Banquet (EventAdmin Only)
 // =======================
 export const updateBanquet = async (req, res) => {
   try {
     const { id } = req.params;
-    const { banquetslabName, amount, startDate, endDate } = req.body;
+    const { banquetslabName, amount, startDate, endDate, status } = req.body;
 
     // Find existing banquet
     const banquet = await Banquet.findById(id);
@@ -103,6 +121,7 @@ export const updateBanquet = async (req, res) => {
     if (amount !== undefined) banquet.amount = amount;
     if (startDate) banquet.startDate = startDate;
     if (endDate) banquet.endDate = endDate;
+    if (status !== undefined) banquet.status = status;  
 
     await banquet.save();
 

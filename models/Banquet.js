@@ -18,16 +18,18 @@ const BanquetSchema = new mongoose.Schema(
       min: [0, "Amount must be a positive number"],
     },
     startDate: {
-      type: Date,
+      type: String, // Format: DD/MM/YYYY
+      required: [true, "Start Date is required"],
     },
     endDate: {
-      type: Date,
-      validate: {
-        validator: function (value) {
-          return !this.startDate || value >= this.startDate;
-        },
-        message: "End date must be greater than or equal to start date",
-      },
+      type: String, // Format: DD/MM/YYYY
+      required: [true, "End Date is required"],
+    },
+    status: {
+      type: String,
+      enum: ["Active", "Inactive"], //  restricts to these values
+      default: "Active",
+      required: [true, "Status is required"],
     },
   },
   { timestamps: true }
