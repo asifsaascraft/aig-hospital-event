@@ -78,28 +78,41 @@ export const getRegistrationSlabsByEvent = async (req, res) => {
 export const getActiveRegistrationSlabsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
+
     const now = new Date();
-    const today = `${String(now.getDate()).padStart(2, "0")}/${String(
-      now.getMonth() + 1
-    ).padStart(2, "0")}/${now.getFullYear()}`;
+    const today = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
 
-    const slabs = await RegistrationSlab.find({
+    const slabs = await RegistrationSlab.find({ 
       eventId,
-      status: "Active",
-      $or: [{ endDate: { $gte: today } }, { endDate: null }],
-    }).sort({ startDate: 1 });
+      status: "Active"
+    });
 
+    // Filter by converting DD/MM/YYYY → Date object
+    const validSlabs = slabs.filter((slab) => {
+      const [startDay, startMonth, startYear] = slab.startDate.split("/");
+      const [endDay, endMonth, endYear] = slab.endDate.split("/");
 
-    res.status(200).json({
+      const start = new Date(startYear, startMonth - 1, startDay);
+      const end = new Date(endYear, endMonth - 1, endDay);
+
+      return start <= today && end >= today;
+    });
+
+    return res.status(200).json({
       success: true,
       message: "Active registration slabs fetched successfully",
-      data: slabs,
+      data: validSlabs,
     });
   } catch (error) {
     console.error("Get active slabs error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
+
 
 // =======================
 // Update Registration Slab
