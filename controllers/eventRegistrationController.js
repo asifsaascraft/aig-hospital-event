@@ -1,6 +1,7 @@
 import EventRegistration from "../models/EventRegistration.js";
 import Event from "../models/Event.js";
 import RegistrationSlab from "../models/RegistrationSlab.js";
+import DynamicRegForm from "../models/DynamicRegForm.js";
 import User from "../models/User.js";
 
 
@@ -124,7 +125,7 @@ export const registerForEvent = async (req, res) => {
     }
 
     // ===========================
-    // Validate Dynamic Fields + Uploads
+    // Validate Dynamic Fields for Slab + Uploads
     // ===========================
     let validatedAdditionalAnswers = [];
 
@@ -181,6 +182,61 @@ export const registerForEvent = async (req, res) => {
         }
       }
     }
+    // ===============================
+    // VALIDATE Dynamic Form
+    // ===============================
+    const dynamicForm = await DynamicRegForm.findOne({ eventId });
+    let validatedDynamicFormAnswers = [];
+
+    if (dynamicForm && dynamicForm.fields.length > 0) {
+
+      let parsedDynamic = [];
+      if (typeof req.body.dynamicFormAnswers === "string") {
+        try {
+          parsedDynamic = JSON.parse(req.body.dynamicFormAnswers);
+        } catch {
+          return res.status(400).json({ message: "Invalid JSON format for dynamicFormAnswers" });
+        }
+      } else if (Array.isArray(req.body.dynamicFormAnswers)) {
+        parsedDynamic = req.body.dynamicFormAnswers;
+      }
+
+      for (const field of dynamicForm.fields) {
+        const answered = parsedDynamic.find(a => a.id === field.id);
+        const fileKey = `file_dyn_${field.id}`;
+        const fileUpload = req.files?.[fileKey]?.[0];
+
+        if (field.type === "file") {
+          if (!fileUpload && field.required) {
+            return res.status(400).json({ message: `File required: ${field.label}` });
+          }
+
+          validatedDynamicFormAnswers.push({
+            id: field.id,
+            label: field.label,
+            type: field.type,
+            required: field.required,
+            fileUrl: fileUpload?.location || null,
+            value: null,
+          });
+
+        } else {
+          if (field.required && (!answered || answered.value === "")) {
+            return res.status(400).json({ message: `Value required: ${field.label}` });
+          }
+
+          validatedDynamicFormAnswers.push({
+            id: field.id,
+            label: field.label,
+            type: field.type,
+            required: field.required,
+            value: answered?.value || null,
+            fileUrl: null,
+          });
+        }
+      }
+    }
+
 
     // Create Registration
     const registration = await EventRegistration.create({
@@ -202,6 +258,7 @@ export const registerForEvent = async (req, res) => {
       state,
       address,
       pincode,
+      dynamicFormAnswers: validatedDynamicFormAnswers,
       additionalAnswers: validatedAdditionalAnswers,
       isPaid: false,
       regNumGenerated: false,

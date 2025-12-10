@@ -1,5 +1,22 @@
 import mongoose from "mongoose";
 
+// FOR EVENT DYNAMIC FORM ANSWERS
+const DynamicFormAnswerSchema = new mongoose.Schema(
+  {
+    id: { type: String },      // DynamicRegForm id is STRING
+    label: String,
+    type: String,
+    required: Boolean,
+    value: mongoose.Schema.Types.Mixed,
+    fileUrl: String,
+    minLength: Number,
+    maxLength: Number,
+    minSelected: Number,
+    maxSelected: Number,
+  },
+  { _id: false }
+);
+
 const AdditionalAnswerSchema = new mongoose.Schema(
   {
     id: Number,
@@ -102,6 +119,11 @@ const EventRegistrationSchema = new mongoose.Schema(
       type: String,
       required: [true, "Pin Code is required"],
       trim: true,
+    },
+    // (FOR EVENT DYNAMIC FORM)
+    dynamicFormAnswers: {
+      type: [DynamicFormAnswerSchema],
+      default: [],
     },
     additionalAnswers: {
       type: [AdditionalAnswerSchema],
