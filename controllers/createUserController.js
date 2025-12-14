@@ -198,7 +198,7 @@ export const deleteUser = async (req, res) => {
 
 
 // =======================
-// Check If Email Exists (Only for role = "user") 
+// Check If Email Exists (Only for role = "user")
 // =======================
 export const checkUserEmailExists = async (req, res) => {
   try {
@@ -207,28 +207,34 @@ export const checkUserEmailExists = async (req, res) => {
     if (!email) {
       return res.status(400).json({
         success: false,
-        message: "Email is required in body",
+        message: "Email is required",
       });
     }
 
-    const user = await User.findOne({ email, role: "user" });
+    const user = await User.findOne({ email, role: "user" })
+      .select("-password -plainPassword -passwordResetToken -passwordResetExpires");
 
     if (user) {
       return res.status(200).json({
         success: true,
         exists: true,
         message: "Email already registered",
+        user,
       });
     }
 
     return res.status(200).json({
       success: true,
       exists: false,
-      message: "Email is not exist",
+      message: "Email does not exist",
+      user: null,
     });
 
   } catch (error) {
     console.error("Check email error:", error);
-    res.status(500).json({ success: false, message: "Internal Server Error" });
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
   }
 };

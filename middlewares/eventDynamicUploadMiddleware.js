@@ -3,7 +3,7 @@ import multer from "multer";
 import multerS3 from "multer-s3";
 import s3 from "../config/s3.js";
 import RegistrationSlab from "../models/RegistrationSlab.js";
-import DynamicRegForm from "../models/DynamicRegForm.js"; // <-- Add this
+import DynamicRegForm from "../models/DynamicRegForm.js"; 
 
 export const dynamicEventUpload = () => {
   return async (req, res, next) => {
