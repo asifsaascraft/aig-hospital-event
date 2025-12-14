@@ -80,16 +80,6 @@ const EventRegistrationSchema = new mongoose.Schema(
       required: [true, "Affiliation is required"],
       trim: true,
     },
-    medicalCouncilState: {
-      type: String,
-      required: [true, "Council State is required"],
-      trim: true,
-    },
-    medicalCouncilRegistration: {
-      type: String,
-      required: [true, "Council Reg is required"],
-      trim: true,
-    },
     mealPreference: {
       type: String,
       required: [true, "Meal is required"],
@@ -128,6 +118,14 @@ const EventRegistrationSchema = new mongoose.Schema(
     additionalAnswers: {
       type: [AdditionalAnswerSchema],
       default: [],
+    },
+    amount: {
+      type: Number,
+      min: [0, "Amount must be a positive number"],
+    },
+    spotRegistration: {
+      type: Boolean,
+      default: false,
     },
     isPaid: {
       type: Boolean,

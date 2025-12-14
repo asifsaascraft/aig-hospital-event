@@ -4,7 +4,6 @@ import RegistrationSlab from "../models/RegistrationSlab.js";
 import DynamicRegForm from "../models/DynamicRegForm.js";
 import User from "../models/User.js";
 
-
 /* 
 ========================================================
   1. Get Prefilled Registration Form (User or EventAdmin)
@@ -14,17 +13,18 @@ export const getPrefilledRegistrationForm = async (req, res) => {
     const userId = req.user._id;
     const { eventId } = req.params;
 
-    const event = await Event.findById(eventId)
-      .populate("venueName", "name"); // Corrected field
+    const event = await Event.findById(eventId).populate("venueName", "name"); // Corrected field
 
     if (!event) return res.status(404).json({ message: "Event not found" });
 
     const user = await User.findById(userId).select(
-      "name prefix gender email mobile designation affiliation medicalCouncilState medicalCouncilRegistration mealPreference country city state pincode"
+      "name prefix gender email mobile designation affiliation mealPreference country city state pincode"
     );
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const slabs = await RegistrationSlab.find({ eventId }).sort({ createdAt: -1 });
+    const slabs = await RegistrationSlab.find({ eventId }).sort({
+      createdAt: -1,
+    });
 
     const prefilledData = {
       name: user.name || "",
@@ -34,8 +34,6 @@ export const getPrefilledRegistrationForm = async (req, res) => {
       mobile: user.mobile || "",
       designation: user.designation || "",
       affiliation: user.affiliation || "",
-      medicalCouncilState: user.medicalCouncilState || "",
-      medicalCouncilRegistration: user.medicalCouncilRegistration || "",
       country: user.country || "",
       state: user.state || "",
       city: user.city || "",
@@ -76,8 +74,6 @@ export const registerForEvent = async (req, res) => {
       mobile,
       designation,
       affiliation,
-      medicalCouncilState,
-      medicalCouncilRegistration,
       mealPreference,
       country,
       city,
@@ -121,7 +117,9 @@ export const registerForEvent = async (req, res) => {
     });
 
     if (existingPaidReg) {
-      return res.status(400).json({ message: "You have already paid for this event" });
+      return res
+        .status(400)
+        .json({ message: "You have already paid for this event" });
     }
 
     // ===========================
@@ -130,7 +128,6 @@ export const registerForEvent = async (req, res) => {
     let validatedAdditionalAnswers = [];
 
     if (slab.needAdditionalInfo && slab.additionalFields.length > 0) {
-
       let parsedAdditional = [];
       if (typeof additionalAnswers === "string") {
         try {
@@ -145,7 +142,6 @@ export const registerForEvent = async (req, res) => {
       }
 
       for (const field of slab.additionalFields) {
-
         const answered = parsedAdditional.find((a) => a.id === field.id);
         const fileKey = `file_${field.id}`;
         const fileData = req.files?.[fileKey]?.[0];
@@ -164,9 +160,12 @@ export const registerForEvent = async (req, res) => {
             value: null,
             fileUrl: fileData.location,
           });
-
         } else {
-          if (!answered || answered.value === undefined || answered.value === "") {
+          if (
+            !answered ||
+            answered.value === undefined ||
+            answered.value === ""
+          ) {
             return res.status(400).json({
               message: `Value required for: ${field.label}`,
             });
@@ -189,26 +188,29 @@ export const registerForEvent = async (req, res) => {
     let validatedDynamicFormAnswers = [];
 
     if (dynamicForm && dynamicForm.fields.length > 0) {
-
       let parsedDynamic = [];
       if (typeof req.body.dynamicFormAnswers === "string") {
         try {
           parsedDynamic = JSON.parse(req.body.dynamicFormAnswers);
         } catch {
-          return res.status(400).json({ message: "Invalid JSON format for dynamicFormAnswers" });
+          return res
+            .status(400)
+            .json({ message: "Invalid JSON format for dynamicFormAnswers" });
         }
       } else if (Array.isArray(req.body.dynamicFormAnswers)) {
         parsedDynamic = req.body.dynamicFormAnswers;
       }
 
       for (const field of dynamicForm.fields) {
-        const answered = parsedDynamic.find(a => a.id === field.id);
+        const answered = parsedDynamic.find((a) => a.id === field.id);
         const fileKey = `file_dyn_${field.id}`;
         const fileUpload = req.files?.[fileKey]?.[0];
 
         if (field.type === "file") {
           if (!fileUpload && field.required) {
-            return res.status(400).json({ message: `File required: ${field.label}` });
+            return res
+              .status(400)
+              .json({ message: `File required: ${field.label}` });
           }
 
           validatedDynamicFormAnswers.push({
@@ -219,10 +221,11 @@ export const registerForEvent = async (req, res) => {
             fileUrl: fileUpload?.location || null,
             value: null,
           });
-
         } else {
           if (field.required && (!answered || answered.value === "")) {
-            return res.status(400).json({ message: `Value required: ${field.label}` });
+            return res
+              .status(400)
+              .json({ message: `Value required: ${field.label}` });
           }
 
           validatedDynamicFormAnswers.push({
@@ -237,7 +240,6 @@ export const registerForEvent = async (req, res) => {
       }
     }
 
-
     // Create Registration
     const registration = await EventRegistration.create({
       userId,
@@ -250,8 +252,6 @@ export const registerForEvent = async (req, res) => {
       mobile,
       designation,
       affiliation,
-      medicalCouncilState,
-      medicalCouncilRegistration,
       mealPreference,
       country,
       city,
@@ -260,6 +260,7 @@ export const registerForEvent = async (req, res) => {
       pincode,
       dynamicFormAnswers: validatedDynamicFormAnswers,
       additionalAnswers: validatedAdditionalAnswers,
+      spotRegistration: false,
       isPaid: false,
       regNumGenerated: false,
       isSuspended: false,
@@ -267,17 +268,14 @@ export const registerForEvent = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Event registration created successfully (unpaid",
+      message: "Event registration created successfully (unpaid)",
       data: registration,
     });
-
   } catch (error) {
     console.error("Event registration error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
-
 
 /* 
 ========================================================
@@ -313,7 +311,6 @@ export const getMyRegistrations = async (req, res) => {
   }
 };
 
-
 /* 
 ========================================================
   4. Get Registration By ID
@@ -339,7 +336,9 @@ export const getRegistrationById = async (req, res) => {
       });
 
     if (!registration) {
-      return res.status(404).json({ message: "Registration not found or unpaid" });
+      return res
+        .status(404)
+        .json({ message: "Registration not found or unpaid" });
     }
 
     res.status(200).json({
@@ -374,7 +373,6 @@ export const getAllRegistrationsByEvent = async (req, res) => {
       isPaid: true,
     })
       .populate({
-
         path: "registrationSlabId",
         select: "slabName amount",
       })
@@ -425,7 +423,9 @@ export const updateRegistrationSuspension = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Registration ${isSuspended ? "suspended" : "unsuspended"} successfully`,
+      message: `Registration ${
+        isSuspended ? "suspended" : "unsuspended"
+      } successfully`,
       data: registration,
     });
   } catch (error) {
@@ -433,7 +433,6 @@ export const updateRegistrationSuspension = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
 
 /* 
 ========================================================
@@ -458,14 +457,13 @@ export const eventAdminRegisterForEvent = async (req, res) => {
       mobile,
       designation,
       affiliation,
-      medicalCouncilState,
-      medicalCouncilRegistration,
       mealPreference,
       country,
       city,
       state,
       address,
       pincode,
+      amount,
       additionalAnswers,
     } = req.body;
 
@@ -503,7 +501,9 @@ export const eventAdminRegisterForEvent = async (req, res) => {
     });
 
     if (existingPaidReg) {
-      return res.status(400).json({ message: "You have already paid for this event" });
+      return res
+        .status(400)
+        .json({ message: "You have already paid for this event" });
     }
 
     // ===========================
@@ -512,7 +512,6 @@ export const eventAdminRegisterForEvent = async (req, res) => {
     let validatedAdditionalAnswers = [];
 
     if (slab.needAdditionalInfo && slab.additionalFields.length > 0) {
-
       let parsedAdditional = [];
       if (typeof additionalAnswers === "string") {
         try {
@@ -527,7 +526,6 @@ export const eventAdminRegisterForEvent = async (req, res) => {
       }
 
       for (const field of slab.additionalFields) {
-
         const answered = parsedAdditional.find((a) => a.id === field.id);
         const fileKey = `file_${field.id}`;
         const fileData = req.files?.[fileKey]?.[0];
@@ -546,9 +544,12 @@ export const eventAdminRegisterForEvent = async (req, res) => {
             value: null,
             fileUrl: fileData.location,
           });
-
         } else {
-          if (!answered || answered.value === undefined || answered.value === "") {
+          if (
+            !answered ||
+            answered.value === undefined ||
+            answered.value === ""
+          ) {
             return res.status(400).json({
               message: `Value required for: ${field.label}`,
             });
@@ -571,26 +572,29 @@ export const eventAdminRegisterForEvent = async (req, res) => {
     let validatedDynamicFormAnswers = [];
 
     if (dynamicForm && dynamicForm.fields.length > 0) {
-
       let parsedDynamic = [];
       if (typeof req.body.dynamicFormAnswers === "string") {
         try {
           parsedDynamic = JSON.parse(req.body.dynamicFormAnswers);
         } catch {
-          return res.status(400).json({ message: "Invalid JSON format for dynamicFormAnswers" });
+          return res
+            .status(400)
+            .json({ message: "Invalid JSON format for dynamicFormAnswers" });
         }
       } else if (Array.isArray(req.body.dynamicFormAnswers)) {
         parsedDynamic = req.body.dynamicFormAnswers;
       }
 
       for (const field of dynamicForm.fields) {
-        const answered = parsedDynamic.find(a => a.id === field.id);
+        const answered = parsedDynamic.find((a) => a.id === field.id);
         const fileKey = `file_dyn_${field.id}`;
         const fileUpload = req.files?.[fileKey]?.[0];
 
         if (field.type === "file") {
           if (!fileUpload && field.required) {
-            return res.status(400).json({ message: `File required: ${field.label}` });
+            return res
+              .status(400)
+              .json({ message: `File required: ${field.label}` });
           }
 
           validatedDynamicFormAnswers.push({
@@ -601,10 +605,11 @@ export const eventAdminRegisterForEvent = async (req, res) => {
             fileUrl: fileUpload?.location || null,
             value: null,
           });
-
         } else {
           if (field.required && (!answered || answered.value === "")) {
-            return res.status(400).json({ message: `Value required: ${field.label}` });
+            return res
+              .status(400)
+              .json({ message: `Value required: ${field.label}` });
           }
 
           validatedDynamicFormAnswers.push({
@@ -619,6 +624,26 @@ export const eventAdminRegisterForEvent = async (req, res) => {
       }
     }
 
+    // ----------------------------------------------------
+    //  Generate Registration Number
+    // ----------------------------------------------------
+    const lastPaidRegistration = await EventRegistration.findOne({
+      eventId,
+      regNumGenerated: true,
+    })
+      .sort({ createdAt: -1 })
+      .limit(1);
+
+    let newRegNumInt;
+    if (lastPaidRegistration && lastPaidRegistration.regNum) {
+      const lastNum = parseInt(lastPaidRegistration.regNum.split("-").pop());
+      newRegNumInt = lastNum + 1;
+    } else {
+      const baseNum = parseInt(event.regNum || 0);
+      newRegNumInt = baseNum + 1;
+    }
+
+    const generatedRegNum = `${event.eventCode}-${newRegNumInt}`;
 
     // Create Registration
     const registration = await EventRegistration.create({
@@ -632,27 +657,27 @@ export const eventAdminRegisterForEvent = async (req, res) => {
       mobile,
       designation,
       affiliation,
-      medicalCouncilState,
-      medicalCouncilRegistration,
       mealPreference,
       country,
       city,
       state,
       address,
       pincode,
+      amount,
       dynamicFormAnswers: validatedDynamicFormAnswers,
       additionalAnswers: validatedAdditionalAnswers,
-      isPaid: false,
-      regNumGenerated: false,
+      spotRegistration: true,
+      isPaid: true,
+      regNumGenerated: true,
       isSuspended: false,
+      regNum: generatedRegNum,
     });
 
     res.status(201).json({
       success: true,
-      message: "Event registration created successfully (unpaid",
+      message: "Event registration created successfully by event admin",
       data: registration,
     });
-
   } catch (error) {
     console.error("Event registration error:", error);
     res.status(500).json({ message: "Internal server error" });
