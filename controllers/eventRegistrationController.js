@@ -208,11 +208,26 @@ export const registerForEvent = async (req, res) => {
         const fileKey = `file_dyn_${field.id}`;
         const fileUpload = req.files?.[fileKey]?.[0];
 
+        // ===============================
+        // FILE TYPE FIELD
+        // ===============================
         if (field.type === "file") {
-          if (!fileUpload && field.required) {
-            return res
-              .status(400)
-              .json({ message: `File required: ${field.label}` });
+
+          // required file
+          if (field.required && !fileUpload) {
+            return res.status(400).json({
+              message: `File required: ${field.label}`,
+            });
+          }
+
+          // maxFileSize validation (ONLY if defined)
+          if (fileUpload && field.maxFileSize) {
+            const fileSizeInMB = fileUpload.size / (1024 * 1024);
+            if (fileSizeInMB > field.maxFileSize) {
+              return res.status(400).json({
+                message: `${field.label} file must be less than ${field.maxFileSize} MB`,
+              });
+            }
           }
 
           validatedDynamicFormAnswers.push({
@@ -220,26 +235,77 @@ export const registerForEvent = async (req, res) => {
             label: field.label,
             type: field.type,
             required: field.required,
-            fileUrl: fileUpload?.location || null,
             value: null,
+            fileUrl: fileUpload?.location || null,
+            minLength: field.minLength,
+            maxLength: field.maxLength,
+            minSelected: field.minSelected,
+            maxSelected: field.maxSelected,
           });
-        } else {
-          if (field.required && (!answered || answered.value === "")) {
-            return res
-              .status(400)
-              .json({ message: `Value required: ${field.label}` });
-          }
 
-          validatedDynamicFormAnswers.push({
-            id: field.id,
-            label: field.label,
-            type: field.type,
-            required: field.required,
-            value: answered?.value || null,
-            fileUrl: null,
+          continue;
+        }
+
+        // ===============================
+        // NON-FILE FIELD
+        // ===============================
+        const value = answered?.value;
+
+        // required validation
+        if (field.required && (value === undefined || value === "")) {
+          return res.status(400).json({
+            message: `Value required: ${field.label}`,
           });
         }
+
+        // -------------------------------
+        // STRING LENGTH VALIDATION
+        // -------------------------------
+        if (typeof value === "string") {
+          if (field.minLength && value.length < field.minLength) {
+            return res.status(400).json({
+              message: `${field.label} must be at least ${field.minLength} characters`,
+            });
+          }
+
+          if (field.maxLength && value.length > field.maxLength) {
+            return res.status(400).json({
+              message: `${field.label} must be at most ${field.maxLength} characters`,
+            });
+          }
+        }
+
+        // -------------------------------
+        // CHECKBOX / MULTI-SELECT
+        // -------------------------------
+        if (Array.isArray(value)) {
+          if (field.minSelected && value.length < field.minSelected) {
+            return res.status(400).json({
+              message: `Select at least ${field.minSelected} options for ${field.label}`,
+            });
+          }
+
+          if (field.maxSelected && value.length > field.maxSelected) {
+            return res.status(400).json({
+              message: `Select at most ${field.maxSelected} options for ${field.label}`,
+            });
+          }
+        }
+
+        validatedDynamicFormAnswers.push({
+          id: field.id,
+          label: field.label,
+          type: field.type,
+          required: field.required,
+          value: value ?? null,
+          fileUrl: null,
+          minLength: field.minLength,
+          maxLength: field.maxLength,
+          minSelected: field.minSelected,
+          maxSelected: field.maxSelected,
+        });
       }
+
     }
 
     // Create Registration
@@ -606,11 +672,26 @@ export const eventAdminRegisterForEvent = async (req, res) => {
         const fileKey = `file_dyn_${field.id}`;
         const fileUpload = req.files?.[fileKey]?.[0];
 
+        // ===============================
+        // FILE TYPE FIELD
+        // ===============================
         if (field.type === "file") {
-          if (!fileUpload && field.required) {
-            return res
-              .status(400)
-              .json({ message: `File required: ${field.label}` });
+
+          // required file
+          if (field.required && !fileUpload) {
+            return res.status(400).json({
+              message: `File required: ${field.label}`,
+            });
+          }
+
+          // maxFileSize validation (ONLY if defined)
+          if (fileUpload && field.maxFileSize) {
+            const fileSizeInMB = fileUpload.size / (1024 * 1024);
+            if (fileSizeInMB > field.maxFileSize) {
+              return res.status(400).json({
+                message: `${field.label} file must be less than ${field.maxFileSize} MB`,
+              });
+            }
           }
 
           validatedDynamicFormAnswers.push({
@@ -618,26 +699,77 @@ export const eventAdminRegisterForEvent = async (req, res) => {
             label: field.label,
             type: field.type,
             required: field.required,
-            fileUrl: fileUpload?.location || null,
             value: null,
+            fileUrl: fileUpload?.location || null,
+            minLength: field.minLength,
+            maxLength: field.maxLength,
+            minSelected: field.minSelected,
+            maxSelected: field.maxSelected,
           });
-        } else {
-          if (field.required && (!answered || answered.value === "")) {
-            return res
-              .status(400)
-              .json({ message: `Value required: ${field.label}` });
-          }
 
-          validatedDynamicFormAnswers.push({
-            id: field.id,
-            label: field.label,
-            type: field.type,
-            required: field.required,
-            value: answered?.value || null,
-            fileUrl: null,
+          continue;
+        }
+
+        // ===============================
+        // NON-FILE FIELD
+        // ===============================
+        const value = answered?.value;
+
+        // required validation
+        if (field.required && (value === undefined || value === "")) {
+          return res.status(400).json({
+            message: `Value required: ${field.label}`,
           });
         }
+
+        // -------------------------------
+        // STRING LENGTH VALIDATION
+        // -------------------------------
+        if (typeof value === "string") {
+          if (field.minLength && value.length < field.minLength) {
+            return res.status(400).json({
+              message: `${field.label} must be at least ${field.minLength} characters`,
+            });
+          }
+
+          if (field.maxLength && value.length > field.maxLength) {
+            return res.status(400).json({
+              message: `${field.label} must be at most ${field.maxLength} characters`,
+            });
+          }
+        }
+
+        // -------------------------------
+        // CHECKBOX / MULTI-SELECT
+        // -------------------------------
+        if (Array.isArray(value)) {
+          if (field.minSelected && value.length < field.minSelected) {
+            return res.status(400).json({
+              message: `Select at least ${field.minSelected} options for ${field.label}`,
+            });
+          }
+
+          if (field.maxSelected && value.length > field.maxSelected) {
+            return res.status(400).json({
+              message: `Select at most ${field.maxSelected} options for ${field.label}`,
+            });
+          }
+        }
+
+        validatedDynamicFormAnswers.push({
+          id: field.id,
+          label: field.label,
+          type: field.type,
+          required: field.required,
+          value: value ?? null,
+          fileUrl: null,
+          minLength: field.minLength,
+          maxLength: field.maxLength,
+          minSelected: field.minSelected,
+          maxSelected: field.maxSelected,
+        });
       }
+
     }
 
     // ----------------------------------------------------
