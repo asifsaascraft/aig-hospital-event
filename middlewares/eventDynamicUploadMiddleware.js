@@ -3,48 +3,75 @@ import multer from "multer";
 import multerS3 from "multer-s3";
 import s3 from "../config/s3.js";
 import RegistrationSlab from "../models/RegistrationSlab.js";
-import DynamicRegForm from "../models/DynamicRegForm.js"; 
+import DynamicRegForm from "../models/DynamicRegForm.js";
 
 export const dynamicEventUpload = () => {
   return async (req, res, next) => {
     try {
-      const registrationSlabId = req.query.registrationSlabId;
-      const eventId = req.params.eventId;
+      // ==========================
+      // STEP 1: Parse text fields ONLY
+      // ==========================
+      await new Promise((resolve, reject) => {
+        multer({ storage: multer.memoryStorage() }).any()(
+          req,
+          res,
+          (err) => {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
+      });
 
-      // STEP 1: Default memory multer if no dynamic files
-      const memoryUpload = multer({ storage: multer.memoryStorage() }).any();
+      const eventId = req.params.eventId;
+      const registrationSlabId =
+        req.body.registrationSlabId || req.query.registrationSlabId;
 
       let uploadFields = [];
 
-      // ============ Fetch Slab Additional Upload Fields ============
+      // ==========================
+      // STEP 2: Slab Upload Fields
+      // ==========================
       if (registrationSlabId) {
         const slab = await RegistrationSlab.findById(registrationSlabId);
 
-        if (slab?.additionalFields?.length > 0) {
-          const slabUploadFields = slab.additionalFields
+        if (slab?.needAdditionalInfo && slab.additionalFields.length > 0) {
+          slab.additionalFields
             .filter((f) => f.type === "upload")
-            .map((f) => ({ name: `file_${f.id}`, maxCount: 1 }));
-
-          uploadFields.push(...slabUploadFields);
+            .forEach((f) => {
+              uploadFields.push({
+                name: `file_${f.id}`,
+                maxCount: 1,
+              });
+            });
         }
       }
 
-      // ============ Fetch Dynamic Form Upload Fields ============
+      // ==========================
+      // STEP 3: Dynamic Form Upload Fields
+      // ==========================
       const dynamicForm = await DynamicRegForm.findOne({ eventId });
+
       if (dynamicForm?.fields?.length > 0) {
-        const dynamicUploadFields = dynamicForm.fields
+        dynamicForm.fields
           .filter((f) => f.type === "file")
-          .map((f) => ({ name: `file_dyn_${f.id}`, maxCount: 1 }));
-
-        uploadFields.push(...dynamicUploadFields);
+          .forEach((f) => {
+            uploadFields.push({
+              name: `file_dyn_${f.id}`,
+              maxCount: 1,
+            });
+          });
       }
 
-      // If NO upload fields → normal memory upload
+      // ==========================
+      // STEP 4: No files → continue
+      // ==========================
       if (uploadFields.length === 0) {
-        return memoryUpload(req, res, next);
+        return next();
       }
 
-      // ============ AWS S3 STORAGE ============
+      // ==========================
+      // STEP 5: Upload to S3
+      // ==========================
       const storage = multerS3({
         s3,
         bucket: process.env.AWS_BUCKET_NAME,
@@ -52,18 +79,18 @@ export const dynamicEventUpload = () => {
         contentDisposition: "inline",
         contentType: multerS3.AUTO_CONTENT_TYPE,
         key: (req, file, cb) => {
-          const userId = req.user._id.toString();
           cb(
             null,
-            `event-registration/${userId}/${Date.now()}-${file.originalname}`
+            `event-registration/${req.user._id}/${Date.now()}-${file.originalname}`
           );
         },
       });
 
-      return multer({ storage }).fields(uploadFields)(req, res, next);
+      multer({ storage })
+        .fields(uploadFields)(req, res, next);
     } catch (error) {
       console.error("Dynamic Upload Error:", error);
-      return res.status(500).json({ message: "File upload middleware failed" });
+      res.status(500).json({ message: "Dynamic file upload failed" });
     }
   };
 };

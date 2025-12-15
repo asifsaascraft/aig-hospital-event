@@ -7,7 +7,6 @@ import {
   getRegistrationById,
   getAllRegistrationsByEvent,
   updateRegistrationSuspension,
-  eventAdminRegisterForEvent,
 } from "../controllers/eventRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 import { dynamicEventUpload } from "../middlewares/eventDynamicUploadMiddleware.js";
@@ -69,13 +68,13 @@ router.patch(
   updateRegistrationSuspension
 );
 
-// 7 Event Admin only :- Register User for an Event (eventId in URL, not body)
-router.post(
-  "/event-admin/events/:eventId/register",
-  protect,
-  authorizeRoles("eventAdmin"),
-  dynamicEventUpload(),
-  eventAdminRegisterForEvent
-);
+// // 7 Event Admin only :- Register User for an Event (eventId in URL, not body)
+// router.post(
+//   "/event-admin/events/:eventId/register",
+//   protect,
+//   authorizeRoles("eventAdmin"),
+//   dynamicEventUpload(),
+//   eventAdminRegisterForEvent
+// );
 
 export default router;
