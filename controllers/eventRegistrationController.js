@@ -505,7 +505,7 @@ export const updateRegistrationSuspension = async (req, res) => {
   7 Event Admin only :- Register User for an Event (eventId in URL, not body)
 ========================================================*/
 
-export const eventAdminRegisterForEvent = async (req, res) => {
+export const registerForEventByEventAdmin = async (req, res) => {
   try {
     const { userId } = req.body;
     const { eventId } = req.params;

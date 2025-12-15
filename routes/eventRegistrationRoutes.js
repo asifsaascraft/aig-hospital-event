@@ -7,7 +7,7 @@ import {
   getRegistrationById,
   getAllRegistrationsByEvent,
   updateRegistrationSuspension,
-  eventAdminRegisterForEvent,
+  registerForEventByEventAdmin,
 } from "../controllers/eventRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 import { dynamicEventUpload } from "../middlewares/eventDynamicUploadMiddleware.js";
@@ -75,7 +75,7 @@ router.post(
   protect,
   authorizeRoles("eventAdmin"),
   dynamicEventUpload(),
-  eventAdminRegisterForEvent
+  registerForEventByEventAdmin
 );
 
 export default router;
