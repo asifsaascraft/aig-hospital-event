@@ -3,6 +3,8 @@ import Event from "../models/Event.js";
 import RegistrationSlab from "../models/RegistrationSlab.js";
 import DynamicRegForm from "../models/DynamicRegForm.js";
 import User from "../models/User.js";
+import sendEmailWithTemplate from "../utils/sendEmail.js";
+import moment from "moment";
 
 /* 
 ========================================================
@@ -60,6 +62,9 @@ export const registerForEvent = async (req, res) => {
     const userId = req.user._id;
     const { eventId } = req.params;
 
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: "Event not found" });
+
     // Get slabId from body OR query
     let { registrationSlabId } = req.body;
     if (!registrationSlabId && req.query.registrationSlabId) {
@@ -82,9 +87,6 @@ export const registerForEvent = async (req, res) => {
       pincode,
       additionalAnswers,
     } = req.body;
-
-    const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ message: "Event not found" });
 
     const slab = await RegistrationSlab.findById(registrationSlabId);
     if (!slab)
@@ -423,13 +425,319 @@ export const updateRegistrationSuspension = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Registration ${
-        isSuspended ? "suspended" : "unsuspended"
-      } successfully`,
+      message: `Registration ${isSuspended ? "suspended" : "unsuspended"
+        } successfully`,
       data: registration,
     });
   } catch (error) {
     console.error("Update registration suspension error:", error);
     res.status(500).json({ message: "Server Error" });
+  }
+};
+/* 
+========================================================
+  7 Event Admin only :- Register User for an Event (eventId in URL, not body)
+========================================================*/
+
+export const eventAdminRegisterForEvent = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const { eventId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "userId is required for event admin registration",
+      });
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: "Event not found" });
+
+    // Get slabId from body OR query
+    let { registrationSlabId } = req.body;
+    if (!registrationSlabId && req.query.registrationSlabId) {
+      registrationSlabId = req.query.registrationSlabId;
+    }
+
+    const {
+      prefix,
+      name,
+      gender,
+      email,
+      mobile,
+      designation,
+      affiliation,
+      mealPreference,
+      country,
+      city,
+      state,
+      address,
+      pincode,
+      amount,
+      additionalAnswers,
+    } = req.body;
+
+    const slab = await RegistrationSlab.findById(registrationSlabId);
+    if (!slab)
+      return res.status(404).json({ message: "Selected slab does not exist" });
+
+    if (slab.eventId.toString() !== eventId)
+      return res.status(400).json({
+        message: "This slab does not belong to the selected event",
+      });
+
+    // Suspended?
+    const suspendedReg = await EventRegistration.findOne({
+      userId,
+      eventId,
+      isSuspended: true,
+    });
+
+    if (suspendedReg) {
+      return res.status(403).json({
+        success: false,
+        message: "Your previous registration for this event is suspended.",
+      });
+    }
+
+    // Already Paid?
+    const existingPaidReg = await EventRegistration.findOne({
+      userId,
+      eventId,
+      isPaid: true,
+    });
+
+    if (existingPaidReg) {
+      return res
+        .status(400)
+        .json({ message: "You have already paid for this event" });
+    }
+
+    // ===========================
+    // Validate Dynamic Fields for Slab + Uploads
+    // ===========================
+    let validatedAdditionalAnswers = [];
+
+    if (slab.needAdditionalInfo && slab.additionalFields.length > 0) {
+      let parsedAdditional = [];
+      if (typeof additionalAnswers === "string") {
+        try {
+          parsedAdditional = JSON.parse(additionalAnswers);
+        } catch (error) {
+          return res.status(400).json({
+            message: "Invalid JSON format for additionalAnswers",
+          });
+        }
+      } else if (Array.isArray(additionalAnswers)) {
+        parsedAdditional = additionalAnswers;
+      }
+
+      for (const field of slab.additionalFields) {
+        const answered = parsedAdditional.find((a) => a.id === field.id);
+        const fileKey = `file_${field.id}`;
+        const fileData = req.files?.[fileKey]?.[0];
+
+        if (field.type === "upload") {
+          if (!fileData) {
+            return res.status(400).json({
+              message: `File upload required for: ${field.label}`,
+            });
+          }
+
+          validatedAdditionalAnswers.push({
+            id: field.id,
+            label: field.label,
+            type: field.type,
+            value: null,
+            fileUrl: fileData.location,
+          });
+        } else {
+          if (
+            !answered ||
+            answered.value === undefined ||
+            answered.value === ""
+          ) {
+            return res.status(400).json({
+              message: `Value required for: ${field.label}`,
+            });
+          }
+
+          validatedAdditionalAnswers.push({
+            id: field.id,
+            label: field.label,
+            type: field.type,
+            value: answered.value,
+            fileUrl: null,
+          });
+        }
+      }
+    }
+    // ===============================
+    // VALIDATE Dynamic Form
+    // ===============================
+    const dynamicForm = await DynamicRegForm.findOne({ eventId });
+    let validatedDynamicFormAnswers = [];
+
+    if (dynamicForm && dynamicForm.fields.length > 0) {
+      let parsedDynamic = [];
+      if (typeof req.body.dynamicFormAnswers === "string") {
+        try {
+          parsedDynamic = JSON.parse(req.body.dynamicFormAnswers);
+        } catch {
+          return res
+            .status(400)
+            .json({ message: "Invalid JSON format for dynamicFormAnswers" });
+        }
+      } else if (Array.isArray(req.body.dynamicFormAnswers)) {
+        parsedDynamic = req.body.dynamicFormAnswers;
+      }
+
+      for (const field of dynamicForm.fields) {
+        const answered = parsedDynamic.find((a) => a.id === field.id);
+        const fileKey = `file_dyn_${field.id}`;
+        const fileUpload = req.files?.[fileKey]?.[0];
+
+        if (field.type === "file") {
+          if (!fileUpload && field.required) {
+            return res
+              .status(400)
+              .json({ message: `File required: ${field.label}` });
+          }
+
+          validatedDynamicFormAnswers.push({
+            id: field.id,
+            label: field.label,
+            type: field.type,
+            required: field.required,
+            fileUrl: fileUpload?.location || null,
+            value: null,
+          });
+        } else {
+          if (field.required && (!answered || answered.value === "")) {
+            return res
+              .status(400)
+              .json({ message: `Value required: ${field.label}` });
+          }
+
+          validatedDynamicFormAnswers.push({
+            id: field.id,
+            label: field.label,
+            type: field.type,
+            required: field.required,
+            value: answered?.value || null,
+            fileUrl: null,
+          });
+        }
+      }
+    }
+
+    // ----------------------------------------------------
+    //  Generate Registration Number
+    // ----------------------------------------------------
+    const lastPaidRegistration = await EventRegistration.findOne({
+      eventId,
+      regNumGenerated: true,
+    })
+      .sort({ createdAt: -1 })
+      .limit(1);
+
+    let newRegNumInt;
+    if (lastPaidRegistration && lastPaidRegistration.regNum) {
+      const lastNum = parseInt(lastPaidRegistration.regNum.split("-").pop());
+      newRegNumInt = lastNum + 1;
+    } else {
+      const baseNum = parseInt(event.regNum || 0);
+      newRegNumInt = baseNum + 1;
+    }
+
+    const generatedRegNum = `${event.eventCode}-${newRegNumInt}`;
+
+    // Create Registration
+    const registration = await EventRegistration.create({
+      userId,
+      eventId,
+      registrationSlabId,
+      prefix,
+      name,
+      gender,
+      email,
+      mobile,
+      designation,
+      affiliation,
+      mealPreference,
+      country,
+      city,
+      state,
+      address,
+      pincode,
+      amount,
+      dynamicFormAnswers: validatedDynamicFormAnswers,
+      additionalAnswers: validatedAdditionalAnswers,
+      spotRegistration: true,
+      isPaid: true,
+      regNumGenerated: true,
+      isSuspended: false,
+      regNum: generatedRegNum,
+    });
+
+    // -----------------------------
+    // SAFE FALLBACKS (IMPORTANT)
+    // -----------------------------
+    const finalEmail = email || targetUser.email;
+    const finalName = name || targetUser.name;
+
+    // ----------------------------------------------------
+    //  Send Email Notification to User
+    // ----------------------------------------------------
+    try {
+      await sendEmailWithTemplate({
+        to: finalEmail,
+        name: finalName,
+        templateKey: "2518b.554b0da719bc314.k1.6e017640-d986-11f0-8c89-62d0161cbd93.19b20e123a4",
+        mergeInfo: {
+          eventName: event.eventName,
+          registrationNumber: generatedRegNum,
+          startDate: event.startDate
+            ? moment(event.startDate, "DD/MM/YYYY").format("DD MMM YYYY")
+            : "N/A",
+          endDate: event.endDate
+            ? moment(event.endDate, "DD/MM/YYYY").format("DD MMM YYYY")
+            : "N/A",
+          prefix,
+          name,
+          email,
+          mobile,
+          designation,
+          affiliation,
+          mealPreference,
+          country,
+          state,
+          city,
+          address,
+          pincode,
+        },
+      });
+    } catch (emailError) {
+      console.error("Email sending failed:", emailError);
+    }
+
+
+    res.status(201).json({
+      success: true,
+      message: "Event registration created successfully by event admin",
+      data: registration,
+    });
+  } catch (error) {
+    console.error("Event registration error:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
