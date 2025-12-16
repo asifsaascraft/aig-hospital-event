@@ -170,6 +170,18 @@ export const registerForEvent = async (req, res) => {
               message: `File upload required for: ${field.label}`,
             });
           }
+          
+          // -------------------------------
+          // MAX FILE SIZE VALIDATION (5 MB)
+          // -------------------------------
+          const MAX_FILE_SIZE_MB = 5;
+          const fileSizeInMB = fileData.size / (1024 * 1024);
+
+          if (fileSizeInMB > MAX_FILE_SIZE_MB) {
+            return res.status(400).json({
+              message: `${field.label} file must be less than ${MAX_FILE_SIZE_MB} MB`,
+            });
+          }
 
           validatedAdditionalAnswers.push({
             id: field.id,
@@ -254,7 +266,7 @@ export const registerForEvent = async (req, res) => {
             type: field.type,
             required: field.required,
             value: null,
-            fileUrl: fileUpload ? fileUpload.location : null, 
+            fileUrl: fileUpload ? fileUpload.location : null,
             minLength: field.minLength,
             maxLength: field.maxLength,
             minSelected: field.minSelected,
@@ -656,6 +668,18 @@ export const registerForEventByEventAdmin = async (req, res) => {
             });
           }
 
+          // -------------------------------
+          // MAX FILE SIZE VALIDATION (5 MB)
+          // -------------------------------
+          const MAX_FILE_SIZE_MB = 5;
+          const fileSizeInMB = fileData.size / (1024 * 1024);
+
+          if (fileSizeInMB > MAX_FILE_SIZE_MB) {
+            return res.status(400).json({
+              message: `${field.label} file must be less than ${MAX_FILE_SIZE_MB} MB`,
+            });
+          }
+
           validatedAdditionalAnswers.push({
             id: field.id,
             label: field.label,
@@ -740,7 +764,7 @@ export const registerForEventByEventAdmin = async (req, res) => {
             type: field.type,
             required: field.required,
             value: null,
-            fileUrl: fileUpload ? fileUpload.location : null, 
+            fileUrl: fileUpload ? fileUpload.location : null,
             minLength: field.minLength,
             maxLength: field.maxLength,
             minSelected: field.minSelected,
