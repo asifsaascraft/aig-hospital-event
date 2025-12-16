@@ -10,8 +10,7 @@ import {
   registerForEventByEventAdmin,
 } from "../controllers/eventRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
-import { slabUpload } from "../middlewares/slabUploadMiddleware.js";
-import { dynamicFormUpload } from "../middlewares/dynamicFormUploadMiddleware.js";
+import { eventUpload } from "../middlewares/eventUploadMiddleware.js";
 
 
 const router = express.Router();
@@ -35,8 +34,7 @@ router.post(
   "/events/:eventId/register",
   protect,
   authorizeRoles("user"),
-  slabUpload(),
-  dynamicFormUpload(),
+  eventUpload(),
   registerForEvent
 );
 
@@ -77,8 +75,7 @@ router.post(
   "/event-admin/events/:eventId/register",
   protect,
   authorizeRoles("eventAdmin"),
-  slabUpload(),
-  dynamicFormUpload(),
+  eventUpload(),
   registerForEventByEventAdmin
 );
 

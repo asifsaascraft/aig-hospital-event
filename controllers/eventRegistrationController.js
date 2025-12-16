@@ -65,6 +65,15 @@ export const registerForEvent = async (req, res) => {
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ message: "Event not found" });
 
+    // ===============================
+    // Build file map from multer.any()
+    // ===============================
+    const fileMap = {};
+    (req.files || []).forEach((file) => {
+      fileMap[file.fieldname] = fileMap[file.fieldname] || [];
+      fileMap[file.fieldname].push(file);
+    });
+
     // Get slabId from body OR query
     let { registrationSlabId } = req.body;
     if (!registrationSlabId && req.query.registrationSlabId) {
@@ -153,7 +162,7 @@ export const registerForEvent = async (req, res) => {
           (a) => Number(a.id) === Number(field.id)
         );
         const fileKey = `file_${field.id}`;
-        const fileData = req.files?.[fileKey]?.[0];
+        const fileData = fileMap?.[fileKey]?.[0];
 
         if (field.type === "upload") {
           if (!fileData) {
@@ -215,7 +224,7 @@ export const registerForEvent = async (req, res) => {
           (a) => String(a.id) === String(field.id)
         );
         const fileKey = `file_dyn_${field.id}`;
-        const fileUpload = req.files?.[fileKey]?.[0];
+        const fileUpload = fileMap?.[fileKey]?.[0];
 
         // ===============================
         // FILE TYPE FIELD
@@ -537,6 +546,16 @@ export const registerForEventByEventAdmin = async (req, res) => {
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ message: "Event not found" });
 
+    // ===============================
+    // Build file map from multer.any()
+    // ===============================
+    const fileMap = {};
+    (req.files || []).forEach((file) => {
+      fileMap[file.fieldname] = fileMap[file.fieldname] || [];
+      fileMap[file.fieldname].push(file);
+    });
+
+
     // Get slabId from body OR query
     let { registrationSlabId } = req.body;
     if (!registrationSlabId && req.query.registrationSlabId) {
@@ -628,7 +647,7 @@ export const registerForEventByEventAdmin = async (req, res) => {
           (a) => Number(a.id) === Number(field.id)
         );
         const fileKey = `file_${field.id}`;
-        const fileData = req.files?.[fileKey]?.[0];
+        const fileData = fileMap?.[fileKey]?.[0];
 
         if (field.type === "upload") {
           if (!fileData) {
@@ -690,7 +709,7 @@ export const registerForEventByEventAdmin = async (req, res) => {
           (a) => String(a.id) === String(field.id)
         );
         const fileKey = `file_dyn_${field.id}`;
-        const fileUpload = req.files?.[fileKey]?.[0];
+        const fileUpload = fileMap?.[fileKey]?.[0];
 
         // ===============================
         // FILE TYPE FIELD
