@@ -15,10 +15,7 @@ const FormFieldSchema = new mongoose.Schema(
         "select",
         "checkbox",
         "radio",
-        "date",
-        "time",
-        "datetime-local",
-        "file",
+        "date"
       ],
       required: true,
     },

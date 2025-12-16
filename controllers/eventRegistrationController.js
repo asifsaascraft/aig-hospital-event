@@ -229,7 +229,7 @@ export const registerForEvent = async (req, res) => {
         // ===============================
         // FILE TYPE FIELD
         // ===============================
-        if (field.type === "file") {
+        if (field.type === "input" && field.inputTypes === "file") {
 
           // required file
           if (field.required && !fileUpload) {
@@ -254,7 +254,7 @@ export const registerForEvent = async (req, res) => {
             type: field.type,
             required: field.required,
             value: null,
-            fileUrl: fileUpload ? fileUpload.location : undefined, 
+            fileUrl: fileUpload ? fileUpload.location : null, 
             minLength: field.minLength,
             maxLength: field.maxLength,
             minSelected: field.minSelected,
@@ -715,7 +715,7 @@ export const registerForEventByEventAdmin = async (req, res) => {
         // FILE TYPE FIELD
 
         // ===============================
-        if (field.type === "file") {
+        if (field.type === "input" && field.inputTypes === "file") {
 
           // required file
           if (field.required && !fileUpload) {
@@ -740,7 +740,7 @@ export const registerForEventByEventAdmin = async (req, res) => {
             type: field.type,
             required: field.required,
             value: null,
-            fileUrl: fileUpload ? fileUpload.location : undefined, 
+            fileUrl: fileUpload ? fileUpload.location : null, 
             minLength: field.minLength,
             maxLength: field.maxLength,
             minSelected: field.minSelected,
