@@ -54,12 +54,12 @@ export const dynamicEventUpload = () => {
       uploadFields = Array.from(
         new Map(uploadFields.map((f) => [f.name, f])).values()
       );
-      
+
       // --------------------------
-      // No file fields → skip multer
+      //  NO FILES → PARSE TEXT
       // --------------------------
       if (uploadFields.length === 0) {
-        return next();
+        return multer().none()(req, res, next);
       }
 
       // --------------------------

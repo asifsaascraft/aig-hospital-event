@@ -149,7 +149,9 @@ export const registerForEvent = async (req, res) => {
       }
 
       for (const field of slab.additionalFields) {
-        const answered = parsedAdditional.find((a) => a.id === field.id);
+        const answered = parsedAdditional.find(
+          (a) => Number(a.id) === Number(field.id)
+        );
         const fileKey = `file_${field.id}`;
         const fileData = req.files?.[fileKey]?.[0];
 
@@ -209,7 +211,9 @@ export const registerForEvent = async (req, res) => {
       }
 
       for (const field of dynamicForm.fields) {
-        const answered = parsedDynamic.find((a) => a.id === field.id);
+        const answered = parsedDynamic.find(
+          (a) => String(a.id) === String(field.id)
+        );
         const fileKey = `file_dyn_${field.id}`;
         const fileUpload = req.files?.[fileKey]?.[0];
 
@@ -538,7 +542,7 @@ export const registerForEventByEventAdmin = async (req, res) => {
     if (!registrationSlabId && req.query.registrationSlabId) {
       registrationSlabId = req.query.registrationSlabId;
     }
-    
+
     if (!registrationSlabId) {
       return res.status(400).json({
         message: "registrationSlabId is required",
@@ -620,7 +624,9 @@ export const registerForEventByEventAdmin = async (req, res) => {
       }
 
       for (const field of slab.additionalFields) {
-        const answered = parsedAdditional.find((a) => a.id === field.id);
+        const answered = parsedAdditional.find(
+          (a) => Number(a.id) === Number(field.id)
+        );
         const fileKey = `file_${field.id}`;
         const fileData = req.files?.[fileKey]?.[0];
 
@@ -680,7 +686,9 @@ export const registerForEventByEventAdmin = async (req, res) => {
       }
 
       for (const field of dynamicForm.fields) {
-        const answered = parsedDynamic.find((a) => a.id === field.id);
+        const answered = parsedDynamic.find(
+          (a) => String(a.id) === String(field.id)
+        );
         const fileKey = `file_dyn_${field.id}`;
         const fileUpload = req.files?.[fileKey]?.[0];
 
