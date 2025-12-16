@@ -674,6 +674,7 @@ export const registerForEventByEventAdmin = async (req, res) => {
 
         // ===============================
         // FILE TYPE FIELD
+        
         // ===============================
         if (field.type === "file") {
 
