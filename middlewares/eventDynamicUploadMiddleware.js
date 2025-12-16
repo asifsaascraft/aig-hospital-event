@@ -8,33 +8,19 @@ import DynamicRegForm from "../models/DynamicRegForm.js";
 export const dynamicEventUpload = () => {
   return async (req, res, next) => {
     try {
-      // ==========================
-      // STEP 1: Parse text fields ONLY
-      // ==========================
-      await new Promise((resolve, reject) => {
-        multer({ storage: multer.memoryStorage() }).any()(
-          req,
-          res,
-          (err) => {
-            if (err) reject(err);
-            else resolve();
-          }
-        );
-      });
-
       const eventId = req.params.eventId;
       const registrationSlabId =
-        req.body.registrationSlabId || req.query.registrationSlabId;
+        req.body?.registrationSlabId || req.query?.registrationSlabId;
 
       let uploadFields = [];
 
-      // ==========================
-      // STEP 2: Slab Upload Fields
-      // ==========================
+      // --------------------------
+      // Slab upload fields
+      // --------------------------
       if (registrationSlabId) {
         const slab = await RegistrationSlab.findById(registrationSlabId);
 
-        if (slab?.needAdditionalInfo && slab.additionalFields.length > 0) {
+        if (slab?.needAdditionalInfo && slab.additionalFields?.length > 0) {
           slab.additionalFields
             .filter((f) => f.type === "upload")
             .forEach((f) => {
@@ -46,9 +32,9 @@ export const dynamicEventUpload = () => {
         }
       }
 
-      // ==========================
-      // STEP 3: Dynamic Form Upload Fields
-      // ==========================
+      // --------------------------
+      // Dynamic Form upload fields
+      // --------------------------
       const dynamicForm = await DynamicRegForm.findOne({ eventId });
 
       if (dynamicForm?.fields?.length > 0) {
@@ -63,15 +49,22 @@ export const dynamicEventUpload = () => {
       }
 
       // ==========================
-      // STEP 4: No files → continue
+      //  DEDUPLICATE FIELD NAMES
       // ==========================
+      uploadFields = Array.from(
+        new Map(uploadFields.map((f) => [f.name, f])).values()
+      );
+      
+      // --------------------------
+      // No file fields → skip multer
+      // --------------------------
       if (uploadFields.length === 0) {
         return next();
       }
 
-      // ==========================
-      // STEP 5: Upload to S3
-      // ==========================
+      // --------------------------
+      // Multer S3
+      // --------------------------
       const storage = multerS3({
         s3,
         bucket: process.env.AWS_BUCKET_NAME,
@@ -86,11 +79,11 @@ export const dynamicEventUpload = () => {
         },
       });
 
-      multer({ storage })
-        .fields(uploadFields)(req, res, next);
+      return multer({ storage }).fields(uploadFields)(req, res, next);
+
     } catch (error) {
       console.error("Dynamic Upload Error:", error);
-      res.status(500).json({ message: "Dynamic file upload failed" });
+      return res.status(500).json({ message: "Dynamic file upload failed" });
     }
   };
 };

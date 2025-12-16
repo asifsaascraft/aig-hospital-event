@@ -70,6 +70,11 @@ export const registerForEvent = async (req, res) => {
     if (!registrationSlabId && req.query.registrationSlabId) {
       registrationSlabId = req.query.registrationSlabId;
     }
+    if (!registrationSlabId) {
+      return res.status(400).json({
+        message: "registrationSlabId is required",
+      });
+    }
 
     const {
       prefix,
@@ -533,6 +538,13 @@ export const registerForEventByEventAdmin = async (req, res) => {
     if (!registrationSlabId && req.query.registrationSlabId) {
       registrationSlabId = req.query.registrationSlabId;
     }
+    
+    if (!registrationSlabId) {
+      return res.status(400).json({
+        message: "registrationSlabId is required",
+      });
+    }
+
 
     const {
       prefix,
@@ -674,7 +686,7 @@ export const registerForEventByEventAdmin = async (req, res) => {
 
         // ===============================
         // FILE TYPE FIELD
-        
+
         // ===============================
         if (field.type === "file") {
 
