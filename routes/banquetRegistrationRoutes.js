@@ -5,6 +5,7 @@ import {
   editPaidBanquets,
   getAllPaidBanquetsByEvent_Admin,
   updateBanquetSuspension,
+  registerBanquetByEventAdmin,
 } from "../controllers/banquetRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -52,6 +53,14 @@ router.patch(
   protect,
   authorizeRoles("eventAdmin"),
   updateBanquetSuspension
+);
+
+// Register banquet (Event Admin)
+router.post(
+  "/banquet-registrations/:eventId/register",
+  protect,
+  authorizeRoles("eventAdmin"),
+  registerBanquetByEventAdmin
 );
 
 

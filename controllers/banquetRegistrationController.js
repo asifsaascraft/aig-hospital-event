@@ -5,7 +5,7 @@ import EventRegistration from "../models/EventRegistration.js";
 
 /* 
 ========================================================
-  1️ Register Banquet for User or Accompany
+  1️ Register Banquet for User or Accompany or Other
 ========================================================
   @route   POST /api/banquet-registrations/:eventId/:eventRegistrationId/register
   @access  Protected (user)
@@ -411,6 +411,95 @@ export const updateBanquetSuspension = async (req, res) => {
     });
   } catch (error) {
     console.error("Update banquet suspension error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+
+/* 
+========================================================
+  6 Register Banquet for User or Accompany or Other (Event Admin)
+========================================================
+  @route   POST /api/banquet-registrations/:eventId/register
+  @access  Protected (Event Admin)
+========================================================
+*/
+export const registerBanquetByEventAdmin = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { userId, eventRegistrationId, banquetId, banquets } = req.body;
+
+    if (!banquetId)
+      return res.status(400).json({ message: "Banquet ID is required" });
+
+    if (!Array.isArray(banquets) || banquets.length === 0)
+      return res.status(400).json({ message: "Banquets data is required" });
+
+    // Validate Event
+    const event = await Event.findById(eventId);
+    if (!event)
+      return res.status(404).json({ message: "Event not found" });
+
+    // Validate Event Registration
+    const registration = await EventRegistration.findOne({
+      _id: eventRegistrationId,
+      eventId,
+      userId,
+      isPaid: true, // Only allow if user registration is paid
+      isSuspended: false, //  Only non-suspended registration
+    });
+
+    if (!registration)
+      return res
+        .status(400)
+        .json({ message: "You must complete event registration first" });
+
+    // Build banquets array with auto parent accompany mapping
+    const banquetEntries = [];
+
+    for (const b of banquets) {
+      const entry = {
+        ...b,
+        isSuspended: false, 
+      };
+
+      // If accompanySubId is provided → find parent accompany doc
+      if (b.accompanySubId) {
+        const parentAccompany = await Accompany.findOne({
+          "accompanies._id": b.accompanySubId,
+        }).select("_id");
+
+        if (!parentAccompany) {
+          return res.status(404).json({
+            message: `Parent accompany not found for subId ${b.accompanySubId}`,
+          });
+        }
+
+        entry.accompanyParentId = parentAccompany._id;
+      }
+
+      banquetEntries.push(entry);
+    }
+
+    // Save banquet registration
+    const banquetRegistration = await BanquetRegistration.create({
+      banquetId,
+      userId,
+      eventId,
+      eventRegistrationId,
+      amount,
+      spotRegistration: true,
+      isPaid: true,
+      banquets: banquetEntries,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Banquet registered successfully by event admin",
+      data: banquetRegistration,
+    });
+  } catch (error) {
+    console.error("Register banquet error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };

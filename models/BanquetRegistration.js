@@ -41,6 +41,15 @@ const BanquetRegistrationSchema = new mongoose.Schema(
         otherName: {
           type: String,
         },
+        // this field store only, when event admin register banquet 
+        amount: {
+          type: Number,
+          min: [0, "Amount must be a positive number"],
+        },
+        spotRegistration: {
+          type: Boolean,
+          default: false,
+        },
         isPaid: {
           type: Boolean,
           default: false,
