@@ -7,6 +7,8 @@ import {
   editPaidAccompanies,
   getAllPaidAccompaniesByEvent_Admin,
   updateAccompanySuspension,
+  checkEmailExists,
+  addAccompaniesByEventAdmin,
 } from "../controllers/accompanyController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -64,5 +66,20 @@ router.patch(
   updateAccompanySuspension
 );
 
+// Check If Email Exists in Event Registration Model (Event Admin)
+router.post(
+  "/event-admin/events/:eventId/check-email",
+  protect,
+  authorizeRoles("eventAdmin"),
+  checkEmailExists
+);
+
+// Add accompanies after registration (Event Admin)
+router.post(
+  "/accompanies/:eventId/add",
+  protect,
+  authorizeRoles("eventAdmin"),
+  addAccompaniesByEventAdmin
+);
 
 export default router;

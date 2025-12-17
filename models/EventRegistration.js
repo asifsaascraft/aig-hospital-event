@@ -119,6 +119,7 @@ const EventRegistrationSchema = new mongoose.Schema(
       type: [AdditionalAnswerSchema],
       default: [],
     },
+    // this field store only, when event admin add accompany
     amount: {
       type: Number,
       min: [0, "Amount must be a positive number"],

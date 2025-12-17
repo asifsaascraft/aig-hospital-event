@@ -43,6 +43,15 @@ const AccompanySchema = new mongoose.Schema(
           required: [true, "Meal Preference is required"],
           trim: true,
         },
+        // this field store only, when event admin add accompany
+        amount: {
+          type: Number,
+          min: [0, "Amount must be a positive number"],
+        },
+        spotRegistration: {
+          type: Boolean,
+          default: false,
+        },
         isPaid: {
           type: Boolean,
           default: false,

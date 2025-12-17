@@ -376,13 +376,176 @@ export const updateAccompanySuspension = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Accompany member ${
-        isSuspended ? "suspended" : "unsuspended"
-      } successfully`,
+      message: `Accompany member ${isSuspended ? "suspended" : "unsuspended"
+        } successfully`,
       data: subAccompany,
     });
   } catch (error) {
     console.error("Update accompany suspension error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// ==============================================================
+// 7 Check If Email Exists in Event Registration Model (Event Admin)
+// ==============================================================
+export const checkEmailExists = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { email } = req.body;
+
+    if (!eventId) {
+      return res.status(400).json({
+        success: false,
+        message: "Event ID is required in the URL",
+      });
+    }
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    // Normalize email
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Check if email already exists for this event
+    const existing = await EventRegistration.findOne({
+      eventId,
+      email: normalizedEmail,
+      isPaid: true,
+      isSuspended: false, //  Only non-suspended registration
+    }).select("_id eventId userId registrationSlabId")
+      .populate({
+        path: "registrationSlabId",
+        select: "AccompanyAmount",
+      });
+
+    if (existing) {
+      return res.status(200).json({
+        success: true,
+        exists: true,
+        message: "Email already registered for this event",
+        existing,
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      exists: false,
+      message: "Email not registered for this event",
+      existing: null,
+    });
+  } catch (error) {
+    console.error("Error checking email:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while checking email",
+    });
+  }
+};
+ 
+
+/*
+========================================================
+  8 Add Accompanies (After Registration)  (Event Admin)
+========================================================
+  @route   POST /api/accompanies/:eventId/add
+  @access  Protected (Event Admin)
+========================================================
+*/
+export const addAccompaniesByEventAdmin = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { userId, eventRegistrationId, accompanies } = req.body;
+
+    if (!Array.isArray(accompanies) || accompanies.length === 0) {
+      return res.status(400).json({ message: "No accompanies provided" });
+    }
+
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: "Event not found" });
+
+    // Validate registration
+    const registration = await EventRegistration.findOne({
+      _id: eventRegistrationId,
+      eventId,
+      userId,
+      isPaid: true,
+      isSuspended: false,
+    }).populate("registrationSlabId", "AccompanyAmount");
+
+    if (!registration) {
+      return res.status(400).json({
+        message: "Valid paid event registration not found",
+      });
+    }
+
+    const accompanyAmount = registration.registrationSlabId?.AccompanyAmount || 0;
+
+    // Find / create accompany doc
+    let accompanyDoc = await Accompany.findOne({
+      userId,
+      eventId,
+      eventRegistrationId,
+    });
+
+    if (!accompanyDoc) {
+      accompanyDoc = new Accompany({
+        userId,
+        eventId,
+        eventRegistrationId,
+        accompanies: [],
+      });
+    }
+
+    // ==============================
+    // Generate next accompany counter
+    // ==============================
+    let existingCount = 0;
+
+    const allAccompanyDocs = await Accompany.find({
+      eventRegistrationId,
+    });
+
+    allAccompanyDocs.forEach((doc) => {
+      doc.accompanies.forEach((a) => {
+        if (a.regNumGenerated) existingCount++;
+      });
+    });
+
+    let counter = existingCount + 1;
+
+    // ==============================
+    // Add accompanies as PAID
+    // ==============================
+    accompanies.forEach((a) => {
+      accompanyDoc.accompanies.push({
+        fullName: a.fullName,
+        relation: a.relation,
+        gender: a.gender,
+        age: a.age,
+        mealPreference: a.mealPreference,
+        amount: a.amount,
+        spotRegistration: true,
+        isPaid: true,
+        regNumGenerated: true,
+        regNum: `${registration.regNum}-A${counter}`,
+        isSuspended: false,
+      });
+      counter++;
+    });
+
+    await accompanyDoc.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Accompanies added successfully by event admin (marked as paid)",
+      data: accompanyDoc,
+    });
+  } catch (error) {
+    console.error("Add accompanies by admin error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
