@@ -10,10 +10,6 @@ import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-/* ========================================================
-   Workshop Registration Routes
-======================================================== */
-
 // 1️ Register for Multiple Workshops under a Single Event
 router.post(
   "/events/:eventId/workshop-register",

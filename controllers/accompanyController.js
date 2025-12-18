@@ -8,9 +8,6 @@ import RegistrationSlab from "../models/RegistrationSlab.js";
 ========================================================
   1️ Get Accompany Amount for a User Registration
 ========================================================
-  @route   GET /api/accompanies/:eventId/:eventRegistrationId/amount
-  @access  Protected (user)
-========================================================
 */
 export const getAccompanyAmount = async (req, res) => {
   try {
@@ -66,9 +63,6 @@ export const getAccompanyAmount = async (req, res) => {
 /*
 ========================================================
   2️ Add Accompanies (After Registration)
-========================================================
-  @route   POST /api/accompanies/:eventId/:eventRegistrationId/add
-  @access  Protected (user)
 ========================================================
 */
 export const addAccompanies = async (req, res) => {
@@ -135,9 +129,6 @@ export const addAccompanies = async (req, res) => {
 ========================================================
   3️ Get All Paid Accompanies for Logged-in User (Specific Event)
 ========================================================
-  @route   GET /api/accompanies/paid/:eventId
-  @access  Protected (user)
-========================================================
 */
 export const getAllPaidAccompaniesByEvent = async (req, res) => {
   try {
@@ -202,9 +193,6 @@ export const getAllPaidAccompaniesByEvent = async (req, res) => {
 ========================================================
   4️ Edit Paid Accompanies (Only editable fields)
 ========================================================
-  @route   PUT /api/accompanies/:accompanyId/edit
-  @access  Protected (user)
-========================================================
 */
 export const editPaidAccompanies = async (req, res) => {
   try {
@@ -264,9 +252,6 @@ export const editPaidAccompanies = async (req, res) => {
 /* 
 ========================================================
   5️ Get All Paid Accompanies for an Event (Event Admin)
-========================================================
-  @route   GET /api/accompanies/event-admin/events/:eventId/paid
-  @access  Protected (eventAdmin)
 ========================================================
 */
 export const getAllPaidAccompaniesByEvent_Admin = async (req, res) => {
@@ -334,9 +319,6 @@ export const getAllPaidAccompaniesByEvent_Admin = async (req, res) => {
 /* 
 ========================================================
   6️ Update Suspension Status of a Single Accompany (Event Admin)
-========================================================
-  @route   PATCH /api/accompanies/event-admin/:accompanyId/suspend/:subId
-  @access  Protected (eventAdmin)
 ========================================================
 */
 export const updateAccompanySuspension = async (req, res) => {
@@ -451,9 +433,6 @@ export const checkEmailExists = async (req, res) => {
 ========================================================
   8 Add Accompanies (After Registration)  (Event Admin)
 ========================================================
-  @route   POST /api/accompanies/:eventId/add
-  @access  Protected (Event Admin)
-========================================================
 */
 export const addAccompaniesByEventAdmin = async (req, res) => {
   try {
@@ -552,9 +531,7 @@ export const addAccompaniesByEventAdmin = async (req, res) => {
 
 /* 
 ========================================================
-  9 Get All Paid Accompanies for (Specific Event)
-========================================================
-  @access  Protected (Event Admin)
+  9 Get All Paid Accompanies for (Specific Event) (Event Admin)
 ========================================================
 */
 export const getAllSpecificUserAccompanyesByEventAdmin = async (req, res) => {

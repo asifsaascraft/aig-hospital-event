@@ -15,11 +15,6 @@ import { eventUpload } from "../middlewares/eventUploadMiddleware.js";
 
 const router = express.Router();
 
-/* 
-========================================================
-  Event Registration Routes — Accessible only by "user"
-========================================================
-*/
 
 // 1 Get Prefilled Registration Form (User or EventAdmin)
 router.get(

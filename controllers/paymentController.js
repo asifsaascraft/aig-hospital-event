@@ -20,8 +20,6 @@ const razorpay = new Razorpay({
 
 /* ========================================================
    1. Create Razorpay Order
-   Route: POST /api/payments/create-order/:eventId
-   Access: Private (User)
 ======================================================== */
 export const createOrder = async (req, res) => {
   try {
@@ -84,8 +82,6 @@ export const createOrder = async (req, res) => {
 
 /* ========================================================
    2. Verify Payment
-   Route: POST /api/payments/verify
-   Access: Private (User)
 ======================================================== */
 export const verifyPayment = async (req, res) => {
   try {
@@ -211,8 +207,6 @@ export const verifyPayment = async (req, res) => {
 
 /* ========================================================
    3. Get My Payments
-   Route: GET /api/payments/my
-   Access: Private (User)
 ======================================================== */
 export const getMyPayments = async (req, res) => {
   try {
@@ -257,8 +251,6 @@ export const getMyPayments = async (req, res) => {
 
 /* ========================================================
    4. Mark Payment as Failed
-   Route: POST /api/payments/failed
-   Access: Private (User)
 ======================================================== */
 export const markPaymentFailed = async (req, res) => {
   try {
@@ -286,8 +278,6 @@ export const markPaymentFailed = async (req, res) => {
 
 /* ========================================================
    5. Create Razorpay Order for Accompany Payment
-   Route: POST /api/payments/accompany/create-order/:eventId
-   Access: Private (User)
 ======================================================== */
 
 export const createAccompanyOrder = async (req, res) => {
@@ -381,8 +371,6 @@ export const createAccompanyOrder = async (req, res) => {
 
 /* ========================================================
    6. Verify Accompany Payment
-   Route: POST /api/payments/accompany/verify
-   Access: Private (User)
 ======================================================== */
 
 export const verifyAccompanyPayment = async (req, res) => {
@@ -518,7 +506,6 @@ export const verifyAccompanyPayment = async (req, res) => {
 
 /* ========================================================
    7. Create Workshop Payment Order
-   Route: POST /api/payments/workshop/create-order/:eventId
 ======================================================== */
 export const createWorkshopOrder = async (req, res) => {
   try {
@@ -581,7 +568,6 @@ export const createWorkshopOrder = async (req, res) => {
 
 /* ========================================================
    8. Verify Workshop Payment
-   Route: POST /api/payments/workshop/verify
 ======================================================== */
 export const verifyWorkshopPayment = async (req, res) => {
   try {
@@ -677,8 +663,6 @@ export const verifyWorkshopPayment = async (req, res) => {
 
 /* ========================================================
    9. Create Banquet Payment Order
-   Route: POST /api/payments/banquet/create-order/:eventId
-   Access: Private (User)
 ======================================================== */
 export const createBanquetOrder = async (req, res) => {
   try {
@@ -752,8 +736,6 @@ export const createBanquetOrder = async (req, res) => {
 
 /* ========================================================
    10. Verify Banquet Payment
-   Route: POST /api/payments/banquet/verify
-   Access: Private (User)
 ======================================================== */
 export const verifyBanquetPayment = async (req, res) => {
   try {

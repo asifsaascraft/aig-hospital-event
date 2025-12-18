@@ -7,9 +7,6 @@ import EventRegistration from "../models/EventRegistration.js";
 ========================================================
   1️ Register Banquet for User or Accompany or Other
 ========================================================
-  @route   POST /api/banquet-registrations/:eventId/:eventRegistrationId/register
-  @access  Protected (user)
-========================================================
 */
 export const registerBanquet = async (req, res) => {
   try {
@@ -92,9 +89,6 @@ export const registerBanquet = async (req, res) => {
 /* 
 ========================================================
   2️ Get All Paid Banquets for Logged-in User (Specific Event)
-========================================================
-  @route   GET /api/banquet-registrations/paid/:eventId
-  @access  Protected (user)
 ========================================================
 */
 export const getAllPaidBanquetsByEvent = async (req, res) => {
@@ -194,9 +188,6 @@ export const getAllPaidBanquetsByEvent = async (req, res) => {
 ========================================================
   3️ Edit Paid Banquets (Only update otherName)
 ========================================================
-  @route   PUT /api/banquet-registrations/:banquetRegistrationId/edit
-  @access  Protected (user)
-========================================================
 */
 export const editPaidBanquets = async (req, res) => {
   try {
@@ -251,9 +242,6 @@ export const editPaidBanquets = async (req, res) => {
 /* 
 ========================================================
   4️ Get All Paid Banquets for an Event (Event Admin)
-========================================================
-  @route   GET /api/banquet-registrations/event-admin/events/:eventId/paid
-  @access  Protected (eventAdmin)
 ========================================================
 */
 export const getAllPaidBanquetsByEvent_Admin = async (req, res) => {
@@ -355,9 +343,6 @@ export const getAllPaidBanquetsByEvent_Admin = async (req, res) => {
 ========================================================
   5️ Update Suspension Status of a Single Banquet Entry (Event Admin)
 ========================================================
-  @route   PATCH /api/banquet-registrations/event-admin/:banquetRegistrationId/suspend/:banquetSubId
-  @access  Protected (eventAdmin)
-========================================================
 */
 export const updateBanquetSuspension = async (req, res) => {
   try {
@@ -419,9 +404,6 @@ export const updateBanquetSuspension = async (req, res) => {
 /* 
 ========================================================
   6 Register Banquet for User or Accompany or Other (Event Admin)
-========================================================
-  @route   POST /api/banquet-registrations/:eventId/register
-  @access  Protected (Event Admin)
 ========================================================
 */
 export const registerBanquetByEventAdmin = async (req, res) => {

@@ -16,11 +16,6 @@ import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-/*
-========================================================
-  Payment Routes — User Only
-========================================================
-*/
 
 // Create Razorpay Order
 router.post(
