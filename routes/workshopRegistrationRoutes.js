@@ -4,6 +4,7 @@ import {
   getUserWorkshopRegistrationsByEvent,
   getAllWorkshopRegistrationsByEvent,
   updateWorkshopSuspension,
+  registerForWorkshopsByEventAdmin,
 } from "../controllers/workshopRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -45,4 +46,11 @@ router.patch(
   updateWorkshopSuspension
 );
 
+// 5 Register for Multiple Workshops under a Single Event (Event Admin)
+router.post(
+  "/event-admin/events/:eventId/workshop-register",
+  protect,
+  authorizeRoles("eventAdmin"),
+  registerForWorkshopsByEventAdmin
+);
 export default router;

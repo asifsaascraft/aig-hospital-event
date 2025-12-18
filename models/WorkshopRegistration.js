@@ -42,6 +42,10 @@ const WorkshopRegistrationSchema = new mongoose.Schema(
       enum: ["Pending", "Completed"],
       default: "Pending",
     },
+    spotRegistration: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
