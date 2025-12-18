@@ -9,6 +9,7 @@ import {
   updateAccompanySuspension,
   checkEmailExists,
   addAccompaniesByEventAdmin,
+  getAllSpecificUserAccompanyesByEventAdmin,
 } from "../controllers/accompanyController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -81,5 +82,14 @@ router.post(
   authorizeRoles("eventAdmin"),
   addAccompaniesByEventAdmin
 );
+
+// Get all accompanies for (specific event) (Event Admin)
+router.get(
+  "/accompanies/events/:eventId/:userId",
+  protect,
+  authorizeRoles("eventAdmin"),
+  getAllSpecificUserAccompanyesByEventAdmin
+);
+
 
 export default router;

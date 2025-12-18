@@ -549,3 +549,59 @@ export const addAccompaniesByEventAdmin = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
+/* 
+========================================================
+  9 Get All Paid Accompanies for (Specific Event)
+========================================================
+  @access  Protected (Event Admin)
+========================================================
+*/
+export const getAllSpecificUserAccompanyesByEventAdmin = async (req, res) => {
+  try {
+    const { eventId, userId } = req.params;
+
+    // Validate event
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    // Find accompany records for this event and user
+    const accompanies = await Accompany.find({ userId, eventId })
+      .sort({ createdAt: -1 });
+
+    // Filter out only paid accompanies (inside the array)
+    const paidAccompanies = accompanies
+      .map((doc) => {
+        const paidList = doc.accompanies.filter((a) => a.isPaid === true && a.isSuspended === false);
+        if (paidList.length > 0) {
+          return {
+            _id: doc._id,
+            event: doc.eventId,
+            registration: doc.eventRegistrationId,
+            paidAccompanies: paidList,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    if (paidAccompanies.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No paid accompanies found for this event",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Paid accompanies fetched successfully",
+      data: paidAccompanies,
+    });
+  } catch (error) {
+    console.error("Get all paid accompanies by event error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
