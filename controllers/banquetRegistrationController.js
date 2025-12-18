@@ -427,7 +427,7 @@ export const updateBanquetSuspension = async (req, res) => {
 export const registerBanquetByEventAdmin = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { userId, eventRegistrationId, banquetId, amount, banquets } = req.body;
+    const { userId, eventRegistrationId, banquetId, banquets } = req.body;
 
     if (!banquetId)
       return res.status(400).json({ message: "Banquet ID is required" });
@@ -458,10 +458,18 @@ export const registerBanquetByEventAdmin = async (req, res) => {
     const banquetEntries = [];
 
     for (const b of banquets) {
+
+      if (typeof b.amount !== "number") {
+        return res.status(400).json({
+          message: "Amount is required for each banquet entry"
+        });
+
+      }
       const entry = {
         ...b,
-        isPaid: true, // FOR ADMIN
-        spotRegistration: true, // FOR ADMIN
+        amount: b.amount,
+        isPaid: true,
+        spotRegistration: true,
         isSuspended: false,
       };
 
