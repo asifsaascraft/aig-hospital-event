@@ -48,7 +48,7 @@ export const registerBanquet = async (req, res) => {
     for (const b of banquets) {
       const entry = {
         ...b,
-        isSuspended: false, 
+        isSuspended: false,
       };
 
       // If accompanySubId is provided → find parent accompany doc
@@ -427,7 +427,7 @@ export const updateBanquetSuspension = async (req, res) => {
 export const registerBanquetByEventAdmin = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { userId, eventRegistrationId, banquetId, banquets } = req.body;
+    const { userId, eventRegistrationId, banquetId, amount, banquets } = req.body;
 
     if (!banquetId)
       return res.status(400).json({ message: "Banquet ID is required" });
@@ -460,7 +460,9 @@ export const registerBanquetByEventAdmin = async (req, res) => {
     for (const b of banquets) {
       const entry = {
         ...b,
-        isSuspended: false, 
+        isPaid: true, // FOR ADMIN
+        spotRegistration: true, // FOR ADMIN
+        isSuspended: false,
       };
 
       // If accompanySubId is provided → find parent accompany doc
@@ -487,9 +489,6 @@ export const registerBanquetByEventAdmin = async (req, res) => {
       userId,
       eventId,
       eventRegistrationId,
-      amount,
-      spotRegistration: true,
-      isPaid: true,
       banquets: banquetEntries,
     });
 
