@@ -351,7 +351,7 @@ export const registerForWorkshopsByEventAdmin = async (req, res) => {
       workshops: workshopIds.map((id) => ({ workshopIds: id, isSuspended: false })),
       registrationType,
       totalAmount: finalAmount,
-      paymentStatus: registrationType === "Free" ? "Completed" : "Pending",
+      paymentStatus: "Completed",
       spotRegistration: true,
     });
 
