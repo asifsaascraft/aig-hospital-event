@@ -110,6 +110,21 @@ const EventRegistrationSchema = new mongoose.Schema(
       required: [true, "Pin Code is required"],
       trim: true,
     },
+    mciNumber: {
+      type: String,
+    },
+    mciState: {
+      type: String,
+    },
+    department: {
+      type: String,
+    },
+    alternateEmail: {
+      type: String,
+    },
+    alternateMobile: {
+      type: String,
+    },
     // (FOR EVENT DYNAMIC FORM)
     dynamicFormAnswers: {
       type: [DynamicFormAnswerSchema],
