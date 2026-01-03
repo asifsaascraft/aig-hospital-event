@@ -20,7 +20,7 @@ export const getPrefilledRegistrationForm = async (req, res) => {
     if (!event) return res.status(404).json({ message: "Event not found" });
 
     const user = await User.findById(userId).select(
-      "name prefix gender email mobile designation affiliation mealPreference country city state pincode"
+      "name prefix gender email mobile designation affiliation mciNumber mciState department country address city state pincode"
     );
     if (!user) return res.status(404).json({ message: "User not found" });
 
@@ -36,7 +36,11 @@ export const getPrefilledRegistrationForm = async (req, res) => {
       mobile: user.mobile || "",
       designation: user.designation || "",
       affiliation: user.affiliation || "",
+      mciNumber: user.mciNumber || "",
+      mciState: user.mciState || "",
+      department: user.department || "",
       country: user.country || "",
+      address: user.address || "",
       state: user.state || "",
       city: user.city || "",
       pincode: user.pincode || "",
@@ -94,6 +98,9 @@ export const registerForEvent = async (req, res) => {
       designation,
       affiliation,
       mealPreference,
+      mciNumber,
+      mciState,
+      department,
       country,
       city,
       state,
@@ -351,6 +358,9 @@ export const registerForEvent = async (req, res) => {
       designation,
       affiliation,
       mealPreference,
+      mciNumber,
+      mciState,
+      department,
       country,
       city,
       state,

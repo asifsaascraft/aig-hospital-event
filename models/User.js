@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { type } from "os";
 
 const UserSchema = new mongoose.Schema(
   {
@@ -60,8 +61,7 @@ const UserSchema = new mongoose.Schema(
 
     // -------------------------
     // Additional fields for general "user" role (added; optional — no defaults)
-    // -------------------------
-    // prefix, designation, affiliation, medical council, address details, preferences, profile pic, term acceptance
+    // ---------------
     prefix: {
       type: String,
       trim: true,
@@ -74,13 +74,8 @@ const UserSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    medicalCouncilState: {
+    address: {
       type: String,
-      trim: true,
-    },
-    medicalCouncilRegistration: {
-      type: String,
-      trim: true,
     },
     gender: {
       type: String,
@@ -101,6 +96,18 @@ const UserSchema = new mongoose.Schema(
     pincode: {
       type: String,
       trim: true,
+    },
+    mciRegistered: {
+      type: String,
+    },
+    mciNumber: {
+      type: String,
+    },
+    mciState: {
+      type: String,
+    },
+    department: {
+      type: String,
     },
     profilePicture: {
       type: String,
