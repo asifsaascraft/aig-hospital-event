@@ -184,6 +184,10 @@ export const myEvents = async (req, res) => {
 
     const assignment = await EventAssign.findOne({ eventAdminId })
       .populate({
+        path: "eventAdminId",
+        select: "name email companyName",
+      })
+      .populate({
         path: "assignedEvents.eventId",
         populate: [
           { path: "organizer" },
@@ -196,6 +200,9 @@ export const myEvents = async (req, res) => {
       return res.json({
         success: true,
         events: [],
+        user: {
+          name: req.user.name,
+        },
       });
     }
 
@@ -214,8 +221,8 @@ export const myEvents = async (req, res) => {
         marketing: item.marketing,
         communication: item.communication,
         accounting: item.accounting,
-        badgingAndScanning: item.badgingAndScanning,
-        eventApp: item.eventApp,
+        badging: item.badging,
+        eventapp: item.eventapp,
         presentation: item.presentation,
       },
     }));
@@ -236,3 +243,4 @@ export const myEvents = async (req, res) => {
     });
   }
 };
+
