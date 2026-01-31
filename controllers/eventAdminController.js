@@ -224,7 +224,7 @@ export const myEvents = async (req, res) => {
       success: true,
       events,
       user: {
-        name: assignment.eventAdminName,
+        name: assignment.eventAdminId.name,
       },
     });
   } catch (error) {

@@ -7,10 +7,6 @@ const EventAssignSchema = new mongoose.Schema(
       ref: "User",
       required: true
     },
-    eventAdminName: {
-      type: String,
-      required: true
-    },
     assignedEvents: [
       {
         eventId: {

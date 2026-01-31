@@ -69,7 +69,6 @@ export const assignEvent = async (req, res) => {
     if (!assignment) {
       assignment = new EventAssign({
         eventAdminId,
-        eventAdminName: eventAdmin.name,
         assignedEvents: [],
       });
     }
