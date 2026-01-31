@@ -34,7 +34,7 @@ router.post(
 // Admin-only: Update assigned event by eventAdmin ID
 // =======================
 router.put(
-  "/admin/event-assign/:eventAdminId",
+  "/admin/event-assign",
   protect,
   authorizeRoles("admin"),
   updateAssignedEvent
