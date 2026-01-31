@@ -77,6 +77,7 @@ export const createTeam = async (req, res) => {
           companyName,
           email,
           mobile,
+          plainPassword,
         },
       });
     } catch (emailError) {
