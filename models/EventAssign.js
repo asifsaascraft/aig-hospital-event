@@ -66,11 +66,11 @@ const EventAssignSchema = new mongoose.Schema(
           type: Boolean,
           default: false,
         },
-        badgingAndScanning: {
+        badging: {
           type: Boolean,
           default: false,
         },
-        eventApp: {
+        eventapp: {
           type: Boolean,
           default: false,
         },

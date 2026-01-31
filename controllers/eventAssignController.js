@@ -10,6 +10,7 @@ import EventAssign from "../models/EventAssign.js";
 export const getEventAssignments = async (req, res) => {
   try {
     const assignments = await EventAssign.find()
+      .populate("eventAdminId")
       .populate("assignedEvents.eventId", "eventName eventType startDate endDate")
       .sort({ createdAt: -1 });
 
