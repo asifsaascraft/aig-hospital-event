@@ -35,7 +35,9 @@ export const getLiveEvents = async (req, res) => {
     // Filter events where dynamicStatus is "Live" or "Running"
     const liveEvents = events
       .map((e) => e.toObject({ virtuals: true }))
-      .filter((e) => e.dynamicStatus === "Live" || e.dynamicStatus === "Running");
+      .filter(
+        (e) => e.dynamicStatus === "Live" || e.dynamicStatus === "Running",
+      );
 
     res.json({
       success: true,
@@ -57,7 +59,7 @@ export const getEventById = async (req, res) => {
   try {
     const { id } = req.params;
     const event = await Event.findById(id).populate(
-      "organizer department venueName"
+      "organizer department venueName",
     );
     if (!event) {
       return res
@@ -79,12 +81,27 @@ export const getEventById = async (req, res) => {
 // =======================
 export const createEvent = async (req, res) => {
   try {
+    const { shortName } = req.body;
+
+    // 1 Check event image
     if (!req.file) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Event image is required" });
+      return res.status(400).json({
+        success: false,
+        message: "Event image is required",
+      });
     }
 
+    // 2 Check if shortName already exists
+    const existingEvent = await Event.findOne({ shortName });
+
+    if (existingEvent) {
+      return res.status(400).json({
+        success: false,
+        message: "Short Name already exists. Please use a unique Short Name.",
+      });
+    }
+
+    // 3 Create event
     const eventData = {
       ...req.body,
       eventImage: req.file.location,
@@ -92,10 +109,20 @@ export const createEvent = async (req, res) => {
 
     const newEvent = await Event.create(eventData);
 
-    res
-      .status(201)
-      .json({ success: true, data: newEvent.toObject({ virtuals: true }) });
+    res.status(201).json({
+      success: true,
+      message: "Event created successfully",
+      data: newEvent.toObject({ virtuals: true }),
+    });
   } catch (error) {
+    // Duplicate key error (MongoDB)
+    if (error.code === 11000 && error.keyPattern?.shortName) {
+      return res.status(400).json({
+        success: false,
+        message: "Short Name already exists. Please choose another one.",
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: "Failed to create event",
@@ -125,7 +152,10 @@ export const updateEvent = async (req, res) => {
         .json({ success: false, message: "Event not found" });
     }
 
-    res.json({ success: true, data: updatedEvent.toObject({ virtuals: true }) });
+    res.json({
+      success: true,
+      data: updatedEvent.toObject({ virtuals: true }),
+    });
   } catch (error) {
     res.status(500).json({
       success: false,

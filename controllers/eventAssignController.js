@@ -10,11 +10,11 @@ import EventAssign from "../models/EventAssign.js";
 export const getEventAssignments = async (req, res) => {
   try {
     const assignments = await EventAssign.find()
-      .populate("eventAdminId")
+      .populate("eventAdminId", "name email mobile")
       .populate("assignedEvents.eventId", "eventName eventType startDate endDate")
       .sort({ createdAt: -1 });
 
-    res.json({
+    res.json({ 
       success: true,
       data: assignments,
     });
