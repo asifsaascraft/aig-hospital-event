@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { type } from "os";
+
 
 const UserSchema = new mongoose.Schema(
   {
@@ -42,12 +42,6 @@ const UserSchema = new mongoose.Schema(
       trim: true,
       unique: true,
     },
-    //  Assigned events for eventAdmin (array of Event ObjectIds)
-    assignedEvents: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Event",
-      default: [],
-    }],
     //  For forgot-password/reset-password
     passwordResetToken: {
       type: String,

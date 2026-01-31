@@ -1,34 +1,41 @@
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import Event from "../models/Event.js";
+import EventAssign from "../models/EventAssign.js";
 import { generateTokens } from "../utils/generateTokens.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
-import jwt from "jsonwebtoken";
-import Event from "../models/Event.js";
-// =======================
-// EventAdmin Login
-// =======================
+
+/* =======================
+   EventAdmin Login
+======================= */
 export const loginEventAdmin = async (req, res) => {
   try {
     const { email, password } = req.body;
 
     const eventAdmin = await User.findOne({ email, role: "eventAdmin" });
-    if (!eventAdmin) return res.status(400).json({ message: "Email does not exist" });
+    if (!eventAdmin) {
+      return res.status(400).json({ message: "Email does not exist" });
+    }
 
     if (eventAdmin.status !== "Active") {
       return res.status(403).json({ message: "EventAdmin account is inactive" });
     }
 
     const isMatch = await eventAdmin.matchPassword(password);
-    if (!isMatch) return res.status(400).json({ message: "You Entered Wrong password" });
+    if (!isMatch) {
+      return res.status(400).json({ message: "You entered wrong password" });
+    }
 
-    // Generate tokens
-    const { accessToken, refreshToken } = generateTokens(eventAdmin._id, eventAdmin.role);
+    const { accessToken, refreshToken } = generateTokens(
+      eventAdmin._id,
+      eventAdmin.role
+    );
 
-    // Store refresh token in cookie
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "none", // cross-domain
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -41,7 +48,6 @@ export const loginEventAdmin = async (req, res) => {
         email: eventAdmin.email,
         role: eventAdmin.role,
         companyName: eventAdmin.companyName || null,
-        assignedEvents: eventAdmin.assignedEvents, 
       },
     });
   } catch (error) {
@@ -49,24 +55,29 @@ export const loginEventAdmin = async (req, res) => {
   }
 };
 
-// =======================
-// Refresh Access Token
-// =======================
+/* =======================
+   Refresh Access Token
+======================= */
 export const refreshAccessTokenEventAdmin = async (req, res) => {
   try {
     const token = req.cookies.refreshToken;
-    if (!token) return res.status(401).json({ message: "No refresh token" });
+    if (!token) {
+      return res.status(401).json({ message: "No refresh token" });
+    }
 
     const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
     const user = await User.findById(decoded.id);
-    if (!user || user.role !== "eventAdmin") return res.status(401).json({ message: "User not found" });
+
+    if (!user || user.role !== "eventAdmin") {
+      return res.status(401).json({ message: "User not found" });
+    }
 
     const { accessToken, refreshToken } = generateTokens(user._id, user.role);
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "none", // cross-domain
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -76,44 +87,43 @@ export const refreshAccessTokenEventAdmin = async (req, res) => {
   }
 };
 
-// =======================
-// Logout EventAdmin
-// =======================
+/* =======================
+   Logout EventAdmin
+======================= */
 export const logoutEventAdmin = (req, res) => {
   res.clearCookie("refreshToken");
   res.json({ message: "Logged out successfully" });
 };
 
-// =======================
-// Forgot Password
-// =======================
+/* =======================
+   Forgot Password
+======================= */
 export const forgotPasswordEventAdmin = async (req, res) => {
   try {
     const { email } = req.body;
 
-    // Find event admin
     const eventAdmin = await User.findOne({ email, role: "eventAdmin" });
     if (!eventAdmin) {
       return res.status(404).json({ message: "EventAdmin not found" });
     }
 
-    // Generate reset token
     const token = crypto.randomBytes(32).toString("hex");
-    const resetToken = crypto.createHash("sha256").update(token.trim()).digest("hex");
+    const resetToken = crypto
+      .createHash("sha256")
+      .update(token.trim())
+      .digest("hex");
 
     eventAdmin.passwordResetToken = resetToken;
-    eventAdmin.passwordResetExpires = Date.now() + 24 * 60 * 60 * 1000; // 1 day expiry
+    eventAdmin.passwordResetExpires = Date.now() + 24 * 60 * 60 * 1000;
     await eventAdmin.save({ validateBeforeSave: false });
 
-    // Build reset link for event admin frontend
-    const frontendUrl = process.env.EVENT_ADMIN_FRONTEND_URL;
-    const resetUrl = `${frontendUrl}/reset-password/${token}`;
+    const resetUrl = `${process.env.EVENT_ADMIN_FRONTEND_URL}/reset-password/${token}`;
 
-    // Send email using ZeptoMail template (same as admin logic)
     await sendEmailWithTemplate({
       to: eventAdmin.email,
       name: eventAdmin.name,
-      templateKey: "2518b.554b0da719bc314.k1.01bb6360-9c50-11f0-8ac3-ae9c7e0b6a9f.1998fb77496", 
+      templateKey:
+        "2518b.554b0da719bc314.k1.01bb6360-9c50-11f0-8ac3-ae9c7e0b6a9f.1998fb77496",
       mergeInfo: {
         name: eventAdmin.name,
         password_reset_link: resetUrl,
@@ -122,27 +132,27 @@ export const forgotPasswordEventAdmin = async (req, res) => {
 
     res.json({ message: "Password reset link sent to your email address" });
   } catch (error) {
-    console.error("Forgot password (eventAdmin) error:", error?.response?.data || error.message || error);
     res.status(500).json({ message: "Failed to send reset email" });
   }
 };
 
-
-// =======================
-// Reset Password
-// =======================
+/* =======================
+   Reset Password
+======================= */
 export const resetPasswordEventAdmin = async (req, res) => {
   try {
     let { token } = req.params;
     const { password } = req.body;
 
-    if (!token) return res.status(400).json({ message: "Token is required" });
+    token = token?.trim();
+    if (!token) {
+      return res.status(400).json({ message: "Token is required" });
+    }
 
-     // Trim token to remove extra spaces/newlines
-    token = token.trim();
-
-    // Hash token to match DB
-    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
 
     const eventAdmin = await User.findOne({
       passwordResetToken: hashedToken,
@@ -151,56 +161,70 @@ export const resetPasswordEventAdmin = async (req, res) => {
     });
 
     if (!eventAdmin) {
-        return res.status(400).json({ message: "Invalid or expired token" });
+      return res.status(400).json({ message: "Invalid or expired token" });
     }
 
-    // Update password
-    eventAdmin.password = password;  // will be hashed in pre-save hook
+    eventAdmin.password = password;
     eventAdmin.passwordResetToken = null;
     eventAdmin.passwordResetExpires = null;
     await eventAdmin.save();
 
     res.json({ message: "Password reset successful" });
   } catch (error) {
-    console.error("Reset password error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
-
-// =======================
-// Get all events assigned to logged-in eventAdmin
-// =======================
+/* =======================
+   Get Logged-in EventAdmin Events (NEW)
+======================= */
 export const myEvents = async (req, res) => {
   try {
     const eventAdminId = req.user._id;
 
-    // Fetch the event admin and populate assignedEvents deeply
-    const eventAdmin = await User.findById(eventAdminId)
+    const assignment = await EventAssign.findOne({ eventAdminId })
       .populate({
-        path: "assignedEvents",
+        path: "assignedEvents.eventId",
         populate: [
           { path: "organizer" },
           { path: "department" },
           { path: "venueName" },
         ],
-        options: { sort: { createdAt: -1 } },
       });
 
-    if (!eventAdmin) {
-      return res.status(404).json({
-        success: false,
-        message: "EventAdmin not found",
+    if (!assignment) {
+      return res.json({
+        success: true,
+        events: [],
       });
     }
 
+    const events = assignment.assignedEvents.map((item) => ({
+      ...item.eventId.toObject({ virtuals: true }),
+      permissions: {
+        dashboard: item.dashboard,
+        registration: item.registration,
+        abstract: item.abstract,
+        faculty: item.faculty,
+        agenda: item.agenda,
+        exhibitor: item.exhibitor,
+        sponsor: item.sponsor,
+        travel: item.travel,
+        accomodation: item.accomodation,
+        marketing: item.marketing,
+        communication: item.communication,
+        accounting: item.accounting,
+        badgingAndScanning: item.badgingAndScanning,
+        eventApp: item.eventApp,
+        presentation: item.presentation,
+      },
+    }));
+
     res.json({
       success: true,
-      events: eventAdmin.assignedEvents.map((e) =>
-        e.toObject({ virtuals: true })
-      ),
+      events,
       user: {
-        name: eventAdmin.name,
+        name: assignment.eventAdminName,
       },
     });
   } catch (error) {
@@ -212,4 +236,3 @@ export const myEvents = async (req, res) => {
     });
   }
 };
-

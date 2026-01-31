@@ -13,6 +13,7 @@ const EventSchema = new mongoose.Schema(
     shortName: {
       type: String,
       required: [true, "Short Name is required"],
+      unique: true,
       trim: true,
     },
     eventImage: {
