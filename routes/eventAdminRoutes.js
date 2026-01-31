@@ -5,7 +5,8 @@ import {
   refreshAccessTokenEventAdmin,
   forgotPasswordEventAdmin,
   resetPasswordEventAdmin,
-  myEvents
+  myEvents,
+  myEventById,
 } from "../controllers/eventAdminController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -38,5 +39,14 @@ router.get(
   authorizeRoles("eventAdmin"), // only eventAdmin
   myEvents
 );
+
+// Get single assigned event details with modules
+router.get(
+  "/my-events/:eventId",
+  protect,
+  authorizeRoles("eventAdmin"),
+  myEventById
+);
+
 
 export default router;

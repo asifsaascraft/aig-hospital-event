@@ -19,7 +19,9 @@ export const loginEventAdmin = async (req, res) => {
     }
 
     if (eventAdmin.status !== "Active") {
-      return res.status(403).json({ message: "EventAdmin account is inactive" });
+      return res
+        .status(403)
+        .json({ message: "EventAdmin account is inactive" });
     }
 
     const isMatch = await eventAdmin.matchPassword(password);
@@ -29,7 +31,7 @@ export const loginEventAdmin = async (req, res) => {
 
     const { accessToken, refreshToken } = generateTokens(
       eventAdmin._id,
-      eventAdmin.role
+      eventAdmin.role,
     );
 
     res.cookie("refreshToken", refreshToken, {
@@ -149,10 +151,7 @@ export const resetPasswordEventAdmin = async (req, res) => {
       return res.status(400).json({ message: "Token is required" });
     }
 
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(token)
-      .digest("hex");
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
     const eventAdmin = await User.findOne({
       passwordResetToken: hashedToken,
@@ -185,14 +184,27 @@ export const myEvents = async (req, res) => {
     const assignment = await EventAssign.findOne({ eventAdminId })
       .populate({
         path: "eventAdminId",
-        select: "name email companyName",
+        select: "name",
       })
       .populate({
         path: "assignedEvents.eventId",
+        select: `
+          eventName eventImage startDate endDate startTime endTime
+          country state city eventType eventCategory createdAt updatedAt
+        `,
         populate: [
-          { path: "organizer" },
-          { path: "department" },
-          { path: "venueName" },
+          {
+            path: "organizer",
+            select: "organizerName",
+          },
+          {
+            path: "department",
+            select: "departmentName",
+          },
+          {
+            path: "venueName",
+            select: "venueName",
+          },
         ],
       });
 
@@ -206,26 +218,35 @@ export const myEvents = async (req, res) => {
       });
     }
 
-    const events = assignment.assignedEvents.map((item) => ({
-      ...item.eventId.toObject({ virtuals: true }),
-      permissions: {
-        dashboard: item.dashboard,
-        registration: item.registration,
-        abstract: item.abstract,
-        faculty: item.faculty,
-        agenda: item.agenda,
-        exhibitor: item.exhibitor,
-        sponsor: item.sponsor,
-        travel: item.travel,
-        accomodation: item.accomodation,
-        marketing: item.marketing,
-        communication: item.communication,
-        accounting: item.accounting,
-        badging: item.badging,
-        eventapp: item.eventapp,
-        presentation: item.presentation,
-      },
-    }));
+    const events = assignment.assignedEvents.map((item) => {
+      const event = item.eventId.toObject({ virtuals: true });
+
+      return {
+        _id: event._id,
+        eventName: event.eventName,
+        eventImage: event.eventImage,
+        organizer: {
+          organizerName: event.organizer?.organizerName,
+        },
+        department: {
+          departmentName: event.department?.departmentName,
+        },
+        venueName: {
+          venueName: event.venueName?.venueName,
+        },
+        startDate: event.startDate,
+        endDate: event.endDate,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        country: event.country,
+        state: event.state,
+        city: event.city,
+        eventType: event.eventType,
+        eventCategory: event.eventCategory,
+        isEventApp: event.isEventApp,
+        dynamicStatus: event.dynamicStatus,
+      };
+    });
 
     res.json({
       success: true,
@@ -244,3 +265,63 @@ export const myEvents = async (req, res) => {
   }
 };
 
+/* =======================
+   Get Single Assigned Event (Minimal + Enabled Modules Only)
+======================= */
+export const myEventById = async (req, res) => {
+  try {
+    const eventAdminId = req.user._id;
+    const { eventId } = req.params;
+
+    const assignment = await EventAssign.findOne({ eventAdminId })
+      .populate({
+        path: "assignedEvents.eventId",
+        select: "eventName",
+      });
+
+    if (!assignment) {
+      return res.status(404).json({
+        success: false,
+        message: "No events assigned",
+      });
+    }
+
+    const assignedEvent = assignment.assignedEvents.find(
+      (item) => item.eventId._id.toString() === eventId
+    );
+
+    if (!assignedEvent) {
+      return res.status(404).json({
+        success: false,
+        message: "This event is not assigned to you",
+      });
+    }
+
+    //  Filter only TRUE modules
+    const allowedModules = {};
+    Object.entries(assignedEvent.toObject()).forEach(([key, value]) => {
+      if (
+        typeof value === "boolean" &&
+        value === true
+      ) {
+        allowedModules[key] = true;
+      }
+    });
+
+    res.json({
+      success: true,
+      event: {
+        eventId: assignedEvent.eventId._id,
+        eventName: assignedEvent.eventId.eventName,
+      },
+      modules: allowedModules,
+    });
+  } catch (error) {
+    console.error("My event by id error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch event details",
+      error: error.message,
+    });
+  }
+};
