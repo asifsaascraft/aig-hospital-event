@@ -7,21 +7,29 @@ import Event from "../models/Event.js";
 export const createAbstractSetting = async (req, res) => {
   try {
     const { eventId } = req.params;
+
     const {
       regRequiredForAbstractSubmission,
+      uploadFileRequired,
+      uploadVideoUrlRequired,
       abstractSubmissionStartDate,
       abstractSubmissionEndDate,
-      numberOfReviewerPerCategory,
+      numberOfAbstractSubmission,
       abstractWordCount,
+      reviewingType,
+      minimumScore,
+      maximumScore,
+      message,
+      description,
     } = req.body;
 
-    // Validate event existence
+    // Validate event
     const event = await Event.findById(eventId);
     if (!event) {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Check if an abstract setting already exists for this event
+    // Only one setting per event
     const existingSetting = await AbstractSetting.findOne({ eventId });
     if (existingSetting) {
       return res.status(400).json({
@@ -29,14 +37,35 @@ export const createAbstractSetting = async (req, res) => {
       });
     }
 
-    // Create new abstract setting
+    // Score validation
+    if (reviewingType === "SCORE_BASED") {
+      if (minimumScore == null || maximumScore == null) {
+        return res.status(400).json({
+          message:
+            "Minimum and maximum score are required for score-based reviewing",
+        });
+      }
+      if (minimumScore > maximumScore) {
+        return res.status(400).json({
+          message: "Minimum score cannot be greater than maximum score",
+        });
+      }
+    }
+
     const setting = await AbstractSetting.create({
       eventId,
       regRequiredForAbstractSubmission,
+      uploadFileRequired,
+      uploadVideoUrlRequired,
       abstractSubmissionStartDate,
       abstractSubmissionEndDate,
-      numberOfReviewerPerCategory,
+      numberOfAbstractSubmission,
       abstractWordCount,
+      reviewingType,
+      minimumScore: reviewingType === "SCORE_BASED" ? minimumScore : null,
+      maximumScore: reviewingType === "SCORE_BASED" ? maximumScore : null,
+      message,
+      description,
     });
 
     res.status(201).json({
@@ -51,23 +80,21 @@ export const createAbstractSetting = async (req, res) => {
 };
 
 // =======================
-// Get All Abstract Settings by Event ID (Public/User)
+// Get Abstract Setting by Event ID (Public/User)
 // =======================
 export const getAbstractSettingsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
 
-    const settings = await AbstractSetting.find({ eventId }).sort({
-      createdAt: -1,
-    });
+    const setting = await AbstractSetting.findOne({ eventId });
 
     res.status(200).json({
       success: true,
-      message: "Abstract settings fetched successfully",
-      data: settings,
+      message: "Abstract setting fetched successfully",
+      data: setting,
     });
   } catch (error) {
-    console.error("Get abstract settings error:", error);
+    console.error("Get abstract setting error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
@@ -78,36 +105,50 @@ export const getAbstractSettingsByEvent = async (req, res) => {
 export const updateAbstractSetting = async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      regRequiredForAbstractSubmission,
-      abstractSubmissionStartDate,
-      abstractSubmissionEndDate,
-      numberOfReviewerPerCategory,
-      abstractWordCount,
-    } = req.body;
 
-    // Find existing setting
     const setting = await AbstractSetting.findById(id);
     if (!setting) {
       return res.status(404).json({ message: "Abstract setting not found" });
     }
 
-    // Update only provided fields
-    if (regRequiredForAbstractSubmission !== undefined)
-      setting.regRequiredForAbstractSubmission =
-        regRequiredForAbstractSubmission;
+    const updatableFields = [
+      "regRequiredForAbstractSubmission",
+      "uploadFileRequired",
+      "uploadVideoUrlRequired",
+      "abstractSubmissionStartDate",
+      "abstractSubmissionEndDate",
+      "numberOfAbstractSubmission",
+      "abstractWordCount",
+      "reviewingType",
+      "minimumScore",
+      "maximumScore",
+      "message",
+      "description",
+    ];
 
-    if (abstractSubmissionStartDate)
-      setting.abstractSubmissionStartDate = abstractSubmissionStartDate;
+    updatableFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        setting[field] = req.body[field];
+      }
+    });
 
-    if (abstractSubmissionEndDate)
-      setting.abstractSubmissionEndDate = abstractSubmissionEndDate;
-
-    if (numberOfReviewerPerCategory !== undefined)
-      setting.numberOfReviewerPerCategory = numberOfReviewerPerCategory;
-
-    if (abstractWordCount !== undefined)
-      setting.abstractWordCount = abstractWordCount;
+    // Score validation
+    if (setting.reviewingType === "SCORE_BASED") {
+      if (setting.minimumScore == null || setting.maximumScore == null) {
+        return res.status(400).json({
+          message:
+            "Minimum and maximum score are required for score-based reviewing",
+        });
+      }
+      if (setting.minimumScore > setting.maximumScore) {
+        return res.status(400).json({
+          message: "Minimum score cannot be greater than maximum score",
+        });
+      }
+    } else {
+      setting.minimumScore = null;
+      setting.maximumScore = null;
+    }
 
     await setting.save();
 

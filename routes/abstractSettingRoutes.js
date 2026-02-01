@@ -20,7 +20,7 @@ router.post(
 );
 
 // =======================
-// Public/User: Get All Abstract Settings by Event ID
+// Public/User: Get Abstract Settings by Event
 // =======================
 router.get(
   "/events/:eventId/abstract-settings",
