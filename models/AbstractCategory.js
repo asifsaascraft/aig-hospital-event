@@ -7,10 +7,14 @@ const AbstractCategorySchema = new mongoose.Schema(
       ref: "Event",
       required: true,
     },
-    categoryName: {
+    categoryLabel: {
       type: String,
-      required: [true, "Abstract Category Name is required"],
+      required: [true, "Category Label is required"],
       trim: true,
+    },
+    categoryOptions: {
+      type: [String],
+      required: [true, "Option is required"]
     },
     status: {
       type: String,

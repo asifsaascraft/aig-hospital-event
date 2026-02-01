@@ -7,7 +7,7 @@ import Event from "../models/Event.js";
 export const createAbstractCategory = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { categoryName, status } = req.body;
+    const { categoryLabel, categoryOptions, status } = req.body;
 
     // Validate event existence
     const event = await Event.findById(eventId);
@@ -15,10 +15,21 @@ export const createAbstractCategory = async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Create new abstract category
+    // Validate inputs
+    if (!categoryLabel) {
+      return res.status(400).json({ message: "Category Label is required" });
+    }
+
+    if (!Array.isArray(categoryOptions) || categoryOptions.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "Category Options must be a non-empty array" });
+    }
+
     const abstractCategory = await AbstractCategory.create({
       eventId,
-      categoryName,
+      categoryLabel,
+      categoryOptions,
       status,
     });
 
@@ -84,7 +95,7 @@ export const getActiveAbstractCategoriesByEvent = async (req, res) => {
 export const updateAbstractCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { categoryName, status } = req.body;
+    const { categoryLabel, categoryOptions, status } = req.body;
 
     const abstractCategory = await AbstractCategory.findById(id);
     if (!abstractCategory) {
@@ -93,7 +104,17 @@ export const updateAbstractCategory = async (req, res) => {
         .json({ message: "Abstract Category not found" });
     }
 
-    if (categoryName) abstractCategory.categoryName = categoryName;
+    if (categoryLabel) abstractCategory.categoryLabel = categoryLabel;
+
+    if (categoryOptions) {
+      if (!Array.isArray(categoryOptions) || categoryOptions.length === 0) {
+        return res
+          .status(400)
+          .json({ message: "Category Options must be a non-empty array" });
+      }
+      abstractCategory.categoryOptions = categoryOptions;
+    }
+
     if (status) abstractCategory.status = status;
 
     await abstractCategory.save();
