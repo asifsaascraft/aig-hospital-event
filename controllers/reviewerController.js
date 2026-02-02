@@ -72,7 +72,7 @@ export const createReviewer = async (req, res) => {
       });
     }
 
-    // STEP 1: Abstract Settings
+    // Abstract setting MUST exist
     const abstractSetting = await AbstractSetting.findOne({ eventId });
     if (!abstractSetting) {
       return res.status(400).json({
@@ -81,9 +81,16 @@ export const createReviewer = async (req, res) => {
       });
     }
 
-    const limit = abstractSetting.numberOfAbstractSubmission;
+    // Prevent duplicate categories per reviewer
+    const categoryIds = categories.map(c => c.categoryId.toString());
+    if (new Set(categoryIds).size !== categoryIds.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Duplicate categories are not allowed for a reviewer",
+      });
+    }
 
-    // STEP 2: Validate each category + limit
+    // Validate categories only (NO LIMIT CHECK)
     for (const cat of categories) {
       const validCategory = await AbstractCategory.findOne({
         _id: cat.categoryId,
@@ -97,22 +104,9 @@ export const createReviewer = async (req, res) => {
           message: "One or more selected categories are invalid or inactive",
         });
       }
-
-      const activeCount = await Reviewer.countDocuments({
-        eventId,
-        status: "Active",
-        "categories.categoryId": cat.categoryId,
-      });
-
-      if ((status === "Active" || !status) && activeCount >= limit) {
-        return res.status(400).json({
-          success: false,
-          message: `Reviewer limit reached for category ${validCategory.categoryLabel}`,
-        });
-      }
     }
 
-    // STEP 3: Unique active email
+    // Unique active email
     const existingReviewer = await Reviewer.findOne({
       email,
       status: "Active",
@@ -124,7 +118,7 @@ export const createReviewer = async (req, res) => {
       });
     }
 
-    // STEP 4: Password
+    // Password
     const plainPassword = generateStrongPassword();
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
@@ -133,26 +127,21 @@ export const createReviewer = async (req, res) => {
       reviewerName,
       email,
       password: hashedPassword,
-      plainPassword, // optional – remove if not required
+      plainPassword,
       categories,
       status: status || "Active",
     });
 
-    //  Send welcome email using ZeptoMail template
+    // Send email
     try {
       await sendEmailWithTemplate({
         to: email,
         reviewerName,
-        templateKey:
-          "2518b.554b0da719bc314.k1.98f60d71-0028-11f1-8765-cabf48e1bf81.19c1e1157c4",
-        mergeInfo: {
-          reviewerName,
-          email,
-          plainPassword,
-        },
+        templateKey: "2518b.554b0da719bc314.k1.98f60d71-0028-11f1-8765-cabf48e1bf81.19c1e1157c4",
+        mergeInfo: { reviewerName, email, plainPassword },
       });
-    } catch (emailError) {
-      console.error("Team creation email failed:", emailError);
+    } catch (err) {
+      console.error("Reviewer email failed:", err);
     }
 
     res.status(201).json({
@@ -169,6 +158,7 @@ export const createReviewer = async (req, res) => {
   }
 };
 
+
 /* =======================
    Update Reviewer
 ======================= */
@@ -179,39 +169,42 @@ export const updateReviewer = async (req, res) => {
 
     const reviewer = await Reviewer.findById(id);
     if (!reviewer) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Reviewer not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Reviewer not found",
+      });
     }
 
-    // Validate categories if updated
     if (updatedData.categories) {
-      const abstractSetting = await AbstractSetting.findOne({
-        eventId: reviewer.eventId,
-      });
-      const limit = abstractSetting.numberOfAbstractSubmission;
+      const categoryIds = updatedData.categories.map(c => c.categoryId.toString());
+      if (new Set(categoryIds).size !== categoryIds.length) {
+        return res.status(400).json({
+          success: false,
+          message: "Duplicate categories are not allowed for a reviewer",
+        });
+      }
 
       for (const cat of updatedData.categories) {
-        const activeCount = await Reviewer.countDocuments({
-          _id: { $ne: id },
+        const validCategory = await AbstractCategory.findOne({
+          _id: cat.categoryId,
           eventId: reviewer.eventId,
           status: "Active",
-          "categories.categoryId": cat.categoryId,
         });
 
-        if (activeCount >= limit) {
+        if (!validCategory) {
           return res.status(400).json({
             success: false,
-            message: "Reviewer limit exceeded for selected category",
+            message: "Invalid or inactive category selected",
           });
         }
       }
     }
 
-    const updatedReviewer = await Reviewer.findByIdAndUpdate(id, updatedData, {
-      new: true,
-      runValidators: true,
-    }).populate("categories.categoryId");
+    const updatedReviewer = await Reviewer.findByIdAndUpdate(
+      id,
+      updatedData,
+      { new: true, runValidators: true }
+    ).populate("categories.categoryId");
 
     res.json({ success: true, data: updatedReviewer });
   } catch (error) {
@@ -222,6 +215,7 @@ export const updateReviewer = async (req, res) => {
     });
   }
 };
+
 
 /* =======================
    Delete Reviewer
