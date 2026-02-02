@@ -25,11 +25,19 @@ const ReviewerSchema = new mongoose.Schema(
     plainPassword: {
       type: String,
     },
-    abstractCategory: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "AbstractCategory",
-      required: true,
-    },
+    categories: [
+      {
+        categoryId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "AbstractCategory",
+          required: true,
+        },
+        selectedOption: {
+          type: String,
+          required: true,
+        },
+      },
+    ],
     status: {
       type: String,
       enum: ["Active", "Inactive"],
@@ -43,7 +51,7 @@ const ReviewerSchema = new mongoose.Schema(
       type: Date,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.models.Reviewer ||

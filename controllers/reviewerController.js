@@ -3,17 +3,19 @@ import AbstractCategory from "../models/AbstractCategory.js";
 import AbstractSetting from "../models/AbstractSetting.js";
 import bcrypt from "bcryptjs";
 import { generateStrongPassword } from "../utils/generatePassword.js";
+import sendEmailWithTemplate from "../utils/sendEmail.js";
 
-// =======================
-// Get all reviewers by Event ID
-// =======================
+/* =======================
+   Get all reviewers by Event ID
+======================= */
 export const getReviewersByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
+
     const reviewers = await Reviewer.find({ eventId })
       .sort({ createdAt: -1 })
       .populate("eventId")
-      .populate("abstractCategory");
+      .populate("categories.categoryId");
 
     res.json({ success: true, data: reviewers });
   } catch (error) {
@@ -25,9 +27,9 @@ export const getReviewersByEvent = async (req, res) => {
   }
 };
 
-// =======================
-// Get ACTIVE reviewers by Event ID
-// =======================
+/* =======================
+   Get ACTIVE reviewers by Event ID
+======================= */
 export const getActiveReviewersByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
@@ -38,12 +40,9 @@ export const getActiveReviewersByEvent = async (req, res) => {
     })
       .sort({ createdAt: -1 })
       .populate("eventId")
-      .populate("abstractCategory");
+      .populate("categories.categoryId");
 
-    res.json({
-      success: true,
-      data: reviewers,
-    });
+    res.json({ success: true, data: reviewers });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -53,74 +52,79 @@ export const getActiveReviewersByEvent = async (req, res) => {
   }
 };
 
-// =======================
-// Create reviewer
-// =======================
+/* =======================
+   Create Reviewer
+======================= */
 export const createReviewer = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { reviewerName, email, abstractCategory, status } = req.body;
+    const { reviewerName, email, categories, status } = req.body;
 
-    if (!eventId || !reviewerName || !email || !abstractCategory) {
+    if (
+      !reviewerName ||
+      !email ||
+      !Array.isArray(categories) ||
+      categories.length === 0
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Required: eventId, reviewerName, email, abstractCategory",
+        message: "reviewerName, email and categories are required",
       });
     }
 
-    // STEP: Get Abstract Setting
+    // STEP 1: Abstract Settings
     const abstractSetting = await AbstractSetting.findOne({ eventId });
     if (!abstractSetting) {
       return res.status(400).json({
         success: false,
-        message: "Abstract settings not defined for this event, Please set the abstract setting first",
+        message: "Abstract settings not configured for this event",
       });
     }
 
-    const limit = abstractSetting.numberOfReviewerPerCategory;
+    const limit = abstractSetting.numberOfAbstractSubmission;
 
-    // Count existing reviewers
-    const activeReviewerCount = await Reviewer.countDocuments({
-      eventId,
-      abstractCategory,
-      status: "Active"
-    });
-
-    if ((status === "Active" || !status) && activeReviewerCount >= limit) {
-      return res.status(400).json({
-        success: false,
-        message: `Maximum limit reached. Only ${limit} reviewers allowed for this category.`,
+    // STEP 2: Validate each category + limit
+    for (const cat of categories) {
+      const validCategory = await AbstractCategory.findOne({
+        _id: cat.categoryId,
+        eventId,
+        status: "Active",
       });
+
+      if (!validCategory) {
+        return res.status(400).json({
+          success: false,
+          message: "One or more selected categories are invalid or inactive",
+        });
+      }
+
+      const activeCount = await Reviewer.countDocuments({
+        eventId,
+        status: "Active",
+        "categories.categoryId": cat.categoryId,
+      });
+
+      if ((status === "Active" || !status) && activeCount >= limit) {
+        return res.status(400).json({
+          success: false,
+          message: `Reviewer limit reached for category ${validCategory.categoryLabel}`,
+        });
+      }
     }
 
-    // Verify Abstract Category Exists & Is Active
-    const categoryExists = await AbstractCategory.findOne({
-      _id: abstractCategory,
-      eventId,
-      status: "Active",
-    });
-
-    if (!categoryExists) {
-      return res.status(400).json({
-        success: false,
-        message: "Selected abstract category not found or inactive for this event",
-      });
-    }
-
-    // Check if an active reviewer exists with same email
-    const existingActiveReviewer = await Reviewer.findOne({
+    // STEP 3: Unique active email
+    const existingReviewer = await Reviewer.findOne({
       email,
       status: "Active",
     });
-
-    if (existingActiveReviewer) {
+    if (existingReviewer) {
       return res.status(400).json({
         success: false,
-        message: "Reviewer with this email already active. Deactivate first.",
+        message: "Active reviewer already exists with this email",
       });
     }
 
-    // Generate Password
+    // STEP 4: Password
     const plainPassword = generateStrongPassword();
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
@@ -129,18 +133,33 @@ export const createReviewer = async (req, res) => {
       reviewerName,
       email,
       password: hashedPassword,
-      plainPassword,
-      abstractCategory,
+      plainPassword, // optional – remove if not required
+      categories,
       status: status || "Active",
     });
+
+    //  Send welcome email using ZeptoMail template
+    try {
+      await sendEmailWithTemplate({
+        to: email,
+        reviewerName,
+        templateKey:
+          "2518b.554b0da719bc314.k1.98f60d71-0028-11f1-8765-cabf48e1bf81.19c1e1157c4",
+        mergeInfo: {
+          reviewerName,
+          email,
+          plainPassword,
+        },
+      });
+    } catch (emailError) {
+      console.error("Team creation email failed:", emailError);
+    }
 
     res.status(201).json({
       success: true,
       message: "Reviewer created successfully",
       data: reviewer,
-      plainPassword,
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -150,77 +169,51 @@ export const createReviewer = async (req, res) => {
   }
 };
 
-
-// =======================
-// Update reviewer
-// =======================
+/* =======================
+   Update Reviewer
+======================= */
 export const updateReviewer = async (req, res) => {
   try {
     const { id } = req.params;
     const updatedData = { ...req.body };
 
-    const reviewerToBeUpdated = await Reviewer.findById(id);
-    if (!reviewerToBeUpdated) {
-      return res.status(404).json({ success: false, message: "Reviewer not found" });
+    const reviewer = await Reviewer.findById(id);
+    if (!reviewer) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Reviewer not found" });
     }
 
-    const newStatus = updatedData.status || reviewerToBeUpdated.status;
-    const newCategory = updatedData.abstractCategory || reviewerToBeUpdated.abstractCategory;
-
-    // STEP: Get Abstract Setting
-    const abstractSetting = await AbstractSetting.findOne({ eventId: reviewerToBeUpdated.eventId });
-    if (!abstractSetting) {
-      return res.status(400).json({
-        success: false,
-        message: "Abstract settings not defined for this event",
+    // Validate categories if updated
+    if (updatedData.categories) {
+      const abstractSetting = await AbstractSetting.findOne({
+        eventId: reviewer.eventId,
       });
-    }
+      const limit = abstractSetting.numberOfAbstractSubmission;
 
-    const limit = abstractSetting.numberOfReviewerPerCategory;
-
-    // Check reviewer limit only when status Active OR category changed
-    if (newStatus === "Active") {
-      const activeReviewerCount = await Reviewer.countDocuments({
-        _id: { $ne: id },
-        eventId: reviewerToBeUpdated.eventId,
-        abstractCategory: newCategory,
-        status: "Active"
-      });
-
-      if (activeReviewerCount >= limit) {
-        return res.status(400).json({
-          success: false,
-          message: `Maximum limit reached. Only ${limit} reviewers allowed for this category.`,
+      for (const cat of updatedData.categories) {
+        const activeCount = await Reviewer.countDocuments({
+          _id: { $ne: id },
+          eventId: reviewer.eventId,
+          status: "Active",
+          "categories.categoryId": cat.categoryId,
         });
+
+        if (activeCount >= limit) {
+          return res.status(400).json({
+            success: false,
+            message: "Reviewer limit exceeded for selected category",
+          });
+        }
       }
     }
 
-    // Validate category exists and active
-    if (updatedData.abstractCategory) {
-      const validCategory = await AbstractCategory.findOne({
-        _id: updatedData.abstractCategory,
-        status: "Active"
-      });
-
-      if (!validCategory) {
-        return res.status(400).json({
-          success: false,
-          message: "Selected abstract category does not exist or inactive",
-        });
-      }
-    }
-
-    const reviewer = await Reviewer.findByIdAndUpdate(id, updatedData, {
+    const updatedReviewer = await Reviewer.findByIdAndUpdate(id, updatedData, {
       new: true,
       runValidators: true,
-    }).populate("abstractCategory");
+    }).populate("categories.categoryId");
 
-    if (!reviewer) {
-      return res.status(404).json({ success: false, message: "Reviewer not found" });
-    }
-
-    res.json({ success: true, data: reviewer });
-
+    res.json({ success: true, data: updatedReviewer });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -230,16 +223,14 @@ export const updateReviewer = async (req, res) => {
   }
 };
 
-
-
-// =======================
-// Delete reviewer
-// =======================
+/* =======================
+   Delete Reviewer
+======================= */
 export const deleteReviewer = async (req, res) => {
   try {
     const { id } = req.params;
-    const reviewer = await Reviewer.findByIdAndDelete(id);
 
+    const reviewer = await Reviewer.findByIdAndDelete(id);
     if (!reviewer) {
       return res.status(404).json({
         success: false,
