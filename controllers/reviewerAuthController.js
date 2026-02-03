@@ -147,7 +147,7 @@ export const forgotPasswordReviewer = async (req, res) => {
     await sendEmailWithTemplate({
       to: reviewer.email,
       name: reviewer.reviewerName,
-      templateKey: process.env.REVIEWER_RESET_TEMPLATE_ID,
+      templateKey: "2518b.554b0da719bc314.k1.01bb6360-9c50-11f0-8ac3-ae9c7e0b6a9f.1998fb77496",
       mergeInfo: {
         name: reviewer.reviewerName,
         password_reset_link: resetUrl,
