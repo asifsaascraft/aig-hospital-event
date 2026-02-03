@@ -12,6 +12,7 @@ import eventAdminRoutes from "./routes/eventAdminRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import sponsorAuthRoutes from "./routes/sponsorAuthRoutes.js";
 import exhibitorAuthRoutes from "./routes/exhibitorAuthRoutes.js";
+import reviewerAuthRoutes from "./routes/reviewerAuthRoutes.js";
 
 import announcementRoutes from "./routes/announcementRoutes.js";
 import departmentRoutes from "./routes/departmentRoutes.js";
@@ -75,6 +76,7 @@ const allowedOrigins = [
   process.env.USER_FRONTEND_URL,
   process.env.SPONSOR_FRONTEND_URL,
   process.env.EXHIBITOR_FRONTEND_URL,
+  process.env.REVIEWER_FRONTEND_URL,
 ];
 
 const corsOptions = {
@@ -106,6 +108,8 @@ app.use("/api/event-admin", eventAdminRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/sponsors", sponsorAuthRoutes);
 app.use("/api/exhibitors", exhibitorAuthRoutes);
+app.use("/api/reviewers", reviewerAuthRoutes);
+
 
 app.use("/api", announcementRoutes);
 app.use("/api", departmentRoutes);
