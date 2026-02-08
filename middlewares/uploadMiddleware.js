@@ -48,6 +48,9 @@ export const uploadSponsorImage = createUploader("sponsors");
 
 //  Booth PDF (Sponsor Booth & Exhibitor Booth) uploader with inline viewing enabled
 export const uploadBoothPDF = createUploader("booths", pdfFileFilter);
+export const uploadAbstractPDF = createUploader("abstract-files", pdfFileFilter);
+
+
 
 
 
