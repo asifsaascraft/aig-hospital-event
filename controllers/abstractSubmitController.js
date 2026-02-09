@@ -1,6 +1,7 @@
 import AbstractSubmit from "../models/AbstractSubmit.js";
 import AbstractSetting from "../models/AbstractSetting.js";
 import AbstractCategory from "../models/AbstractCategory.js";
+import EventRegistration from "../models/EventRegistration.js";
 
 /* =======================
    Generate 6-digit Abstract Number
@@ -46,6 +47,25 @@ export const submitAbstract = async (req, res) => {
         message: "Abstract submission is not configured for this event",
       });
     }
+
+    /* =======================
+   Registration Required Validation
+======================= */
+    if (setting.regRequiredForAbstractSubmission) {
+      const registration = await EventRegistration.findOne({
+        eventId,
+        userId,
+        isSuspended: false,
+      });
+
+      if (!registration) {
+        return res.status(400).json({
+          success: false,
+          message: "You must register for the event before submitting an abstract",
+        });
+      }
+    }
+
 
     /* =======================
        Date Validation (SEPARATE)
