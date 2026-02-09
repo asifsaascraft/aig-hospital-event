@@ -20,7 +20,7 @@ export const createAbstractSetting = async (req, res) => {
       minimumScore,
       maximumScore,
       message,
-      description,
+      abstractGuideline,
     } = req.body;
 
     // Validate event
@@ -65,7 +65,7 @@ export const createAbstractSetting = async (req, res) => {
       minimumScore: reviewingType === "SCORE_BASED" ? minimumScore : null,
       maximumScore: reviewingType === "SCORE_BASED" ? maximumScore : null,
       message,
-      description,
+      abstractGuideline,
     });
 
     res.status(201).json({
@@ -123,7 +123,7 @@ export const updateAbstractSetting = async (req, res) => {
       "minimumScore",
       "maximumScore",
       "message",
-      "description",
+      "abstractGuideline",
     ];
 
     updatableFields.forEach((field) => {

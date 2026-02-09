@@ -67,7 +67,7 @@ const AbstractSettingSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    description: {
+    abstractGuideline: {
       type: String,
     },
   },
