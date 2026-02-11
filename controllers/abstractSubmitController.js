@@ -16,7 +16,7 @@ const generateAbstractNumber = async () => {
   } while (exists);
 
   return number;
-};
+}; 
 
 /* =======================
    Submit Abstract (USER)

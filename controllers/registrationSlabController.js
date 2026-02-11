@@ -79,33 +79,15 @@ export const getActiveRegistrationSlabsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
 
-    const now = new Date();
-    const today = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    );
-
-    const slabs = await RegistrationSlab.find({ 
+    const slabs = await RegistrationSlab.find({
       eventId,
-      status: "Active"
-    });
-
-    // Filter by converting DD/MM/YYYY → Date object
-    const validSlabs = slabs.filter((slab) => {
-      const [startDay, startMonth, startYear] = slab.startDate.split("/");
-      const [endDay, endMonth, endYear] = slab.endDate.split("/");
-
-      const start = new Date(startYear, startMonth - 1, startDay);
-      const end = new Date(endYear, endMonth - 1, endDay);
-
-      return start <= today && end >= today;
-    });
+      status: "Active",
+    }).sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
       message: "Active registration slabs fetched successfully",
-      data: validSlabs,
+      data: slabs,
     });
   } catch (error) {
     console.error("Get active slabs error:", error);
