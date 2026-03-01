@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
+import multer from "multer";
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
@@ -160,6 +161,33 @@ app.use("/api", exhibitorCategoryRoutes);
 app.use("/api", eventRegistrationRoutes);
 app.use("/api", paymentRoutes);
 app.use("/api", sponsorEventRegRoutes);
+
+
+// =======================
+// Multer & File Upload Error Handler
+// =======================
+app.use((err, req, res, next) => {
+  // Multer file size error
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({
+        success: false,
+        message: "File size must be less than 2MB.",
+      });
+    }
+  }
+
+  // Custom file filter errors (PDF validation etc.)
+  if (err) {
+    return res.status(400).json({
+      success: false,
+      message: err.message || "File upload error.",
+    });
+  }
+
+  next();
+});
+
 
 // =======================
 // Start server

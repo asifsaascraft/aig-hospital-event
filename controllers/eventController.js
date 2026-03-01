@@ -83,15 +83,15 @@ export const createEvent = async (req, res) => {
   try {
     const { shortName } = req.body;
 
-    // 1 Check event image
-    if (!req.file) {
+    //  Check required files
+    if (!req.files?.eventImage || !req.files?.brochureUpload) {
       return res.status(400).json({
         success: false,
-        message: "Event image is required",
+        message: "Event Image and Brochure PDF are required",
       });
     }
 
-    // 2 Check if shortName already exists
+    // Check shortName uniqueness
     const existingEvent = await Event.findOne({ shortName });
 
     if (existingEvent) {
@@ -101,10 +101,11 @@ export const createEvent = async (req, res) => {
       });
     }
 
-    // 3 Create event
+    // Create event
     const eventData = {
       ...req.body,
-      eventImage: req.file.location,
+      eventImage: req.files.eventImage[0].location,
+      brochureUpload: req.files.brochureUpload[0].location,
     };
 
     const newEvent = await Event.create(eventData);
@@ -115,7 +116,6 @@ export const createEvent = async (req, res) => {
       data: newEvent.toObject({ virtuals: true }),
     });
   } catch (error) {
-    // Duplicate key error (MongoDB)
     if (error.code === 11000 && error.keyPattern?.shortName) {
       return res.status(400).json({
         success: false,
@@ -139,7 +139,14 @@ export const updateEvent = async (req, res) => {
     const { id } = req.params;
 
     const updatedData = { ...req.body };
-    if (req.file) updatedData.eventImage = req.file.location;
+
+    if (req.files?.eventImage) {
+      updatedData.eventImage = req.files.eventImage[0].location;
+    }
+
+    if (req.files?.brochureUpload) {
+      updatedData.brochureUpload = req.files.brochureUpload[0].location;
+    }
 
     const updatedEvent = await Event.findByIdAndUpdate(id, updatedData, {
       new: true,

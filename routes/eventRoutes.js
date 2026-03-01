@@ -9,7 +9,7 @@ import {
   deleteEvent,
 } from "../controllers/eventController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
-import { uploadEventImage } from "../middlewares/uploadMiddleware.js";
+import { uploadEventFiles } from "../middlewares/uploadMiddleware.js";
 
 const router = express.Router();
 
@@ -25,7 +25,10 @@ router.post(
   "/admin/events",
   protect,
   authorizeRoles("admin"),
-  uploadEventImage.single("eventImage"),
+  uploadEventFiles.fields([
+    { name: "eventImage", maxCount: 1 },
+    { name: "brochureUpload", maxCount: 1 },
+  ]),
   createEvent
 );
 
@@ -34,7 +37,10 @@ router.put(
   "/admin/events/:id",
   protect,
   authorizeRoles("admin"),
-  uploadEventImage.single("eventImage"),
+  uploadEventFiles.fields([
+    { name: "eventImage", maxCount: 1 },
+    { name: "brochureUpload", maxCount: 1 },
+  ]),
   updateEvent
 );
 

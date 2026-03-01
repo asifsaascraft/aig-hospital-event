@@ -3,54 +3,71 @@ import multer from "multer";
 import multerS3 from "multer-s3";
 import s3 from "../config/s3.js";
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; //  10 MB
+
 export const createUploader = (folder, fileFilter = null) => {
   const storage = multerS3({
     s3,
     bucket: process.env.AWS_BUCKET_NAME,
-
-    //  Make file accessible by URL
     acl: "public-read",
-
-    //  Allow browser to open file inline
     contentDisposition: "inline",
-
-    //  Automatically detect file type (PDF, image, etc.)
     contentType: multerS3.AUTO_CONTENT_TYPE,
-
-    //  Unique file name pattern
     key: (req, file, cb) => {
-      const fileName = `${folder}/${Date.now().toString()}-${file.originalname}`;
+      const fileName = `${folder}/${Date.now()}-${file.originalname}`;
       cb(null, fileName);
     },
   });
 
-  const uploaderOptions = { storage };
+  const uploaderOptions = {
+    storage,
+    limits: { fileSize: MAX_FILE_SIZE }, //  File size limit
+  };
+
   if (fileFilter) uploaderOptions.fileFilter = fileFilter;
 
   return multer(uploaderOptions);
 };
+
+
 
 //  Allow only PDFs
 const pdfFileFilter = (req, file, cb) => {
   if (file.mimetype === "application/pdf") {
     cb(null, true);
   } else {
-    cb(new Error("Only PDF files are allowed for booth uploads"), false);
+    cb(new Error("Only PDF files are allowed."), false);
   }
 };
 
-//  Export uploaders for different folders
+
+//  Custom file filter for Event (Image + PDF)
+const eventFileFilter = (req, file, cb) => {
+  if (file.fieldname === "brochureUpload") {
+    if (file.mimetype === "application/pdf") {
+      cb(null, true);
+    } else {
+      cb(new Error("Brochure must be a PDF file."), false);
+    }
+  } else if (file.fieldname === "eventImage") {
+    cb(null, true); // allow image
+  } else {
+    cb(new Error("Invalid file field."), false);
+  }
+};
+
+
+//  Event uploader (Image + Brochure)
+export const uploadEventFiles = createUploader(
+  "events",
+  eventFileFilter
+);
+
+
+// Other uploaders
 export const uploadVenueImage = createUploader("venues");
-export const uploadEventImage = createUploader("events");
 export const uploadHotelImage = createUploader("hotels");
 export const uploadProfileImage = createUploader("profile-pictures");
 export const uploadSponsorImage = createUploader("sponsors");
 
-//  Booth PDF (Sponsor Booth & Exhibitor Booth) uploader with inline viewing enabled
 export const uploadBoothPDF = createUploader("booths", pdfFileFilter);
 export const uploadAbstractPDF = createUploader("abstract-files", pdfFileFilter);
-
-
-
-
-
