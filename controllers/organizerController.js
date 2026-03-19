@@ -17,6 +17,27 @@ export const getOrganizers = async (req, res) => {
 };
 
 // =======================
+// Get only ACTIVE organizers (public)
+// =======================
+export const getActiveOrganizers = async (req, res) => {
+  try {
+    const organizers = await Organizer.find({ status: "Active" })
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: organizers,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch active organizers",
+      error: error.message,
+    });
+  }
+};
+
+// =======================
 // Create organizer (admin only)
 // =======================
 export const createOrganizer = async (req, res) => {

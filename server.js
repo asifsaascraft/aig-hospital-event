@@ -17,6 +17,7 @@ import reviewerAuthRoutes from "./routes/reviewerAuthRoutes.js";
 
 import announcementRoutes from "./routes/announcementRoutes.js";
 import departmentRoutes from "./routes/departmentRoutes.js";
+import eventGroupRoutes from "./routes/eventGroupRoutes.js";
 import organizerRoutes from "./routes/organizerRoutes.js";
 import venueRoutes from "./routes/venueRoutes.js";
 import teamRoutes from "./routes/teamRoutes.js";
@@ -115,6 +116,7 @@ app.use("/api/reviewers", reviewerAuthRoutes);
 
 app.use("/api", announcementRoutes);
 app.use("/api", departmentRoutes);
+app.use("/api", eventGroupRoutes);
 app.use("/api", organizerRoutes);
 app.use("/api", venueRoutes);
 app.use("/api", teamRoutes);

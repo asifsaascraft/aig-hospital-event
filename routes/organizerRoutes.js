@@ -1,6 +1,7 @@
 import express from "express";
 import {
   getOrganizers,
+  getActiveOrganizers,
   createOrganizer,
   updateOrganizer,
   deleteOrganizer,
@@ -11,6 +12,9 @@ const router = express.Router();
 
 // Public: anyone can view organizers
 router.get("/organizers", getOrganizers);
+
+// Public: only ACTIVE organizers
+router.get("/organizers/active", getActiveOrganizers);
 
 // Admin-only: Create, Update, Delete
 router.post(

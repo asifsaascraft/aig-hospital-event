@@ -7,7 +7,7 @@ import Event from "../models/Event.js";
 export const getEvents = async (req, res) => {
   try {
     const events = await Event.find()
-      .populate("organizer department venueName")
+      .populate("organizer department venueName groupName")
       .sort({ createdAt: -1 });
 
     res.json({
@@ -29,7 +29,7 @@ export const getEvents = async (req, res) => {
 export const getLiveEvents = async (req, res) => {
   try {
     const events = await Event.find()
-      .populate("organizer department venueName")
+      .populate("organizer department venueName groupName")
       .sort({ startDate: 1 }); // sort by start date ascending
 
     // Filter events where dynamicStatus is "Live" or "Running"
@@ -59,7 +59,7 @@ export const getEventById = async (req, res) => {
   try {
     const { id } = req.params;
     const event = await Event.findById(id).populate(
-      "organizer department venueName",
+      "organizer department venueName groupName",
     );
     if (!event) {
       return res
