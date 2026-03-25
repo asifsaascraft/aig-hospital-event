@@ -138,13 +138,37 @@ export const updateEvent = async (req, res) => {
   try {
     const { id } = req.params;
 
+    const existingEvent = await Event.findById(id);
+    if (!existingEvent) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    //  Handle shortName uniqueness
+    if (req.body.shortName) {
+      const duplicate = await Event.findOne({
+        shortName: req.body.shortName,
+        _id: { $ne: id },
+      });
+
+      if (duplicate) {
+        return res.status(400).json({
+          success: false,
+          message: "Short Name already exists",
+        });
+      }
+    }
+
     const updatedData = { ...req.body };
 
-    if (req.files?.eventImage) {
+    //  Safe file handling
+    if (req.files?.eventImage?.length > 0) {
       updatedData.eventImage = req.files.eventImage[0].location;
     }
 
-    if (req.files?.brochureUpload) {
+    if (req.files?.brochureUpload?.length > 0) {
       updatedData.brochureUpload = req.files.brochureUpload[0].location;
     }
 
@@ -153,17 +177,13 @@ export const updateEvent = async (req, res) => {
       runValidators: true,
     });
 
-    if (!updatedEvent) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Event not found" });
-    }
-
     res.json({
       success: true,
       data: updatedEvent.toObject({ virtuals: true }),
     });
   } catch (error) {
+    console.error("UPDATE ERROR:", error);
+
     res.status(500).json({
       success: false,
       message: "Failed to update event",
