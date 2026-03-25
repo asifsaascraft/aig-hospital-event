@@ -163,13 +163,17 @@ export const updateEvent = async (req, res) => {
 
     const updatedData = { ...req.body };
 
-    //  Safe file handling
+    // Safe file handling
     if (req.files?.eventImage?.length > 0) {
       updatedData.eventImage = req.files.eventImage[0].location;
+    } else {
+      updatedData.eventImage = existingEvent.eventImage;
     }
 
     if (req.files?.brochureUpload?.length > 0) {
       updatedData.brochureUpload = req.files.brochureUpload[0].location;
+    } else {
+      updatedData.brochureUpload = existingEvent.brochureUpload;
     }
 
     const updatedEvent = await Event.findByIdAndUpdate(id, updatedData, {
