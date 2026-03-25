@@ -37,6 +37,11 @@ const EventSchema = new mongoose.Schema(
       ref: "Department",
       required: [true, "Department is required"],
     },
+    groupName: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "EventGroup",
+      required: [true, "Event group is required"],
+    },
     startDate: {
       type: String, // Format: DD/MM/YYYY
       required: [true, "Start Date is required"],

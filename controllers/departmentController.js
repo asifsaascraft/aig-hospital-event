@@ -17,6 +17,27 @@ export const getDepartments = async (req, res) => {
 };
 
 // =======================
+// Get only ACTIVE departments (public)
+// =======================
+export const getActiveDepartments = async (req, res) => {
+  try {
+    const departments = await Department.find({ status: "Active" })
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: departments,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch active departments",
+      error: error.message,
+    });
+  }
+};
+
+// =======================
 // Create department (admin only)
 // =======================
 export const createDepartment = async (req, res) => {

@@ -1,6 +1,7 @@
 import express from "express";
 import {
   getVenues,
+  getActiveVenues,
   createVenue,
   updateVenue,
   deleteVenue,
@@ -12,6 +13,9 @@ const router = express.Router();
 
 // Public: anyone can view all venues
 router.get("/venues", getVenues);
+
+// Public: only ACTIVE venues
+router.get("/venues/active", getActiveVenues);
 
 // Admin-only: Create a new venue (with image upload)
 router.post(

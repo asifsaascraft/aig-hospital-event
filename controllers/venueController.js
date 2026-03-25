@@ -17,6 +17,27 @@ export const getVenues = async (req, res) => {
 };
 
 // =======================
+// Get only ACTIVE venues (public)
+// =======================
+export const getActiveVenues = async (req, res) => {
+  try {
+    const venues = await Venue.find({ status: "Active" })
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: venues,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch active venues",
+      error: error.message,
+    });
+  }
+};
+
+// =======================
 // Create venue (admin only)
 // =======================
 export const createVenue = async (req, res) => {

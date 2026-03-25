@@ -1,6 +1,7 @@
 import express from "express";
 import {
   getDepartments,
+  getActiveDepartments,
   createDepartment,
   updateDepartment,
   deleteDepartment,
@@ -11,6 +12,9 @@ const router = express.Router();
 
 //  Public: anyone can view departments
 router.get("/departments", getDepartments);
+
+// Public: only ACTIVE departments
+router.get("/departments/active", getActiveDepartments);
 
 //  Admin-only: Create, Update, Delete
 router.post(
