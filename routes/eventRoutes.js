@@ -25,10 +25,20 @@ router.post(
   "/admin/events",
   protect,
   authorizeRoles("admin"),
-  uploadEventFiles.fields([
-    { name: "eventImage", maxCount: 1 },
-    { name: "brochureUpload", maxCount: 1 },
-  ]),
+  (req, res, next) => {
+    uploadEventFiles.fields([
+      { name: "eventImage", maxCount: 1 },
+      { name: "brochureUpload", maxCount: 1 },
+    ])(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({
+          success: false,
+          message: err.message,
+        });
+      }
+      next();
+    });
+  },
   createEvent
 );
 
@@ -37,10 +47,20 @@ router.put(
   "/admin/events/:id",
   protect,
   authorizeRoles("admin"),
-  uploadEventFiles.fields([
-    { name: "eventImage", maxCount: 1 },
-    { name: "brochureUpload", maxCount: 1 },
-  ]),
+  (req, res, next) => {
+    uploadEventFiles.fields([
+      { name: "eventImage", maxCount: 1 },
+      { name: "brochureUpload", maxCount: 1 },
+    ])(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({
+          success: false,
+          message: err.message,
+        });
+      }
+      next();
+    });
+  },
   updateEvent
 );
 

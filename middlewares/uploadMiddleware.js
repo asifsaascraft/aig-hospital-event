@@ -49,7 +49,11 @@ const eventFileFilter = (req, file, cb) => {
       cb(new Error("Brochure must be a PDF file."), false);
     }
   } else if (file.fieldname === "eventImage") {
-    cb(null, true); // allow image
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Event Image must be an image file."), false);
+    }
   } else {
     cb(new Error("Invalid file field."), false);
   }
