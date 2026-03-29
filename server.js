@@ -100,7 +100,7 @@ app.use(morgan("dev"));
 // Health check
 // =======================
 app.get("/", (req, res) => {
-  res.send("AIG Hospital Event Backend is running ..... ");
+  res.send("AIG Hospital Event Backend by SaaScraft Studio (India) Pvt. Ltd.");
 });
 
 // =======================
