@@ -38,7 +38,7 @@ router.post(
       }
       next();
     });
-  },
+  }, 
   createEvent
 );
 
@@ -57,6 +57,8 @@ router.put(
           success: false,
           message: err.message,
         });
+
+
       }
       next();
     });

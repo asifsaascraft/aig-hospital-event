@@ -163,6 +163,16 @@ export const updateEvent = async (req, res) => {
 
     const updatedData = { ...req.body };
 
+    //  Normalize fields (VERY IMPORTANT)
+    if (Array.isArray(updatedData.brochureUpload)) {
+      updatedData.brochureUpload = updatedData.brochureUpload[0];
+    }
+
+    if (Array.isArray(updatedData.eventImage)) {
+      updatedData.eventImage = updatedData.eventImage[0];
+    }
+
+    //  Handle file uploads (override body if new file uploaded)
     if (req.files?.eventImage?.[0]?.location) {
       updatedData.eventImage = req.files.eventImage[0].location;
     }
