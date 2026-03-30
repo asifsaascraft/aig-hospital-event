@@ -184,6 +184,7 @@ export const sponsorRegisterForEvent = async (req, res) => {
       regNumGenerated: true,
       isSuspended: false,
       regNum: generatedRegNum,
+      registrationType: "Sponsor Registration",
     });
 
     // ----------------------------------------------------

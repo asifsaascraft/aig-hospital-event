@@ -179,7 +179,7 @@ export const registerForEvent = async (req, res) => {
               message: `File upload required for: ${field.label}`,
             });
           }
-          
+
           // -------------------------------
           // MAX FILE SIZE VALIDATION (5 MB)
           // -------------------------------
@@ -376,6 +376,7 @@ export const registerForEvent = async (req, res) => {
       isPaid: false,
       regNumGenerated: false,
       isSuspended: false,
+      registrationType: "Online Registration",
     });
 
     res.status(201).json({
@@ -604,6 +605,11 @@ export const registerForEventByEventAdmin = async (req, res) => {
       designation,
       affiliation,
       mealPreference,
+      mciNumber,
+      mciState,
+      department,
+      alternateEmail,
+      alternateMobile,
       country,
       city,
       state,
@@ -884,6 +890,11 @@ export const registerForEventByEventAdmin = async (req, res) => {
       designation,
       affiliation,
       mealPreference,
+      mciNumber,
+      mciState,
+      department,
+      alternateEmail,
+      alternateMobile,
       country,
       city,
       state,
@@ -892,11 +903,11 @@ export const registerForEventByEventAdmin = async (req, res) => {
       amount,
       dynamicFormAnswers: validatedDynamicFormAnswers,
       additionalAnswers: validatedAdditionalAnswers,
-      spotRegistration: true,
       isPaid: true,
       regNumGenerated: true,
       isSuspended: false,
       regNum: generatedRegNum,
+      registrationType: "Offline Registration",
     });
 
     // -----------------------------
