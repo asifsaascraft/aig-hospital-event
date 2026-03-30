@@ -2,7 +2,7 @@ import User from "../models/User.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
 
 // =======================
-// Only EventAdmin: Create User (signup)
+// Only EventAdmin: Create User (Full Fields)
 // =======================
 export const registerUser = async (req, res) => {
   try {
@@ -10,48 +10,90 @@ export const registerUser = async (req, res) => {
       name,
       email,
       password,
+      termAndCondition,
       prefix,
+      designation,
       affiliation,
       mobile,
+      mciRegistered,
+      mciNumber,
+      mciState,
+      department,
+      gender,
+      address,
+      state,
+      city,
+      pincode,
       country,
+      companyName
     } = req.body;
 
-    // Check if email already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "Email already registered" });
-    }
-
-    //  Check if mobile already exists
-    const existingMobile = await User.findOne({ mobile });
-    if (existingMobile) {
+    // =======================
+    // Validation
+    // =======================
+    if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Mobile already exists",
+        message: "Name, Email and Password are required",
       });
     }
 
-    // Create user (role = 'user')
+    // Check email
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already registered",
+      });
+    }
+
+    // Check mobile
+    if (mobile) {
+      const existingMobile = await User.findOne({ mobile });
+      if (existingMobile) {
+        return res.status(400).json({
+          success: false,
+          message: "Mobile already exists",
+        });
+      }
+    }
+
+    // =======================
+    // Create User
+    // =======================
     const user = await User.create({
       name,
       email,
       password,
+      termAndCondition,
       prefix,
+      designation,
       affiliation,
       mobile,
+      mciRegistered,
+      mciNumber,
+      mciState,
+      department,
+      gender,
+      address,
+      state,
+      city,
+      pincode,
       country,
+      companyName,
       role: "user",
       status: "Active",
     });
 
     // =======================
-    // Send Welcome Email
+    // Send Email
     // =======================
     try {
       await sendEmailWithTemplate({
         to: user.email,
         name: user.name,
-        templateKey: "2518b.554b0da719bc314.k1.4b76afb1-a361-11f0-bc12-525400c92439.199be08ce2b",
+        templateKey:
+          "2518b.554b0da719bc314.k1.4b76afb1-a361-11f0-bc12-525400c92439.199be08ce2b",
         mergeInfo: {
           name: user.name,
           email: user.email,
@@ -59,12 +101,13 @@ export const registerUser = async (req, res) => {
           affiliation: user.affiliation || "N/A",
         },
       });
-    } catch (emailError) {
-      console.error("Error sending registration email:", emailError);
+    } catch (err) {
+      console.error("Email error:", err);
     }
 
     res.status(201).json({
-      message: "User registered successfully",
+      success: true,
+      message: "User created successfully by EventAdmin",
       user: {
         id: user._id,
         name: user.name,
@@ -72,9 +115,13 @@ export const registerUser = async (req, res) => {
         role: user.role,
       },
     });
+
   } catch (error) {
-    console.error("Register user error:", error);
-    res.status(500).json({ message: error.message });
+    console.error("Create user error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -105,53 +152,35 @@ export const updateUser = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const {
-      name,
-      email,
-      prefix,
-      affiliation,
-      mobile,
-      country,
-    } = req.body;
+    const updateFields = { ...req.body };
 
-    // Check if user exists
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check Duplicate Email (Ignore current user)
-    if (email && email !== user.email) {
-      const emailExists = await User.findOne({ email });
+    // Email duplicate check
+    if (updateFields.email && updateFields.email !== user.email) {
+      const emailExists = await User.findOne({ email: updateFields.email });
       if (emailExists) {
         return res.status(400).json({ message: "Email already registered" });
       }
     }
 
-    // Check Duplicate Mobile (Ignore current user)
-    if (mobile && mobile !== user.mobile) {
-      const mobileExists = await User.findOne({ mobile });
+    // Mobile duplicate check
+    if (updateFields.mobile && updateFields.mobile !== user.mobile) {
+      const mobileExists = await User.findOne({ mobile: updateFields.mobile });
       if (mobileExists) {
         return res.status(400).json({ message: "Mobile already exists" });
       }
     }
 
-    // Fields allowed to update
-    const fieldsToUpdate = {
-      name,
-      email,
-      prefix,
-      affiliation,
-      mobile,
-      country,
-    };
+    // Remove restricted fields
+    delete updateFields.passwordResetToken;
+    delete updateFields.passwordResetExpires;
+    delete updateFields.plainPassword;
 
-    // Remove undefined values
-    Object.keys(fieldsToUpdate).forEach(
-      (key) => fieldsToUpdate[key] === undefined && delete fieldsToUpdate[key]
-    );
-
-    const updatedUser = await User.findByIdAndUpdate(userId, fieldsToUpdate, {
+    const updatedUser = await User.findByIdAndUpdate(userId, updateFields, {
       new: true,
       runValidators: true,
     }).select("-password -plainPassword -passwordResetToken -passwordResetExpires");
