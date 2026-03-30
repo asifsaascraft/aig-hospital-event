@@ -154,37 +154,70 @@ export const updateUser = async (req, res) => {
 
     const updateFields = { ...req.body };
 
+    // =======================
+    // Check if user exists
+    // =======================
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
-    // Email duplicate check
-    if (updateFields.email && updateFields.email !== user.email) {
-      const emailExists = await User.findOne({ email: updateFields.email });
-      if (emailExists) {
-        return res.status(400).json({ message: "Email already registered" });
-      }
+    // =======================
+    //  BLOCK EMAIL UPDATE
+    // =======================
+    if (updateFields.email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email cannot be updated",
+      });
     }
 
+    // =======================
     // Mobile duplicate check
+    // =======================
     if (updateFields.mobile && updateFields.mobile !== user.mobile) {
-      const mobileExists = await User.findOne({ mobile: updateFields.mobile });
+      const mobileExists = await User.findOne({
+        mobile: updateFields.mobile,
+      });
+
       if (mobileExists) {
-        return res.status(400).json({ message: "Mobile already exists" });
+        return res.status(400).json({
+          success: false,
+          message: "Mobile already exists",
+        });
       }
     }
 
+    // =======================
     // Remove restricted fields
+    // =======================
+    delete updateFields.password;
+    delete updateFields.plainPassword;
     delete updateFields.passwordResetToken;
     delete updateFields.passwordResetExpires;
-    delete updateFields.plainPassword;
+    delete updateFields.role; 
+    delete updateFields.status; 
 
-    const updatedUser = await User.findByIdAndUpdate(userId, updateFields, {
-      new: true,
-      runValidators: true,
-    }).select("-password -plainPassword -passwordResetToken -passwordResetExpires");
+    // =======================
+    // Update user
+    // =======================
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      updateFields,
+      {
+        new: true,
+        runValidators: true,
+      }
+    ).select(
+      "-password -plainPassword -passwordResetToken -passwordResetExpires"
+    );
 
+    // =======================
+    // Response
+    // =======================
     res.status(200).json({
       success: true,
       message: "User updated successfully",
@@ -193,7 +226,10 @@ export const updateUser = async (req, res) => {
 
   } catch (error) {
     console.error("Update user error:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
   }
 };
 
