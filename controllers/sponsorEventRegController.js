@@ -127,6 +127,7 @@ export const sponsorRegisterForEvent = async (req, res) => {
     const usedRegistrations = await EventRegistration.countDocuments({
       sponsorId,
       eventId,
+      registrationType: "Sponsor Registration",
       isSuspended: false, // Only count valid ones
     });
 
@@ -318,6 +319,7 @@ export const getSponsorQuotaSummary = async (req, res) => {
     const usedRegistrations = await EventRegistration.countDocuments({
       sponsorId,
       eventId,
+      registrationType: "Sponsor Registration",
       isSuspended: false, // Only active registrations
     });
 

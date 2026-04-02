@@ -5,6 +5,7 @@ import {
   getActiveSponsorsByEvent,
   updateSponsor,
   deleteSponsor,
+  getSponsorSummary,
 } from "../controllers/sponsorController.js";
 import { uploadSponsorImage } from "../middlewares/uploadMiddleware.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
@@ -59,5 +60,16 @@ router.delete(
   authorizeRoles("eventAdmin"),
   deleteSponsor
 );
+
+// =======================
+// SUMMARY API
+// =======================
+router.get(
+  "/event-admin/events/:eventId/sponsors/summary",
+  protect,
+  authorizeRoles("eventAdmin"),
+  getSponsorSummary
+);
+
 
 export default router;
