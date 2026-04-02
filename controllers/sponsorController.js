@@ -5,6 +5,7 @@ import SponsorRegistrationQuota from "../models/SponsorRegistrationQuota.js";
 import SponsorAccomodationQuota from "../models/SponsorAccomodationQuota.js";
 import SponsorTravelQuota from "../models/SponsorTravelQuota.js";
 import EventRegistration from "../models/EventRegistration.js";
+import Event from "../models/Event.js";
 
 // =======================
 // Get all sponsors by Event ID (Public/User)
@@ -249,6 +250,13 @@ export const getSponsorSummary = async (req, res) => {
   try {
     const { eventId } = req.params;
 
+    // 🔹 Fetch event name
+    const event = await Event.findById(eventId).select("eventName");
+
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
     // =======================
     // 1. SPONSORS
     // =======================
@@ -340,6 +348,7 @@ export const getSponsorSummary = async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
+        eventName: event.eventName,
         sponsors: {
           total: totalSponsors,
           active: activeSponsors,
