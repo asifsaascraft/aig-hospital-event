@@ -52,6 +52,7 @@ export const loginSponsor = async (req, res) => {
     res.json({
       success: true,
       message: "Login successful",
+      accessToken,
       data: {
         id: sponsor._id,
         sponsorName: sponsor.sponsorName,

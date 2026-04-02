@@ -90,17 +90,14 @@ export const createSponsor = async (req, res) => {
       });
     }
 
-    // Check if an active sponsor with this email already exists
-    const existingActiveSponsor = await Sponsor.findOne({
-      email,
-      status: "Active",
-    });
+    //  NEW (STRICT UNIQUE EMAIL)
+    const existingSponsor = await Sponsor.findOne({ email });
 
-    if (existingActiveSponsor) {
+    if (existingSponsor) {
       return res.status(400).json({
         success: false,
         message:
-          "A sponsor with this email is already Active. Please deactivate the existing sponsor before adding a new one.",
+          "This email is already registered, Please use a different email",
       });
     }
     //  Handle sponsor image upload (using multer-s3)
@@ -157,49 +154,18 @@ export const updateSponsor = async (req, res) => {
   try {
     const { id } = req.params;
     const updatedData = { ...req.body };
-    // Update sponsor image if a new one is uploaded
 
+    // ============================
+    // Update sponsor image
+    // ============================
     if (req.file && req.file.location) {
       updatedData.sponsorImage = req.file.location;
     }
 
-    // Fetch current sponsor
-    const existingSponsor = await Sponsor.findById(id);
-    if (!existingSponsor) {
-      return res.status(404).json({
-        success: false,
-        message: "Sponsor not found",
-      });
-    }
-
-    // Determine final email & status after update
-    const finalEmail = updatedData.email || existingSponsor.email;
-    const finalStatus = updatedData.status || existingSponsor.status;
-
-    // Check if same email sponsor already active
-    if (finalStatus === "Active") {
-      const existingActiveSponsor = await Sponsor.findOne({
-        email: finalEmail,
-        status: "Active",
-        _id: { $ne: id },
-      });
-
-      if (existingActiveSponsor) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "A sponsor with this email is already Active. Please deactivate the existing sponsor before activating this one.",
-        });
-      }
-    }
-
     // ============================
-
-    const sponsor = await Sponsor.findByIdAndUpdate(id, updatedData, {
-      new: true,
-      runValidators: true,
-    });
-
+    // Fetch current sponsor
+    // ============================
+    const sponsor = await Sponsor.findById(id);
     if (!sponsor) {
       return res.status(404).json({
         success: false,
@@ -207,7 +173,43 @@ export const updateSponsor = async (req, res) => {
       });
     }
 
-    res.json({ success: true, data: sponsor });
+    // ============================
+    // Determine final email
+    // ============================
+    const finalEmail = updatedData.email || sponsor.email;
+
+    // ============================
+    // UNIQUE EMAIL CHECK
+    // ============================
+    const duplicateSponsor = await Sponsor.findOne({
+      email: finalEmail,
+      _id: { $ne: id }, // exclude current sponsor
+    });
+
+    if (duplicateSponsor) {
+      return res.status(400).json({
+        success: false,
+        message: "This email is already registered, Please use a different email",
+      });
+    }
+
+    // ============================
+    // Update sponsor
+    // ============================
+    const updatedSponsor = await Sponsor.findByIdAndUpdate(
+      id,
+      updatedData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    res.json({
+      success: true,
+      data: updatedSponsor,
+    });
+
   } catch (error) {
     res.status(500).json({
       success: false,
