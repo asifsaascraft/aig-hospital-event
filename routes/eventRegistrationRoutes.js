@@ -16,11 +16,11 @@ import { eventUpload } from "../middlewares/eventUploadMiddleware.js";
 const router = express.Router();
 
 
-// 1 Get Prefilled Registration Form (User or EventAdmin)
+// 1 Get Prefilled Registration Form (User)
 router.get(
   "/events/:eventId/prefilled",
   protect,
-  authorizeRoles("user", "eventAdmin"),
+  authorizeRoles("user"),
   getPrefilledRegistrationForm
 );
 

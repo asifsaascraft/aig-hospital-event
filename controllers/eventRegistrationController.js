@@ -8,7 +8,7 @@ import moment from "moment";
 
 /* 
 ========================================================
-  1. Get Prefilled Registration Form (User or EventAdmin)
+  1. Get Prefilled Registration Form (User)
 ========================================================*/
 export const getPrefilledRegistrationForm = async (req, res) => {
   try {

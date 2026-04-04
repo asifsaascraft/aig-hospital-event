@@ -25,7 +25,6 @@ export const registerUser = async (req, res) => {
       city,
       pincode,
       country,
-      companyName
     } = req.body;
 
     // =======================
@@ -80,7 +79,6 @@ export const registerUser = async (req, res) => {
       city,
       pincode,
       country,
-      companyName,
       role: "user",
       status: "Active",
     });
@@ -283,7 +281,7 @@ export const checkUserEmailExists = async (req, res) => {
       return res.status(200).json({
         success: true,
         exists: true,
-        message: "Email already registered",
+        message: "User found with this email, fill the registration form",
         user,
       });
     }
