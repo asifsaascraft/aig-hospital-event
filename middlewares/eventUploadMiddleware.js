@@ -12,9 +12,11 @@ export const eventUpload = () => {
         acl: "public-read",
         contentType: multerS3.AUTO_CONTENT_TYPE,
         key: (req, file, cb) => {
+          const userId = req.user?._id || req.sponsor?._id;
+
           cb(
             null,
-            `event-registration/${req.user._id}/${Date.now()}-${file.originalname}`
+            `event-registration/${userId}/${Date.now()}-${file.originalname}`,
           );
         },
       });

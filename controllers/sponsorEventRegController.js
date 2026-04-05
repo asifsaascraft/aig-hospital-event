@@ -1,62 +1,59 @@
 import EventRegistration from "../models/EventRegistration.js";
 import Event from "../models/Event.js";
-import moment from "moment";
-import Sponsor from "../models/Sponsor.js";
 import SponsorRegistrationQuota from "../models/SponsorRegistrationQuota.js";
-import sendEmailWithTemplate from "../utils/sendEmail.js";
-
+import DynamicRegForm from "../models/DynamicRegForm.js";
+import User from "../models/User.js";
 
 // =====================================
 //  1. CHECK EMAIL EXISTS FOR EVENT REGISTRATION (Protected)
 // =====================================
-export const checkEmailExists = async (req, res) => {
-  try {
-    const { eventId } = req.params;
-    const { email } = req.body;
+// export const checkEmailExists = async (req, res) => {
+//   try {
+//     const { eventId } = req.params;
+//     const { email } = req.body;
 
-    if (!eventId) {
-      return res.status(400).json({
-        success: false,
-        message: "Event ID is required in the URL",
-      });
-    }
+//     if (!eventId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Event ID is required in the URL",
+//       });
+//     }
 
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: "Email is required",
-      });
-    }
+//     if (!email) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Email is required",
+//       });
+//     }
 
-    // Normalize email
-    const normalizedEmail = email.trim().toLowerCase();
+//     // Normalize email
+//     const normalizedEmail = email.trim().toLowerCase();
 
-    // Check if email already exists for this event
-    const existing = await EventRegistration.findOne({
-      eventId,
-      email: normalizedEmail,
-    });
+//     // Check if email already exists for this event
+//     const existing = await EventRegistration.findOne({
+//       eventId,
+//       email: normalizedEmail,
+//     });
 
-    if (existing) {
-      return res.status(200).json({
-        success: true,
-        message: "Email already registered for this event",
-      });
-    }
+//     if (existing) {
+//       return res.status(200).json({
+//         success: true,
+//         message: "Email already registered for this event",
+//       });
+//     }
 
-    return res.status(200).json({
-      success: false,
-      message: "Email not registered for this event",
-    });
-  } catch (error) {
-    console.error("Error checking email:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server error while checking email",
-    });
-  }
-};
-
+//     return res.status(200).json({
+//       success: false,
+//       message: "Email not registered for this event",
+//     });
+//   } catch (error) {
+//     console.error("Error checking email:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Server error while checking email",
+//     });
+//   }
+// };
 
 // ======================================
 //  2. ADD SPONSOR EVENT REGISTRATION (Protected)
@@ -65,7 +62,9 @@ export const sponsorRegisterForEvent = async (req, res) => {
   try {
     const sponsorId = req.sponsor._id;
     const { eventId } = req.params;
+
     const {
+      userId,
       prefix,
       name,
       gender,
@@ -73,9 +72,12 @@ export const sponsorRegisterForEvent = async (req, res) => {
       mobile,
       designation,
       affiliation,
-      medicalCouncilState,
-      medicalCouncilRegistration,
       mealPreference,
+      mciNumber,
+      mciState,
+      department,
+      alternateEmail,
+      alternateMobile,
       country,
       city,
       state,
@@ -83,13 +85,35 @@ export const sponsorRegisterForEvent = async (req, res) => {
       pincode,
     } = req.body;
 
-    // Step 1: Validate Event
+    // ===============================
+    // Validate Event
+    // ===============================
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "userId is required",
+      });
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // ===============================
+    // Validate Event
+    // ===============================
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ message: "Event not found" });
 
-    // Step 2: Check Suspended Registration
+    // ===============================
+    // Suspended Check
+    // ===============================
     const suspendedReg = await EventRegistration.findOne({
-      sponsorId,
+      userId,
       eventId,
       isSuspended: true,
     });
@@ -97,73 +121,185 @@ export const sponsorRegisterForEvent = async (req, res) => {
     if (suspendedReg) {
       return res.status(403).json({
         success: false,
-        message:
-          "Your previous registration for this event is suspended. Please contact the Event Admin.",
+        message: "Your previous registration for this event is suspended.",
       });
     }
 
-    // ----------------------------------------------------
-    //  Step 3: FETCH SPONSOR QUOTA (IMPORTANT)
-    // ----------------------------------------------------
-    const quotaRecord = await SponsorRegistrationQuota.findOne({ sponsorId, eventId });
+    // ===============================
+    // Already Paid Check
+    // ===============================
+    const existingPaidReg = await EventRegistration.findOne({
+      userId,
+      eventId,
+      isPaid: true,
+    });
+
+    if (existingPaidReg) {
+      return res.status(400).json({
+        success: false,
+        message: "User already registered for this event",
+      });
+    }
+
+    // ===============================
+    // Sponsor Quota Validation
+    // ===============================
+    const quotaRecord = await SponsorRegistrationQuota.findOne({
+      sponsorId,
+      eventId,
+    });
 
     if (!quotaRecord) {
       return res.status(400).json({
         success: false,
-        message: "No registration quota assigned for this sponsor.",
+        message: "No registration quota assigned for this sponsor",
       });
     }
 
     if (quotaRecord.status !== "Active") {
       return res.status(403).json({
         success: false,
-        message: "Your sponsor quota is not Active.",
+        message: "Your registration Quota is not active",
       });
     }
 
-    // ----------------------------------------------------
-    //  Step 4: COUNT HOW MANY REGISTRATIONS ARE USED
-    // ----------------------------------------------------
+    const today = new Date();
+
+    if (quotaRecord.startDate && today < quotaRecord.startDate) {
+      return res.status(400).json({
+        message: "Registration has not started yet",
+      });
+    }
+
+    if (quotaRecord.endDate && today > quotaRecord.endDate) {
+      return res.status(400).json({
+        message: "Registration has ended",
+      });
+    }
+
+    // ===============================
+    // Quota Count
+    // ===============================
     const usedRegistrations = await EventRegistration.countDocuments({
       sponsorId,
       eventId,
       registrationType: "Sponsor Registration",
-      isSuspended: false, // Only count valid ones
+      isSuspended: false,
     });
 
-    // Step 5: Check if quota exceeded
     if (usedRegistrations >= quotaRecord.quota) {
       return res.status(400).json({
-        success: false,
-        message: `Quota exceeded. Allowed: ${quotaRecord.quota}, Used: ${usedRegistrations}`,
+        message: `Registration Quota has exceeded`,
       });
     }
 
-    // ----------------------------------------------------
-    //  Step 6: Generate Registration Number
-    // ----------------------------------------------------
-    const lastPaidRegistration = await EventRegistration.findOne({
-      eventId,
-      regNumGenerated: true,
-    })
-      .sort({ createdAt: -1 })
-      .limit(1);
+    // ===============================
+    // FILE MAP (IMPORTANT)
+    // ===============================
+    const fileMap = {};
+    (req.files || []).forEach((file) => {
+      fileMap[file.fieldname] = fileMap[file.fieldname] || [];
+      fileMap[file.fieldname].push(file);
+    });
 
-    let newRegNumInt;
-    if (lastPaidRegistration && lastPaidRegistration.regNum) {
-      const lastNum = parseInt(lastPaidRegistration.regNum.split("-").pop());
-      newRegNumInt = lastNum + 1;
-    } else {
-      const baseNum = parseInt(event.regNum || 0);
-      newRegNumInt = baseNum + 1;
+    // ===============================
+    // DYNAMIC FORM VALIDATION
+    // ===============================
+    const dynamicForm = await DynamicRegForm.findOne({ eventId });
+
+    let validatedDynamicFormAnswers = [];
+
+    if (dynamicForm && dynamicForm.fields.length > 0) {
+      let parsedDynamic = [];
+
+      if (typeof req.body.dynamicFormAnswers === "string") {
+        try {
+          parsedDynamic = JSON.parse(req.body.dynamicFormAnswers);
+        } catch {
+          return res.status(400).json({
+            message: "Invalid JSON format for dynamicFormAnswers",
+          });
+        }
+      } else if (Array.isArray(req.body.dynamicFormAnswers)) {
+        parsedDynamic = req.body.dynamicFormAnswers;
+      }
+
+      for (const field of dynamicForm.fields) {
+        const answered = parsedDynamic.find(
+          (a) => String(a.id) === String(field.id),
+        );
+
+        const fileKey = `file_dyn_${field.id}`;
+        const fileUpload = fileMap?.[fileKey]?.[0];
+
+        // FILE FIELD
+        if (field.type === "input" && field.inputTypes === "file") {
+          if (field.required && !fileUpload) {
+            return res.status(400).json({
+              message: `File required: ${field.label}`,
+            });
+          }
+
+          if (fileUpload && field.maxFileSize) {
+            const sizeMB = fileUpload.size / (1024 * 1024);
+            if (sizeMB > field.maxFileSize) {
+              return res.status(400).json({
+                message: `${field.label} must be < ${field.maxFileSize} MB`,
+              });
+            }
+          }
+
+          validatedDynamicFormAnswers.push({
+            id: field.id,
+            label: field.label,
+            type: field.type,
+            required: field.required,
+            value: null,
+            fileUrl: fileUpload ? fileUpload.location : null,
+          });
+
+          continue;
+        }
+
+        // NORMAL FIELD
+        const value = answered?.value;
+
+        if (field.required && (value === undefined || value === "")) {
+          return res.status(400).json({
+            message: `Value required: ${field.label}`,
+          });
+        }
+
+        validatedDynamicFormAnswers.push({
+          id: field.id,
+          label: field.label,
+          type: field.type,
+          required: field.required,
+          value: value ?? null,
+          fileUrl: null,
+        });
+      }
     }
 
-    const generatedRegNum = `${event.eventCode}-${newRegNumInt}`;
+    // ===============================
+    // Generate Reg Number
+    // ===============================
+    const last = await EventRegistration.findOne({
+      eventId,
+      regNumGenerated: true,
+    }).sort({ createdAt: -1 });
 
-    // ----------------------------------------------------
-    //  Step 7: Create the Registration
-    // ----------------------------------------------------
+    let newNum = last?.regNum
+      ? parseInt(last.regNum.split("-").pop()) + 1
+      : parseInt(event.regNum || 0) + 1;
+
+    const generatedRegNum = `${event.eventCode}-${newNum}`;
+
+    // ===============================
+    // Create Registration
+    // ===============================
     const registration = await EventRegistration.create({
+      userId,
       sponsorId,
       eventId,
       prefix,
@@ -173,65 +309,31 @@ export const sponsorRegisterForEvent = async (req, res) => {
       mobile,
       designation,
       affiliation,
-      medicalCouncilState,
-      medicalCouncilRegistration,
       mealPreference,
+      mciNumber,
+      mciState,
+      department,
+      alternateEmail,
+      alternateMobile,
       country,
       city,
       state,
       address,
       pincode,
+      dynamicFormAnswers: validatedDynamicFormAnswers,
       isPaid: true,
       regNumGenerated: true,
-      isSuspended: false,
       regNum: generatedRegNum,
       registrationType: "Sponsor Registration",
     });
 
-    // ----------------------------------------------------
-    //  Step 8: Send Email Notification to Sponsor
-    // ----------------------------------------------------
-    try {
-      await sendEmailWithTemplate({
-        to: email,
-        name: name,
-        templateKey: "2518b.554b0da719bc314.k1.84e00a60-c384-11f0-807d-8e9a6c33ddc2.19a90a6be06", 
-        mergeInfo: {
-          eventName: event.eventName,
-          registrationNumber: generatedRegNum,
-          startDate: event.startDate
-              ? moment(event.startDate, "DD/MM/YYYY").format("DD MMM YYYY")
-              : "N/A",
-            endDate: event.endDate
-              ? moment(event.endDate, "DD/MM/YYYY").format("DD MMM YYYY")
-              : "N/A",
-          prefix,
-          name,
-          email,
-          mobile,
-          designation,
-          affiliation,
-          mealPreference,
-          medicalCouncilRegistration,
-          medicalCouncilState,
-          country,
-          state,
-          city,
-          address,
-          pincode,
-        },
-      });
-    } catch (emailError) {
-      console.error("Email sending failed:", emailError);
-    }
-
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: "Event registration created successfully",
+      message: "Registration successful",
       data: registration,
     });
   } catch (error) {
-    console.error("Event registration error:", error);
+    console.error("Sponsor registration error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
@@ -265,11 +367,11 @@ export const getAllRegistrationsByEvent = async (req, res) => {
       sponsorId,
       eventId,
     })
-    .populate({
+      .populate({
         path: "eventId",
         select: "eventName startDate endDate",
       })
-    .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -277,7 +379,6 @@ export const getAllRegistrationsByEvent = async (req, res) => {
       total: registrations.length,
       data: registrations,
     });
-
   } catch (error) {
     console.error("Get registrations error:", error);
     return res.status(500).json({
@@ -340,7 +441,6 @@ export const getSponsorQuotaSummary = async (req, res) => {
         status: quotaRecord.status,
       },
     });
-
   } catch (error) {
     console.error("Get Sponsor Quota Summary error:", error);
     return res.status(500).json({
@@ -363,7 +463,7 @@ export const updateSponsorEventRegistration = async (req, res) => {
     if (!event) {
       return res.status(404).json({
         success: false,
-        message: "Event not found"
+        message: "Event not found",
       });
     }
 
@@ -377,7 +477,7 @@ export const updateSponsorEventRegistration = async (req, res) => {
     if (!registration) {
       return res.status(404).json({
         success: false,
-        message: "Registration not found or not authorized"
+        message: "Registration not found or not authorized",
       });
     }
 
@@ -400,21 +500,19 @@ export const updateSponsorEventRegistration = async (req, res) => {
     const updatedRegistration = await EventRegistration.findByIdAndUpdate(
       registrationId,
       req.body,
-      { new: true }
+      { new: true },
     );
 
     res.status(200).json({
       success: true,
       message: "Registration updated successfully",
-      data: updatedRegistration
+      data: updatedRegistration,
     });
-
   } catch (error) {
     console.error("Update registration error:", error);
     return res.status(500).json({
       success: false,
-      message: "Server error while updating registration"
+      message: "Server error while updating registration",
     });
   }
 };
-

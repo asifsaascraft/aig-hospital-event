@@ -652,7 +652,7 @@ export const registerForEventByEventAdmin = async (req, res) => {
     if (existingPaidReg) {
       return res
         .status(400)
-        .json({ message: "You have already paid for this event" });
+        .json({ message: "User already registered and paid for this event" });
     }
 
     // ===========================

@@ -1,6 +1,6 @@
 import express from "express";
 import { 
-  checkEmailExists,
+  //checkEmailExists,
   sponsorRegisterForEvent,
   getAllRegistrationsByEvent,
   getSponsorQuotaSummary,
@@ -8,6 +8,7 @@ import {
 
  } from "../controllers/sponsorEventRegController.js";
 import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
+import { eventUpload } from "../middlewares/eventUploadMiddleware.js";
 
 const router = express.Router();
 
@@ -16,11 +17,11 @@ const router = express.Router();
   1. CHECK EMAIL EXISTS FOR EVENT REGISTRATION (Protected)
 ==============================================================
 */
-router.post(
-  "/sponsor/event/:eventId/check-email", 
-  protectSponsor, 
-  checkEmailExists
-);
+// router.post(
+//   "/sponsor/event/:eventId/check-email", 
+//   protectSponsor, 
+//   checkEmailExists
+// );
 
 /*
 ==============================================================
@@ -30,8 +31,10 @@ router.post(
 router.post(
   "/sponsor/event/:eventId/register",
   protectSponsor,
+  eventUpload(),
   sponsorRegisterForEvent
 );
+
 
 /*
 ==============================================================
