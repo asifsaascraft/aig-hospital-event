@@ -47,15 +47,12 @@ router.get(
 );
 
 // =======================
-// (EventAdmin or Sponsor Authoriza): Update User
+// only EventAdmin: Update User
 // =======================
 router.put(
-  "/update-user/:userId",
-  protectUniversal,
-  authorizeUniversal({
-    allowUserRoles: ["eventAdmin"],
-    allowSponsor: true,
-  }),
+  "/event-admin/update-user/:userId",
+  protect,
+  authorizeRoles("eventAdmin"),
   updateUser
 );
 

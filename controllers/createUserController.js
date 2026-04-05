@@ -182,7 +182,7 @@ export const getAllUsersCreatedBySponsor = async (req, res) => {
 };
 
 // =======================
-// (EventAdmin or Sponsor Authoriza): Update User
+// only EventAdmin: Update User
 // =======================
 export const updateUser = async (req, res) => {
   try {
