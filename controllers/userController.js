@@ -69,6 +69,7 @@ export const registerUser = async (req, res) => {
       country,
       role: "user",
       status: "Active",
+      createdBy: "self",
     });
 
     // =======================

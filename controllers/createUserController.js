@@ -2,7 +2,7 @@ import User from "../models/User.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
 
 // =======================
-// Only EventAdmin: Create User (Full Fields)
+// (EventAdmin or Sponsor Authoriza): Create User (signup)
 // =======================
 export const registerUser = async (req, res) => {
   try {
@@ -57,6 +57,18 @@ export const registerUser = async (req, res) => {
       }
     }
 
+    let createdByValue = "self";
+
+    // ================= EVENT ADMIN =================
+    if (req.authType === "user" && req.user?.role === "eventAdmin") {
+      createdByValue = "eventAdmin";
+    }
+
+    // ================= SPONSOR =================
+    if (req.authType === "sponsor") {
+      createdByValue = "sponsor";
+    }
+
     // =======================
     // Create User
     // =======================
@@ -81,6 +93,7 @@ export const registerUser = async (req, res) => {
       country,
       role: "user",
       status: "Active",
+      createdBy: createdByValue,
     });
 
     // =======================
@@ -113,7 +126,6 @@ export const registerUser = async (req, res) => {
         role: user.role,
       },
     });
-
   } catch (error) {
     console.error("Create user error:", error);
     res.status(500).json({
@@ -124,13 +136,16 @@ export const registerUser = async (req, res) => {
 };
 
 // =======================
-// Get All Users (Only role = "user")
+// EventAdmin: Get ONLY EventAdmin Created Users
 // =======================
-export const getAllUsers = async (req, res) => {
+export const getAllUsersCreatedByEventAdmin = async (req, res) => {
   try {
-    const users = await User.find({ role: "user" })
-      .select("-password -plainPassword -passwordResetToken -passwordResetExpires") // hide sensitive fields
-      .sort({ createdAt: -1 }); // newest first
+    const users = await User.find({
+      role: "user",
+      createdBy: "eventAdmin", 
+    })
+      .select("-password -plainPassword -passwordResetToken -passwordResetExpires")
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -144,7 +159,30 @@ export const getAllUsers = async (req, res) => {
 };
 
 // =======================
-// Update User (Only eventAdmin)
+// Sponsor: Get ONLY Sponsor Created Users
+// =======================
+export const getAllUsersCreatedBySponsor = async (req, res) => {
+  try {
+    const users = await User.find({
+      role: "user",
+      createdBy: "sponsor", 
+    })
+      .select("-password -plainPassword -passwordResetToken -passwordResetExpires")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: users.length,
+      users,
+    });
+  } catch (error) {
+    console.error("Get sponsor users error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// =======================
+// (EventAdmin or Sponsor Authoriza): Update User
 // =======================
 export const updateUser = async (req, res) => {
   try {
@@ -196,21 +234,17 @@ export const updateUser = async (req, res) => {
     delete updateFields.plainPassword;
     delete updateFields.passwordResetToken;
     delete updateFields.passwordResetExpires;
-    delete updateFields.role; 
-    delete updateFields.status; 
+    delete updateFields.role;
+    delete updateFields.status;
 
     // =======================
     // Update user
     // =======================
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      updateFields,
-      {
-        new: true,
-        runValidators: true,
-      }
-    ).select(
-      "-password -plainPassword -passwordResetToken -passwordResetExpires"
+    const updatedUser = await User.findByIdAndUpdate(userId, updateFields, {
+      new: true,
+      runValidators: true,
+    }).select(
+      "-password -plainPassword -passwordResetToken -passwordResetExpires",
     );
 
     // =======================
@@ -221,7 +255,6 @@ export const updateUser = async (req, res) => {
       message: "User updated successfully",
       user: updatedUser,
     });
-
   } catch (error) {
     console.error("Update user error:", error);
     res.status(500).json({
@@ -230,7 +263,6 @@ export const updateUser = async (req, res) => {
     });
   }
 };
-
 
 // =======================
 // Delete User (Only eventAdmin)
@@ -251,17 +283,14 @@ export const deleteUser = async (req, res) => {
       success: true,
       message: "User deleted successfully",
     });
-
   } catch (error) {
     console.error("Delete user error:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-
-
 // =======================
-// Check If Email Exists (Only for role = "user")
+// (EventAdmin or Sponsor Authoriza): Check Email Exists (Role: user)
 // =======================
 export const checkUserEmailExists = async (req, res) => {
   try {
@@ -274,8 +303,9 @@ export const checkUserEmailExists = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ email, role: "user" })
-      .select("-password -plainPassword -passwordResetToken -passwordResetExpires");
+    const user = await User.findOne({ email, role: "user" }).select(
+      "-password -plainPassword -passwordResetToken -passwordResetExpires",
+    );
 
     if (user) {
       return res.status(200).json({
@@ -292,7 +322,6 @@ export const checkUserEmailExists = async (req, res) => {
       message: "Email does not exist",
       user: null,
     });
-
   } catch (error) {
     console.error("Check email error:", error);
     res.status(500).json({

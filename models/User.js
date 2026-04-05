@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-
 const UserSchema = new mongoose.Schema(
   {
     name: {
@@ -18,7 +17,8 @@ const UserSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
     },
-    plainPassword: {          //  Added field for storing original password
+    plainPassword: {
+      //  Added field for storing original password
       type: String,
     },
     role: {
@@ -110,9 +110,12 @@ const UserSchema = new mongoose.Schema(
     termAndCondition: {
       type: Boolean,
     },
-    // -------------------------
+    createdBy: {
+      type: String,
+      enum: ["self", "eventAdmin", "sponsor"],
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 //  Hash password before saving
@@ -130,12 +133,9 @@ UserSchema.methods.matchPassword = async function (enteredPassword) {
 
 // 🛡 Generate JWT token
 UserSchema.methods.getJwtToken = function () {
-  return jwt.sign(
-    { id: this._id, role: this.role },
-    process.env.JWT_SECRET,
-    { expiresIn: "1d" }
-  );
+  return jwt.sign({ id: this._id, role: this.role }, process.env.JWT_SECRET, {
+    expiresIn: "1d",
+  });
 };
 
-export default mongoose.models.User ||
-  mongoose.model("User", UserSchema);
+export default mongoose.models.User || mongoose.model("User", UserSchema);

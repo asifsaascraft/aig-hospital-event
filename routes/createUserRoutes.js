@@ -1,42 +1,61 @@
 import express from "express";
 import {
   registerUser,
-  getAllUsers,
+  getAllUsersCreatedByEventAdmin,
+  getAllUsersCreatedBySponsor,
   updateUser,
   deleteUser,
   checkUserEmailExists,
 } from "../controllers/createUserController.js";
+import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
+import { protectUniversal } from "../middlewares/protectUniversal.js";
+import { authorizeUniversal } from "../middlewares/authorizeUniversal.js";
 
 const router = express.Router();
 
 // =======================
-// only EventAdmin: Create User (signup)
+// (EventAdmin or Sponsor Authoriza): Create User (signup)
 // =======================
 router.post(
-  "/event-admin/register",
-  protect,
-  authorizeRoles("eventAdmin"),
-  registerUser
+  "/create-user",
+  protectUniversal,
+  authorizeUniversal({
+    allowUserRoles: ["eventAdmin"],
+    allowSponsor: true,
+  }),
+  registerUser,
 );
 
 // =======================
-// only EventAdmin: Get All Users
+// EventAdmin: Get ONLY EventAdmin Created Users
 // =======================
 router.get(
-  "/event-admin/all-users",
+  "/event-admin/users",
   protect,
   authorizeRoles("eventAdmin"),
-  getAllUsers
+  getAllUsersCreatedByEventAdmin,
 );
 
 // =======================
-// only EventAdmin: Update User
+// Sponsor: Get ONLY Sponsor Created Users
+// =======================
+router.get(
+  "/sponsor/users",
+  protectSponsor, 
+  getAllUsersCreatedBySponsor,
+);
+
+// =======================
+// (EventAdmin or Sponsor Authoriza): Update User
 // =======================
 router.put(
-  "/event-admin/update-user/:userId",
-  protect,
-  authorizeRoles("eventAdmin"),
+  "/update-user/:userId",
+  protectUniversal,
+  authorizeUniversal({
+    allowUserRoles: ["eventAdmin"],
+    allowSponsor: true,
+  }),
   updateUser
 );
 
@@ -51,15 +70,17 @@ router.delete(
 );
 
 // =======================
-// Check Email Exists (Role: user)
+// (EventAdmin or Sponsor Authoriza): Check Email Exists (Role: user)
 // =======================
 router.post(
-  "/event-admin/check-user-email",
-  protect,
-  authorizeRoles("eventAdmin"),
+  "/check-user-email",
+  protectUniversal,
+  authorizeUniversal({
+    allowUserRoles: ["eventAdmin"],
+    allowSponsor: true,
+  }),
   checkUserEmailExists
 );
-
 
 
 export default router;
