@@ -23,7 +23,7 @@ export const createSponsorRegistrationQuota = async (req, res) => {
     }
     
     //  Check if sponsorId already exists globally
-    const existingQuota = await SponsorRegistrationQuota.findOne({ sponsorId });
+    const existingQuota = await SponsorRegistrationQuota.findOne({ sponsorId, eventId });
     if (existingQuota) {
       return res.status(400).json({
         success: false,
@@ -80,7 +80,7 @@ export const getSponsorRegistrationQuotasByEvent = async (req, res) => {
 export const updateSponsorRegistrationQuota = async (req, res) => {
   try {
     const { id } = req.params;
-    const { sponsorId, quota, status, startDate, endDat } = req.body;
+    const { sponsorId, quota, status, startDate, endDate } = req.body;
 
     const quotaRecord = await SponsorRegistrationQuota.findById(id);
     if (!quotaRecord) {
