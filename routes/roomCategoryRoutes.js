@@ -15,15 +15,15 @@ const router = express.Router();
 // Logged-in users can view room categories
 router.get("/room-categories", protect, getRoomCategories);
 
-router.get("/room-categories/:id", protect, getRoomCategoryById);
-
-// Event Admin: Get only ACTIVE room categories
 router.get(
   "/room-categories/active",
   protect,
-  authorizeRoles("eventAdmin"),
   getActiveRoomCategories
 );
+
+router.get("/room-categories/:id", protect, getRoomCategoryById);
+
+
 // Admin-only: Create, Update, Delete
 router.post(
   "/admin/room-categories",
