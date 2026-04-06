@@ -1,5 +1,6 @@
 // controllers/hotelController.js
 import Hotel from "../models/Hotel.js";
+import RoomCategory from "../models/RoomCategory.js";
 
 // =======================
 // Get all hotels (public for logged-in users)
@@ -121,18 +122,42 @@ export const updateHotel = async (req, res) => {
     const { id } = req.params;
     const updatedData = { ...req.body };
 
-    if (req.file) updatedData.hotelImage = req.file.location;
+    // If new image uploaded
+    if (req.file) {
+      updatedData.hotelImage = req.file.location;
+    }
 
+    // ===============================
+    // Step 1: Update Hotel
+    // ===============================
     const updatedHotel = await Hotel.findByIdAndUpdate(id, updatedData, {
       new: true,
       runValidators: true,
     });
 
     if (!updatedHotel) {
-      return res.status(404).json({ success: false, message: "Hotel not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Hotel not found",
+      });
     }
 
-    res.json({ success: true, data: updatedHotel });
+    // ===============================
+    // Step 2: If Hotel is set to Inactive → Update RoomCategories
+    // ===============================
+    if (updatedData.status === "Inactive") {
+      await RoomCategory.updateMany(
+        { hotel: id },
+        { $set: { status: "Inactive" } }
+      );
+    }
+
+    res.json({
+      success: true,
+      message: "Hotel updated successfully",
+      data: updatedHotel,
+    });
+
   } catch (error) {
     res.status(500).json({
       success: false,

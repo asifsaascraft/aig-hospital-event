@@ -1,5 +1,6 @@
 // controllers/roomCategoryController.js
 import RoomCategory from "../models/RoomCategory.js";
+import Hotel from "../models/Hotel.js";
 
 // =======================
 // Get all room categories (logged-in users)
