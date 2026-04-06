@@ -51,31 +51,42 @@ export const createRoomCategory = async (req, res) => {
   try {
     const { hotel, roomCategory, roomType, status } = req.body;
 
-    if (!hotel || !roomCategory || !roomType || !status) {
+    if (!hotel || !roomCategory || !roomType) {
       return res.status(400).json({
         success: false,
-        message: "All required fields must be provided",
+        message: "hotel, roomCategory and roomType are required",
       });
     }
-    //  Check if this hotel already has a room category
-    const existingHotel = await RoomCategory.findOne({ hotel });
 
-    if (existingHotel) {
+    // prevent duplicate same category + type in same hotel
+    const existingCategory = await RoomCategory.findOne({
+      hotel,
+      roomCategory,
+      roomType,
+    });
+
+    if (existingCategory) {
       return res.status(400).json({
         success: false,
-        message: "Room category for this hotel already exists",
+        message: "This room category and type already exists for this hotel",
       });
     }
-    
+
     const newCategory = await RoomCategory.create({
       hotel,
       roomCategory,
       roomType,
-      status,
+      status: status || "Active",
     });
 
-    res.status(201).json({ success: true, data: newCategory });
+    res.status(201).json({
+      success: true,
+      message: "Room category created successfully",
+      data: newCategory,
+    });
+
   } catch (error) {
+    console.error("Create Room Category Error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to create room category",
@@ -92,19 +103,64 @@ export const updateRoomCategory = async (req, res) => {
     const { id } = req.params;
     const updatedData = { ...req.body };
 
-    const updatedCategory = await RoomCategory.findByIdAndUpdate(id, updatedData, {
-      new: true,
-      runValidators: true,
-    }).populate("hotel", "hotelName");
-
-    if (!updatedCategory) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Room category not found" });
+    // ===============================
+    // Step 1: Check if exists
+    // ===============================
+    const existingCategory = await RoomCategory.findById(id);
+    if (!existingCategory) {
+      return res.status(404).json({
+        success: false,
+        message: "Room category not found",
+      });
     }
 
-    res.json({ success: true, data: updatedCategory });
+    // ===============================
+    // Step 2: Prepare final values (important)
+    // ===============================
+    const finalHotel = updatedData.hotel || existingCategory.hotel;
+    const finalRoomCategory =
+      updatedData.roomCategory || existingCategory.roomCategory;
+    const finalRoomType =
+      updatedData.roomType || existingCategory.roomType;
+
+    // ===============================
+    // Step 3: Duplicate check (exclude current)
+    // ===============================
+    const duplicate = await RoomCategory.findOne({
+      hotel: finalHotel,
+      roomCategory: finalRoomCategory,
+      roomType: finalRoomType,
+      _id: { $ne: id }, // 🔥 important
+    });
+
+    if (duplicate) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "This room category and type already exists for this hotel",
+      });
+    }
+
+    // ===============================
+    // Step 4: Update
+    // ===============================
+    const updatedCategory = await RoomCategory.findByIdAndUpdate(
+      id,
+      updatedData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    ).populate("hotel", "hotelName");
+
+    res.status(200).json({
+      success: true,
+      message: "Room category updated successfully",
+      data: updatedCategory,
+    });
+
   } catch (error) {
+    console.error("Update Room Category Error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to update room category",
