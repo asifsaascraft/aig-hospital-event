@@ -2,6 +2,7 @@
 import express from "express";
 import {
   getRoomCategories,
+  getActiveRoomCategories,
   getRoomCategoryById,
   createRoomCategory,
   updateRoomCategory,
@@ -13,8 +14,16 @@ const router = express.Router();
 
 // Logged-in users can view room categories
 router.get("/room-categories", protect, getRoomCategories);
+
 router.get("/room-categories/:id", protect, getRoomCategoryById);
 
+// Event Admin: Get only ACTIVE room categories
+router.get(
+  "/room-categories/active",
+  protect,
+  authorizeRoles("eventAdmin"),
+  getActiveRoomCategories
+);
 // Admin-only: Create, Update, Delete
 router.post(
   "/admin/room-categories",

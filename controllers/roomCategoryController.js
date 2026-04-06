@@ -21,6 +21,30 @@ export const getRoomCategories = async (req, res) => {
 };
 
 // =======================
+// Get ACTIVE room categories (eventAdmin only)
+// =======================
+export const getActiveRoomCategories = async (req, res) => {
+  try {
+    const categories = await RoomCategory.find({ status: "Active" })
+      .populate("hotel", "hotelName")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      message: "Active room categories fetched successfully",
+      data: categories,
+    });
+  } catch (error) {
+    console.error("Get Active Room Categories Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch active room categories",
+      error: error.message,
+    });
+  }
+};
+
+// =======================
 // Get single room category by ID (logged-in users)
 // =======================
 export const getRoomCategoryById = async (req, res) => {
