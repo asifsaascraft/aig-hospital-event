@@ -2,6 +2,7 @@
 import express from "express";
 import {
   getHotels,
+  getActiveHotels,
   getHotelById,
   createHotel,
   updateHotel,
@@ -15,6 +16,7 @@ const router = express.Router();
 
 // Public: anyone logged-in can view hotels
 router.get("/hotels", protect, getHotels);
+router.get("/hotels/active", protect, getActiveHotels);
 router.get("/hotels/:id", protect, getHotelById);
 
 // Admin-only: Create hotel

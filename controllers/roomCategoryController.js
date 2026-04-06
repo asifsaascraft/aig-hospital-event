@@ -21,7 +21,7 @@ export const getRoomCategories = async (req, res) => {
 };
 
 // =======================
-// Get ACTIVE room categories (eventAdmin only)
+// Get ACTIVE room categories (logged-in users)
 // =======================
 export const getActiveRoomCategories = async (req, res) => {
   try {

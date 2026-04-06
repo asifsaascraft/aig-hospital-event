@@ -18,6 +18,29 @@ export const getHotels = async (req, res) => {
 };
 
 // =======================
+// Get ACTIVE hotels (public for logged-in users)
+// =======================
+export const getActiveHotels = async (req, res) => {
+  try {
+    const hotels = await Hotel.find({ status: "Active" })
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      message: "Active hotels fetched successfully",
+      data: hotels,
+    });
+  } catch (error) {
+    console.error("Get Active Hotels Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch active hotels",
+      error: error.message,
+    });
+  }
+};
+
+// =======================
 // Get single hotel by ID (public for logged-in users)
 // =======================
 export const getHotelById = async (req, res) => {
