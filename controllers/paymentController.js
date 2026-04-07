@@ -31,7 +31,6 @@ export const createOrder = async (req, res) => {
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ message: "Event not found" });
 
-
     const registration = await EventRegistration.findById(eventRegistrationId);
     if (!registration)
       return res.status(404).json({ message: "Event registration not found" });
@@ -48,6 +47,11 @@ export const createOrder = async (req, res) => {
       amount: Math.round(amount * 100),
       currency: "INR",
       receipt: `receipt_${registration._id}`,
+
+      notes: {
+        eventName: event.eventName,
+        paymentType: "Event Registration",
+      },
     };
 
     const order = await razorpay.orders.create(options);
@@ -102,8 +106,9 @@ export const verifyPayment = async (req, res) => {
     if (!payment)
       return res.status(404).json({ message: "Payment record not found" });
 
-    const registration = await EventRegistration.findById(payment.eventRegistrationId)
-      .populate("registrationSlabId", "slabName");
+    const registration = await EventRegistration.findById(
+      payment.eventRegistrationId,
+    ).populate("registrationSlabId", "slabName");
     if (!registration)
       return res.status(404).json({ message: "Event registration not found" });
 
@@ -171,7 +176,6 @@ export const verifyPayment = async (req, res) => {
             country: registration.country,
             city: registration.city,
           },
-
         }),
         sendEmailWithTemplate({
           to: registration.email,
@@ -189,7 +193,6 @@ export const verifyPayment = async (req, res) => {
           },
         }),
       ]);
-
     } catch (err) {
       console.error("Email sending exception:", err);
     }
@@ -224,7 +227,9 @@ export const getMyPayments = async (req, res) => {
         let paymentMode = "Unknown";
         if (payment.razorpayPaymentId) {
           try {
-            const razorpayPayment = await razorpay.payments.fetch(payment.razorpayPaymentId);
+            const razorpayPayment = await razorpay.payments.fetch(
+              payment.razorpayPaymentId,
+            );
             paymentMode = razorpayPayment.method || "Unknown";
           } catch (err) {
             console.error("Razorpay fetch error:", err);
@@ -235,7 +240,7 @@ export const getMyPayments = async (req, res) => {
           ...payment.toObject(),
           paymentMode,
         };
-      })
+      }),
     );
 
     res.status(200).json({
@@ -258,8 +263,7 @@ export const markPaymentFailed = async (req, res) => {
     const { paymentId, reason } = req.body;
 
     const payment = await Payment.findOne({ _id: paymentId, userId });
-    if (!payment)
-      return res.status(404).json({ message: "Payment not found" });
+    if (!payment) return res.status(404).json({ message: "Payment not found" });
 
     payment.status = "failed";
     payment.failedReason = reason || "User payment failed";
@@ -284,15 +288,21 @@ export const createAccompanyOrder = async (req, res) => {
   try {
     const userId = req.user._id;
     const { eventId } = req.params;
-    const { eventRegistrationId, accompanyId, accompanyItemIds, amount } = req.body;
+    const { eventRegistrationId, accompanyId, accompanyItemIds, amount } =
+      req.body;
 
     // Verify event exists
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ message: "Event not found" });
 
-
-    if (!accompanyId || !Array.isArray(accompanyItemIds) || accompanyItemIds.length === 0) {
-      return res.status(400).json({ message: "accompanyId and accompanyItemIds are required" });
+    if (
+      !accompanyId ||
+      !Array.isArray(accompanyItemIds) ||
+      accompanyItemIds.length === 0
+    ) {
+      return res
+        .status(400)
+        .json({ message: "accompanyId and accompanyItemIds are required" });
     }
 
     // Fetch accompany document
@@ -302,13 +312,14 @@ export const createAccompanyOrder = async (req, res) => {
     }
 
     // Filter valid items to pay now (unpaid ones only)
-    const unpaidItems = accompany.accompanies.filter((a) =>
-      accompanyItemIds.includes(a._id.toString()) && a.isPaid === false
+    const unpaidItems = accompany.accompanies.filter(
+      (a) => accompanyItemIds.includes(a._id.toString()) && a.isPaid === false,
     );
 
     if (unpaidItems.length === 0) {
       return res.status(400).json({
-        message: "No unpaid accompany items found for payment. Please check selection.",
+        message:
+          "No unpaid accompany items found for payment. Please check selection.",
       });
     }
 
@@ -320,18 +331,27 @@ export const createAccompanyOrder = async (req, res) => {
     });
     if (!registration) {
       return res.status(400).json({
-        message: "You must complete event registration payment before paying for accompanies.",
+        message:
+          "You must complete event registration payment before paying for accompanies.",
       });
     }
 
     //  Always allow new order creation for unpaid accompany items
     const shortId = accompany._id.toString().slice(-6); // short unique suffix
-    const receiptId = `acc_${shortId}_${Date.now().toString().slice(-6)}`.slice(0, 40); // ensure <40 chars
+    const receiptId = `acc_${shortId}_${Date.now().toString().slice(-6)}`.slice(
+      0,
+      40,
+    ); // ensure <40 chars
 
     const options = {
       amount: Math.round(Number(amount) * 100),
       currency: "INR",
       receipt: receiptId,
+
+      notes: {
+        eventName: event.eventName,
+        paymentType: "Accompany",
+      },
     };
 
     // Create new Razorpay order every time
@@ -367,15 +387,14 @@ export const createAccompanyOrder = async (req, res) => {
   }
 };
 
-
-
 /* ========================================================
    6. Verify Accompany Payment
 ======================================================== */
 
 export const verifyAccompanyPayment = async (req, res) => {
   try {
-    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, paymentId } = req.body;
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, paymentId } =
+      req.body;
 
     // verify signature
     const body = razorpayOrderId + "|" + razorpayPaymentId;
@@ -388,13 +407,18 @@ export const verifyAccompanyPayment = async (req, res) => {
       return res.status(400).json({ message: "Invalid payment signature" });
 
     const payment = await Payment.findById(paymentId);
-    if (!payment) return res.status(404).json({ message: "Payment record not found" });
+    if (!payment)
+      return res.status(404).json({ message: "Payment record not found" });
 
     const accompany = await Accompany.findById(payment.accompanyId);
-    if (!accompany) return res.status(404).json({ message: "Accompany record not found" });
+    if (!accompany)
+      return res.status(404).json({ message: "Accompany record not found" });
 
-    const registration = await EventRegistration.findById(payment.eventRegistrationId);
-    if (!registration) return res.status(404).json({ message: "Event registration not found" });
+    const registration = await EventRegistration.findById(
+      payment.eventRegistrationId,
+    );
+    if (!registration)
+      return res.status(404).json({ message: "Event registration not found" });
 
     // Determine starting counter: count of already generated accompany regNums for this registration
     // We compute how many accompany regNums are already assigned under this registration
@@ -413,7 +437,10 @@ export const verifyAccompanyPayment = async (req, res) => {
     let counter = existingCount + 1;
 
     // If payment.accompanyItemIds provided -> mark only those items.
-    if (Array.isArray(payment.accompanyItemIds) && payment.accompanyItemIds.length > 0) {
+    if (
+      Array.isArray(payment.accompanyItemIds) &&
+      payment.accompanyItemIds.length > 0
+    ) {
       const idsToMark = payment.accompanyItemIds.map((id) => id.toString());
 
       // mark only matching subdocs
@@ -470,7 +497,8 @@ export const verifyAccompanyPayment = async (req, res) => {
       await sendEmailWithTemplate({
         to: userEmail,
         name: userName,
-        templateKey: "2518b.554b0da719bc314.k1.490cc270-b7d7-11f0-87d4-ae9c7e0b6a9f.19a44208017",
+        templateKey:
+          "2518b.554b0da719bc314.k1.490cc270-b7d7-11f0-87d4-ae9c7e0b6a9f.19a44208017",
         mergeInfo: {
           userName,
           userEmail,
@@ -503,7 +531,6 @@ export const verifyAccompanyPayment = async (req, res) => {
   }
 };
 
-
 /* ========================================================
    7. Create Workshop Payment Order
 ======================================================== */
@@ -517,22 +544,43 @@ export const createWorkshopOrder = async (req, res) => {
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ message: "Event not found" });
 
-    if (!workshopRegistrationId || !Array.isArray(workshopIds) || workshopIds.length === 0)
-      return res.status(400).json({ message: "workshopRegistrationId and workshopIds are required" });
+    if (
+      !workshopRegistrationId ||
+      !Array.isArray(workshopIds) ||
+      workshopIds.length === 0
+    )
+      return res.status(400).json({
+        message: "workshopRegistrationId and workshopIds are required",
+      });
 
-    const registration = await WorkshopRegistration.findById(workshopRegistrationId).populate("eventId");
+    const registration = await WorkshopRegistration.findById(
+      workshopRegistrationId,
+    ).populate("eventId");
     if (!registration)
-      return res.status(404).json({ message: "Workshop registration not found" });
+      return res
+        .status(404)
+        .json({ message: "Workshop registration not found" });
 
     if (registration.paymentStatus === "Completed")
-      return res.status(400).json({ message: "Payment already completed for these workshops" });
+      return res
+        .status(400)
+        .json({ message: "Payment already completed for these workshops" });
 
     // Create Razorpay Order
-    const receiptId = `wrk_${workshopRegistrationId}_${Date.now().toString().slice(-6)}`.slice(0, 40);
+    const receiptId =
+      `wrk_${workshopRegistrationId}_${Date.now().toString().slice(-6)}`.slice(
+        0,
+        40,
+      );
     const options = {
       amount: Math.round(Number(amount) * 100),
       currency: "INR",
       receipt: receiptId,
+
+      notes: {
+        eventName: event.eventName,
+        paymentType: "Workshop",
+      },
     };
 
     const order = await razorpay.orders.create(options);
@@ -571,7 +619,8 @@ export const createWorkshopOrder = async (req, res) => {
 ======================================================== */
 export const verifyWorkshopPayment = async (req, res) => {
   try {
-    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, paymentId } = req.body;
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, paymentId } =
+      req.body;
 
     // 1️ Verify Razorpay Signature
     const body = razorpayOrderId + "|" + razorpayPaymentId;
@@ -589,14 +638,21 @@ export const verifyWorkshopPayment = async (req, res) => {
       return res.status(404).json({ message: "Payment record not found" });
 
     // 3️ Fetch Workshop Registration
-    const registration = await WorkshopRegistration.findById(payment.workshopRegistrationId)
-      .populate([
-        { path: "eventId", select: "eventName startDate endDate" },
-        { path: "workshops.workshopIds", select: "workshopName hallName startDate startTime endDate endTime workshopRegistrationType workshopCategory" },
-      ]);
+    const registration = await WorkshopRegistration.findById(
+      payment.workshopRegistrationId,
+    ).populate([
+      { path: "eventId", select: "eventName startDate endDate" },
+      {
+        path: "workshops.workshopIds",
+        select:
+          "workshopName hallName startDate startTime endDate endTime workshopRegistrationType workshopCategory",
+      },
+    ]);
 
     if (!registration)
-      return res.status(404).json({ message: "Workshop registration not found" });
+      return res
+        .status(404)
+        .json({ message: "Workshop registration not found" });
 
     // 4️ Update registration payment status
     registration.paymentStatus = "Completed";
@@ -632,7 +688,8 @@ export const verifyWorkshopPayment = async (req, res) => {
       await sendEmailWithTemplate({
         to: req.user.email,
         name: displayName,
-        templateKey: "2518b.554b0da719bc314.k1.efde7181-ba2e-11f0-87d4-ae9c7e0b6a9f.19a537a6095",
+        templateKey:
+          "2518b.554b0da719bc314.k1.efde7181-ba2e-11f0-87d4-ae9c7e0b6a9f.19a537a6095",
         mergeInfo: {
           name: displayName,
           eventName: event.eventName || "",
@@ -648,7 +705,7 @@ export const verifyWorkshopPayment = async (req, res) => {
     } catch (emailErr) {
       console.error("Error sending Paid Workshop email:", emailErr);
     }
-    
+
     // 7 Response
     res.status(200).json({
       success: true,
@@ -674,19 +731,27 @@ export const createBanquetOrder = async (req, res) => {
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ message: "Event not found" });
 
-    if (!banquetRegistrationId || !Array.isArray(banquetItemIds) || banquetItemIds.length === 0) {
+    if (
+      !banquetRegistrationId ||
+      !Array.isArray(banquetItemIds) ||
+      banquetItemIds.length === 0
+    ) {
       return res.status(400).json({
         message: "banquetRegistrationId and banquetItemIds are required",
       });
     }
 
-    const banquetReg = await BanquetRegistration.findById(banquetRegistrationId);
+    const banquetReg = await BanquetRegistration.findById(
+      banquetRegistrationId,
+    );
     if (!banquetReg)
-      return res.status(404).json({ message: "Banquet registration not found" });
+      return res
+        .status(404)
+        .json({ message: "Banquet registration not found" });
 
     // Check unpaid banquet items
     const unpaidItems = banquetReg.banquets.filter(
-      (b) => banquetItemIds.includes(b._id.toString()) && !b.isPaid
+      (b) => banquetItemIds.includes(b._id.toString()) && !b.isPaid,
     );
 
     if (unpaidItems.length === 0) {
@@ -696,11 +761,20 @@ export const createBanquetOrder = async (req, res) => {
     }
 
     // Create Razorpay Order
-    const receiptId = `bnq_${banquetRegistrationId}_${Date.now().toString().slice(-6)}`.slice(0, 40);
+    const receiptId =
+      `bnq_${banquetRegistrationId}_${Date.now().toString().slice(-6)}`.slice(
+        0,
+        40,
+      );
     const options = {
       amount: Math.round(Number(amount) * 100),
       currency: "INR",
       receipt: receiptId,
+
+      notes: {
+        eventName: event.eventName,
+        paymentType: "Banquet",
+      },
     };
 
     const order = await razorpay.orders.create(options);
@@ -739,7 +813,8 @@ export const createBanquetOrder = async (req, res) => {
 ======================================================== */
 export const verifyBanquetPayment = async (req, res) => {
   try {
-    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, paymentId } = req.body;
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, paymentId } =
+      req.body;
 
     // Verify Signature
     const body = razorpayOrderId + "|" + razorpayPaymentId;
@@ -752,16 +827,21 @@ export const verifyBanquetPayment = async (req, res) => {
       return res.status(400).json({ message: "Invalid payment signature" });
 
     const payment = await Payment.findById(paymentId);
-    if (!payment) return res.status(404).json({ message: "Payment record not found" });
+    if (!payment)
+      return res.status(404).json({ message: "Payment record not found" });
 
-    const banquetReg = await BanquetRegistration.findById(payment.banquetRegistrationId)
+    const banquetReg = await BanquetRegistration.findById(
+      payment.banquetRegistrationId,
+    )
       .populate("eventId", "eventName startDate endDate")
       .populate("banquetId") // full banquet details
       .populate("eventRegistrationId", "regNum email name")
       .lean();
 
     if (!banquetReg)
-      return res.status(404).json({ message: "Banquet registration not found" });
+      return res
+        .status(404)
+        .json({ message: "Banquet registration not found" });
 
     // Mark banquet items as paid
     const idsToMark = payment.banquetItemIds.map((id) => id.toString());
@@ -822,7 +902,7 @@ export const verifyBanquetPayment = async (req, res) => {
 
             if (parent) {
               const sub = parent.accompanies.find(
-                (a) => a._id.toString() === b.accompanySubId.toString()
+                (a) => a._id.toString() === b.accompanySubId.toString(),
               );
               if (sub) {
                 registeredFor = `${sub.fullName} (${sub.relation})`;
@@ -840,7 +920,6 @@ export const verifyBanquetPayment = async (req, res) => {
           });
         }
       }
-
 
       //  Send ZeptoMail
       await sendEmailWithTemplate({
@@ -880,5 +959,3 @@ export const verifyBanquetPayment = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
-
