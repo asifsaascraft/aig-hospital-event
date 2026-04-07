@@ -11,56 +11,42 @@ export const createAddRoom = async (req, res) => {
     const { eventId } = req.params;
     const { hotelId, roomCategoryId, numberOfRooms } = req.body;
 
-    // Validate event
     const event = await Event.findById(eventId);
     if (!event) {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Validate hotel
     const hotel = await Hotel.findById(hotelId);
     if (!hotel) {
       return res.status(404).json({ message: "Hotel not found" });
     }
 
-    // Validate room category
     const category = await RoomCategory.findById(roomCategoryId);
     if (!category) {
       return res.status(404).json({ message: "Room category not found" });
     }
 
-    // Ensure category belongs to hotel
     if (category.hotel.toString() !== hotelId) {
       return res.status(400).json({
         message: "Room category does not belong to selected hotel",
       });
     }
 
-    //  CHECK DUPLICATE (event + hotel + category)
+    //  DUPLICATE CHECK
     const existingRoom = await AddRoom.findOne({
       eventId,
       hotelId,
       roomCategoryId,
     });
 
-    // ==========================
-    //  IF EXISTS → UPDATE
-    // ==========================
     if (existingRoom) {
-      existingRoom.numberOfRooms = numberOfRooms;
-
-      await existingRoom.save();
-
-      return res.status(200).json({
-        success: true,
-        message: "Room already exists → updated successfully",
-        data: existingRoom,
+      return res.status(400).json({
+        success: false,
+        message:
+          "This combination (event + hotel + room category) already exists",
       });
     }
 
-    // ==========================
-    //  IF NOT EXISTS → CREATE
-    // ==========================
     const newAddRoom = await AddRoom.create({
       eventId,
       hotelId,
