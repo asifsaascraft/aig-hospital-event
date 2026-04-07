@@ -7,53 +7,60 @@ import User from "../models/User.js";
 // =====================================
 //  1. CHECK EMAIL EXISTS FOR EVENT REGISTRATION (Protected)
 // =====================================
-// export const checkEmailExists = async (req, res) => {
-//   try {
-//     const { eventId } = req.params;
-//     const { email } = req.body;
+export const checkEmailExists = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { email } = req.body;
 
-//     if (!eventId) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Event ID is required in the URL",
-//       });
-//     }
+    if (!eventId) {
+      return res.status(400).json({
+        success: false,
+        message: "Event ID is required in the URL",
+      });
+    }
 
-//     if (!email) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Email is required",
-//       });
-//     }
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
 
-//     // Normalize email
-//     const normalizedEmail = email.trim().toLowerCase();
+    // Normalize email
+    const normalizedEmail = email.trim().toLowerCase();
 
-//     // Check if email already exists for this event
-//     const existing = await EventRegistration.findOne({
-//       eventId,
-//       email: normalizedEmail,
-//     });
+    //  Check existing registration WITH isPaid = true
+    const existing = await EventRegistration.findOne({
+      eventId,
+      email: normalizedEmail,
+      isPaid: true, 
+      isSuspended: false,
+    }).select("userId name email mobile gender designation affiliation regNum");
 
-//     if (existing) {
-//       return res.status(200).json({
-//         success: true,
-//         message: "Email already registered for this event",
-//       });
-//     }
+    //  IF EXISTS (AND PAID)
+    if (existing) {
+      return res.status(200).json({
+        success: true,
+        message: "Email already registered and paid for this event",
+        data: existing,
+      });
+    }
 
-//     return res.status(200).json({
-//       success: false,
-//       message: "Email not registered for this event",
-//     });
-//   } catch (error) {
-//     console.error("Error checking email:", error);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Server error while checking email",
-//     });
-//   }
-// };
+    //  NOT FOUND OR NOT PAID
+    return res.status(200).json({
+      success: false,
+      message: "Email not registered",
+      data: null,
+    });
+
+  } catch (error) {
+    console.error("Error checking email:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while checking email",
+    });
+  }
+};
 
 // ======================================
 //  2. ADD SPONSOR EVENT REGISTRATION (Protected)

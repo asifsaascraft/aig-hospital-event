@@ -1,6 +1,6 @@
 import express from "express";
 import { 
-  //checkEmailExists,
+  checkEmailExists,
   sponsorRegisterForEvent,
   getAllRegistrationsByEvent,
   getSponsorQuotaSummary,
@@ -17,11 +17,11 @@ const router = express.Router();
   1. CHECK EMAIL EXISTS FOR EVENT REGISTRATION (Protected)
 ==============================================================
 */
-// router.post(
-//   "/sponsor/event/:eventId/check-email", 
-//   protectSponsor, 
-//   checkEmailExists
-// );
+router.post(
+  "/sponsor/event/:eventId/check-email", 
+  protectSponsor, 
+  checkEmailExists
+);
 
 /*
 ==============================================================
