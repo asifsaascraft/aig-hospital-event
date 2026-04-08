@@ -114,6 +114,10 @@ const UserSchema = new mongoose.Schema(
       type: String,
       enum: ["self", "eventAdmin", "sponsor"],
     },
+    createdById: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: false,
+    },
   },
   { timestamps: true },
 );

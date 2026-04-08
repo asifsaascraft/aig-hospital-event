@@ -40,6 +40,7 @@ export const createTravel = async (req, res) => {
       date,
       time,
       dropPoint,
+      createdBy: "eventAdmin",
     });
 
     res.status(201).json({
@@ -148,3 +149,5 @@ export const deleteTravel = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
+

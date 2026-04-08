@@ -38,6 +38,11 @@ const TravelSchema = new mongoose.Schema(
       required: [true, "Drop off point is required"],
       trim: true,
     },
+    createdBy: {
+      type: String,
+      enum: ["eventAdmin", "sponsor"],
+      default: "eventAdmin", 
+    },
   },
   { timestamps: true }
 );

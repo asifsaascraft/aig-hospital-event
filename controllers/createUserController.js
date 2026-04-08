@@ -58,15 +58,18 @@ export const registerUser = async (req, res) => {
     }
 
     let createdByValue = "self";
+    let createdById = null;
 
-    // ================= EVENT ADMIN =================
+    // EVENT ADMIN
     if (req.authType === "user" && req.user?.role === "eventAdmin") {
       createdByValue = "eventAdmin";
+      createdById = req.user._id;
     }
 
-    // ================= SPONSOR =================
+    // SPONSOR
     if (req.authType === "sponsor") {
       createdByValue = "sponsor";
+      createdById = req.sponsor._id;
     }
 
     // =======================
@@ -94,6 +97,7 @@ export const registerUser = async (req, res) => {
       role: "user",
       status: "Active",
       createdBy: createdByValue,
+      createdById: createdById,
     });
 
     // =======================
@@ -142,9 +146,12 @@ export const getAllUsersCreatedByEventAdmin = async (req, res) => {
   try {
     const users = await User.find({
       role: "user",
-      createdBy: "eventAdmin", 
+      createdBy: "eventAdmin",
+      createdById: req.user._id,
     })
-      .select("-password -plainPassword -passwordResetToken -passwordResetExpires")
+      .select(
+        "-password -plainPassword -passwordResetToken -passwordResetExpires",
+      )
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -165,9 +172,12 @@ export const getAllUsersCreatedBySponsor = async (req, res) => {
   try {
     const users = await User.find({
       role: "user",
-      createdBy: "sponsor", 
+      createdBy: "sponsor",
+      createdById: req.sponsor._id,
     })
-      .select("-password -plainPassword -passwordResetToken -passwordResetExpires")
+      .select(
+        "-password -plainPassword -passwordResetToken -passwordResetExpires",
+      )
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -198,6 +208,13 @@ export const updateUser = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "User not found",
+      });
+    }
+
+    if (user.createdById?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only update your own created users",
       });
     }
 
@@ -275,6 +292,13 @@ export const deleteUser = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.createdById?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only delete your own created users",
+      });
     }
 
     await User.findByIdAndDelete(userId);
