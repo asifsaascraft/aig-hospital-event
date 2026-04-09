@@ -225,7 +225,7 @@ export const editPaidAccompanies = async (req, res) => {
         if (item.relation !== undefined) sub.relation = item.relation.trim();
         if (item.gender !== undefined) sub.gender = item.gender.trim();
         if (item.age !== undefined) sub.age = Number(item.age);
-        if (item.mealPreference !== undefined) sub.mealPreference = item.mealPreference.trim();
+        // if (item.mealPreference !== undefined) sub.mealPreference = item.mealPreference.trim();
         updatedCount++;
       }
     });
@@ -505,7 +505,7 @@ export const addAccompaniesByEventAdmin = async (req, res) => {
         relation: a.relation,
         gender: a.gender,
         age: a.age,
-        mealPreference: a.mealPreference,
+        //mealPreference: a.mealPreference,
         amount: a.amount,
         spotRegistration: true,
         isPaid: true,

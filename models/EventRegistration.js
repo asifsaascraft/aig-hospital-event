@@ -80,11 +80,11 @@ const EventRegistrationSchema = new mongoose.Schema(
       required: [true, "Affiliation is required"],
       trim: true,
     },
-    mealPreference: {
-      type: String,
-      required: [true, "Meal is required"],
-      trim: true,
-    },
+    // mealPreference: {
+    //   type: String,
+    //   required: [true, "Meal is required"],
+    //   trim: true,
+    // },
     country: {
       type: String,
       required: [true, "Country is required"],
