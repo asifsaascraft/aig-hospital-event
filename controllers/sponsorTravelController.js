@@ -313,3 +313,35 @@ export const getSponsorTravelQuotaSummary = async (req, res) => {
     });
   }
 };
+
+// ======================================
+// GET USED TRAVEL AGENTS BY SPONSOR
+// ======================================
+export const getSponsorTravelAgents = async (req, res) => {
+  try {
+    const sponsorId = req.sponsor._id;
+    const { eventId } = req.params;
+
+    // Step 1: Find unique travelAgentIds
+    const travels = await Travel.find({
+      eventId,
+      sponsorId,
+      createdBy: "sponsor",
+    }).distinct("travelAgentId");
+
+    // Step 2: Fetch full travel agent data
+    const travelAgents = await TravelAgent.find({
+      _id: { $in: travels },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Sponsor used travel agents fetched successfully",
+      count: travelAgents.length,
+      data: travelAgents,
+    });
+  } catch (error) {
+    console.error("Get sponsor travel agents error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};

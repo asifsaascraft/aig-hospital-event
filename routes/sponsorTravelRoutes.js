@@ -4,6 +4,7 @@ import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
 import {
   createTravelBySponsor,
   getTravelBySponsor,
+  getSponsorTravelAgents,
   getSponsorTravelQuotaSummary,
   updateTravelBySponsor,
 } from "../controllers/sponsorTravelController.js";
@@ -22,6 +23,13 @@ router.get(
   "/sponsor/events/:eventId/travel",
   protectSponsor,
   getTravelBySponsor
+);
+
+// GET USED TRAVEL AGENTS BY SPONSOR
+router.get(
+  "/sponsor/events/:eventId/travel-agents",
+  protectSponsor,
+  getSponsorTravelAgents
 );
 
 // Sponsor Travel Quota Summary
