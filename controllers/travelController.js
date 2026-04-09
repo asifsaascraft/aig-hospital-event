@@ -28,8 +28,24 @@ export const createTravel = async (req, res) => {
     if (!registration)
       return res.status(404).json({ message: "Event registration not found" });
 
+    // =======================
+    // CHECK DUPLICATE BOOKING
+    // =======================
+    const existingTravel = await Travel.findOne({
+      eventId,
+      eventRegistrationId,
+    });
+
+    if (existingTravel) {
+      return res.status(400).json({
+        success: false,
+        message: "Travel already booked for this registration",
+      });
+    }
+
     const agent = await TravelAgent.findById(travelAgentId);
-    if (!agent) return res.status(404).json({ message: "Travel agent not found" });
+    if (!agent)
+      return res.status(404).json({ message: "Travel agent not found" });
 
     const travel = await Travel.create({
       eventId,
@@ -66,8 +82,8 @@ export const getTravelByEvent = async (req, res) => {
         path: "eventRegistrationId",
         populate: {
           path: "registrationSlabId",
-          select: "slabName"
-        }
+          select: "slabName",
+        },
       })
       .populate("travelAgentId")
       .sort({ createdAt: -1 });
@@ -104,6 +120,24 @@ export const updateTravel = async (req, res) => {
       time,
       dropPoint,
     } = req.body;
+
+    // =======================
+    // CHECK DUPLICATE BOOKING
+    // =======================
+    if (eventRegistrationId) {
+      const existingTravel = await Travel.findOne({
+        eventId: travel.eventId,
+        eventRegistrationId,
+        _id: { $ne: id }, // exclude current record
+      });
+
+      if (existingTravel) {
+        return res.status(400).json({
+          success: false,
+          message: "Travel already booked for this registration",
+        });
+      }
+    }
 
     if (eventRegistrationId) travel.eventRegistrationId = eventRegistrationId;
     if (travelAgentId) travel.travelAgentId = travelAgentId;
@@ -149,5 +183,3 @@ export const deleteTravel = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
-

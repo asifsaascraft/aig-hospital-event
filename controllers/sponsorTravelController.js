@@ -58,10 +58,17 @@ export const createTravelBySponsor = async (req, res) => {
       });
     }
 
-    // (Optional but recommended)
-    if (registration.eventId.toString() !== eventId) {
+    // =======================
+    // CHECK DUPLICATE BOOKING
+    // =======================
+    const existingTravel = await Travel.findOne({
+      eventId,
+      eventRegistrationId,
+    });
+
+    if (existingTravel) {
       return res.status(400).json({
-        message: "Registration does not belong to this event",
+        message: "Travel already booked for this registration",
       });
     }
 
@@ -203,6 +210,23 @@ export const updateTravelBySponsor = async (req, res) => {
       return res.status(404).json({
         message: "Travel not found or not authorized",
       });
+    }
+
+    // =======================
+    // CHECK DUPLICATE
+    // =======================
+    if (req.body.eventRegistrationId) {
+      const existingTravel = await Travel.findOne({
+        eventId: travel.eventId,
+        eventRegistrationId: req.body.eventRegistrationId,
+        _id: { $ne: id },
+      });
+
+      if (existingTravel) {
+        return res.status(400).json({
+          message: "Travel already booked for this registration",
+        });
+      }
     }
 
     Object.assign(travel, req.body);
