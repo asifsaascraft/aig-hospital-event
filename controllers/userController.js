@@ -79,7 +79,8 @@ export const registerUser = async (req, res) => {
       await sendEmailWithTemplate({
         to: user.email,
         name: user.name,
-        templateKey: "2518b.554b0da719bc314.k1.4b76afb1-a361-11f0-bc12-525400c92439.199be08ce2b",
+        templateKey:
+          "2518b.554b0da719bc314.k1.4b76afb1-a361-11f0-bc12-525400c92439.199be08ce2b",
         mergeInfo: {
           name: user.name,
           email: user.email,
@@ -91,8 +92,21 @@ export const registerUser = async (req, res) => {
       console.error("Error sending registration email:", emailError);
     }
 
-    res.status(201).json({
+    // =======================
+    // AUTO LOGIN AFTER REGISTER
+    // =======================
+    const { accessToken, refreshToken } = generateTokens(user._id, user.role);
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(201).json({
       message: "User registered successfully",
+      accessToken,
       user: {
         id: user._id,
         name: user.name,
@@ -199,7 +213,10 @@ export const forgotPasswordUser = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const token = crypto.randomBytes(32).toString("hex");
-    const resetToken = crypto.createHash("sha256").update(token.trim()).digest("hex");
+    const resetToken = crypto
+      .createHash("sha256")
+      .update(token.trim())
+      .digest("hex");
 
     user.passwordResetToken = resetToken;
     user.passwordResetExpires = Date.now() + 24 * 60 * 60 * 1000;
@@ -245,7 +262,8 @@ export const resetPasswordUser = async (req, res) => {
       role: "user",
     });
 
-    if (!user) return res.status(400).json({ message: "Invalid or expired token" });
+    if (!user)
+      return res.status(400).json({ message: "Invalid or expired token" });
 
     user.password = password; // hashed in pre-save hook
     user.passwordResetToken = null;
@@ -265,7 +283,7 @@ export const resetPasswordUser = async (req, res) => {
 export const getUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select(
-      "-password -plainPassword -passwordResetToken -passwordResetExpires"
+      "-password -plainPassword -passwordResetToken -passwordResetExpires",
     );
 
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -302,7 +320,7 @@ export const updateUserProfile = async (req, res) => {
       "state",
       "pincode",
       "mealPreference",
-      "termAndCondition"
+      "termAndCondition",
     ];
 
     fields.forEach((field) => {
@@ -313,13 +331,15 @@ export const updateUserProfile = async (req, res) => {
     if (req.file && req.file.location) {
       // Delete old image from S3
       if (user.profilePicture) {
-        const oldKey = user.profilePicture.split(`${process.env.AWS_BUCKET_NAME}/`)[1];
+        const oldKey = user.profilePicture.split(
+          `${process.env.AWS_BUCKET_NAME}/`,
+        )[1];
         if (oldKey) {
           await s3.send(
             new DeleteObjectCommand({
               Bucket: process.env.AWS_BUCKET_NAME,
               Key: oldKey,
-            })
+            }),
           );
         }
       }
