@@ -399,6 +399,38 @@ export const registerForEvent = async (req, res) => {
         registrationType: "Online Registration",
       });
 
+      // ==============================================
+  // SEND ONLY REGISTRATION EMAIL (NO PAYMENT EMAIL)
+  // ==============================================
+  try {
+    const slabName = slab?.slabName || "N/A";
+
+    await sendEmailWithTemplate({
+      to: registration.email,
+      name: registration.name,
+      templateKey:
+        "2518b.554b0da719bc314.k1.f7c9f490-a7f1-11f0-8b9c-8e9a6c33ddc2.199dbf3d259",
+      mergeInfo: {
+        name: registration.name,
+        eventName: event.eventName,
+        registrationNumber: registration.regNum,
+        registrationSlabName: slabName,
+        startDate: event.startDate
+          ? moment(event.startDate, "DD/MM/YYYY").format("DD MMM YYYY")
+          : "N/A",
+        endDate: event.endDate
+          ? moment(event.endDate, "DD/MM/YYYY").format("DD MMM YYYY")
+          : "N/A",
+        designation: registration.designation || "N/A",
+        affiliation: registration.affiliation || "N/A",
+        country: registration.country || "N/A",
+        city: registration.city || "N/A",
+      },
+    });
+  } catch (emailErr) {
+    console.error("Free registration email sending failed:", emailErr);
+  }
+
       return res.status(201).json({
         success: true,
         requiresPayment: false,

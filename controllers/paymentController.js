@@ -168,13 +168,10 @@ export const verifyPayment = async (req, res) => {
             endDate: event.endDate
               ? moment(event.endDate, "DD/MM/YYYY").format("DD MMM YYYY")
               : "N/A",
-            mealPreference: registration.mealPreference,
-            designation: registration.designation,
-            affiliation: registration.affiliation,
-            medicalCouncilRegistration: registration.medicalCouncilRegistration,
-            medicalCouncilState: registration.medicalCouncilState,
-            country: registration.country,
-            city: registration.city,
+            designation: registration.designation || "N/A",
+            affiliation: registration.affiliation || "N/A",
+            country: registration.country || "N/A",
+            city: registration.city || "N/A",
           },
         }),
         sendEmailWithTemplate({
