@@ -67,7 +67,9 @@ export const registerForEvent = async (req, res) => {
     const { eventId } = req.params;
 
     const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ message: "Event not found" });
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
 
     // ===============================
     // Build file map from multer.any()
@@ -78,11 +80,15 @@ export const registerForEvent = async (req, res) => {
       fileMap[file.fieldname].push(file);
     });
 
-    // Get slabId from body OR query
+    // ===============================
+    // Registration Slab ID
+    // ===============================
     let { registrationSlabId } = req.body;
+
     if (!registrationSlabId && req.query.registrationSlabId) {
       registrationSlabId = req.query.registrationSlabId;
     }
+
     if (!registrationSlabId) {
       return res.status(400).json({
         message: "registrationSlabId is required",
@@ -97,7 +103,6 @@ export const registerForEvent = async (req, res) => {
       mobile,
       designation,
       affiliation,
-      //mealPreference,
       mciNumber,
       mciState,
       department,
@@ -111,16 +116,26 @@ export const registerForEvent = async (req, res) => {
       additionalAnswers,
     } = req.body;
 
+    // ===============================
+    // Validate Slab
+    // ===============================
     const slab = await RegistrationSlab.findById(registrationSlabId);
-    if (!slab)
-      return res.status(404).json({ message: "Selected slab does not exist" });
 
-    if (slab.eventId.toString() !== eventId)
+    if (!slab) {
+      return res.status(404).json({
+        message: "Selected slab does not exist",
+      });
+    }
+
+    if (slab.eventId.toString() !== eventId) {
       return res.status(400).json({
         message: "This slab does not belong to the selected event",
       });
+    }
 
-    // Suspended?
+    // ===============================
+    // Suspended Check
+    // ===============================
     const suspendedReg = await EventRegistration.findOne({
       userId,
       eventId,
@@ -134,7 +149,9 @@ export const registerForEvent = async (req, res) => {
       });
     }
 
-    // Already Paid?
+    // ===============================
+    // Already Paid Check
+    // ===============================
     const existingPaidReg = await EventRegistration.findOne({
       userId,
       eventId,
@@ -142,22 +159,23 @@ export const registerForEvent = async (req, res) => {
     });
 
     if (existingPaidReg) {
-      return res
-        .status(400)
-        .json({ message: "You have already paid for this event" });
+      return res.status(400).json({
+        message: "You have already paid for this event",
+      });
     }
 
-    // ===========================
-    // Validate Dynamic Fields for Slab + Uploads
-    // ===========================
+    // ===============================
+    // Validate Additional Answers
+    // ===============================
     let validatedAdditionalAnswers = [];
 
     if (slab.needAdditionalInfo && slab.additionalFields.length > 0) {
       let parsedAdditional = [];
+
       if (typeof additionalAnswers === "string") {
         try {
           parsedAdditional = JSON.parse(additionalAnswers);
-        } catch (error) {
+        } catch {
           return res.status(400).json({
             message: "Invalid JSON format for additionalAnswers",
           });
@@ -170,6 +188,7 @@ export const registerForEvent = async (req, res) => {
         const answered = parsedAdditional.find(
           (a) => Number(a.id) === Number(field.id)
         );
+
         const fileKey = `file_${field.id}`;
         const fileData = fileMap?.[fileKey]?.[0];
 
@@ -180,9 +199,6 @@ export const registerForEvent = async (req, res) => {
             });
           }
 
-          // -------------------------------
-          // MAX FILE SIZE VALIDATION (5 MB)
-          // -------------------------------
           const MAX_FILE_SIZE_MB = 5;
           const fileSizeInMB = fileData.size / (1024 * 1024);
 
@@ -200,11 +216,7 @@ export const registerForEvent = async (req, res) => {
             fileUrl: fileData.location,
           });
         } else {
-          if (
-            !answered ||
-            answered.value === undefined ||
-            answered.value === ""
-          ) {
+          if (!answered || answered.value === undefined || answered.value === "") {
             return res.status(400).json({
               message: `Value required for: ${field.label}`,
             });
@@ -220,21 +232,23 @@ export const registerForEvent = async (req, res) => {
         }
       }
     }
+
     // ===============================
-    // VALIDATE Dynamic Form
+    // Validate Dynamic Form Answers
     // ===============================
     const dynamicForm = await DynamicRegForm.findOne({ eventId });
     let validatedDynamicFormAnswers = [];
 
     if (dynamicForm && dynamicForm.fields.length > 0) {
       let parsedDynamic = [];
+
       if (typeof req.body.dynamicFormAnswers === "string") {
         try {
           parsedDynamic = JSON.parse(req.body.dynamicFormAnswers);
         } catch {
-          return res
-            .status(400)
-            .json({ message: "Invalid JSON format for dynamicFormAnswers" });
+          return res.status(400).json({
+            message: "Invalid JSON format for dynamicFormAnswers",
+          });
         }
       } else if (Array.isArray(req.body.dynamicFormAnswers)) {
         parsedDynamic = req.body.dynamicFormAnswers;
@@ -244,24 +258,20 @@ export const registerForEvent = async (req, res) => {
         const answered = parsedDynamic.find(
           (a) => String(a.id) === String(field.id)
         );
+
         const fileKey = `file_dyn_${field.id}`;
         const fileUpload = fileMap?.[fileKey]?.[0];
 
-        // ===============================
-        // FILE TYPE FIELD
-        // ===============================
         if (field.type === "input" && field.inputTypes === "file") {
-
-          // required file
           if (field.required && !fileUpload) {
             return res.status(400).json({
               message: `File required: ${field.label}`,
             });
           }
 
-          // maxFileSize validation (ONLY if defined)
           if (fileUpload && field.maxFileSize) {
             const fileSizeInMB = fileUpload.size / (1024 * 1024);
+
             if (fileSizeInMB > field.maxFileSize) {
               return res.status(400).json({
                 message: `${field.label} file must be less than ${field.maxFileSize} MB`,
@@ -285,21 +295,14 @@ export const registerForEvent = async (req, res) => {
           continue;
         }
 
-        // ===============================
-        // NON-FILE FIELD
-        // ===============================
         const value = answered?.value;
 
-        // required validation
         if (field.required && (value === undefined || value === "")) {
           return res.status(400).json({
             message: `Value required: ${field.label}`,
           });
         }
 
-        // -------------------------------
-        // STRING LENGTH VALIDATION
-        // -------------------------------
         if (typeof value === "string") {
           if (field.minLength && value.length < field.minLength) {
             return res.status(400).json({
@@ -314,9 +317,6 @@ export const registerForEvent = async (req, res) => {
           }
         }
 
-        // -------------------------------
-        // CHECKBOX / MULTI-SELECT
-        // -------------------------------
         if (Array.isArray(value)) {
           if (field.minSelected && value.length < field.minSelected) {
             return res.status(400).json({
@@ -344,10 +344,72 @@ export const registerForEvent = async (req, res) => {
           maxSelected: field.maxSelected,
         });
       }
-
     }
 
-    // Create Registration
+    // ======================================================
+    // FREE SLAB FLOW (AUTO COMPLETE REGISTRATION)
+    // ======================================================
+    if (Number(slab.amount) === 0) {
+      const lastPaidRegistration = await EventRegistration.findOne({
+        eventId,
+        regNumGenerated: true,
+      }).sort({ createdAt: -1 });
+
+      let newRegNumInt;
+
+      if (lastPaidRegistration?.regNum) {
+        const lastNum = parseInt(lastPaidRegistration.regNum.split("-").pop());
+        newRegNumInt = lastNum + 1;
+      } else {
+        const baseNum = parseInt(event.regNum || 0);
+        newRegNumInt = baseNum + 1;
+      }
+
+      const generatedRegNum = `${event.eventCode}-${newRegNumInt}`;
+
+      const registration = await EventRegistration.create({
+        userId,
+        eventId,
+        registrationSlabId,
+        prefix,
+        name,
+        gender,
+        email,
+        mobile,
+        designation,
+        affiliation,
+        mciNumber,
+        mciState,
+        department,
+        alternateEmail,
+        alternateMobile,
+        country,
+        city,
+        state,
+        address,
+        pincode,
+        dynamicFormAnswers: validatedDynamicFormAnswers,
+        additionalAnswers: validatedAdditionalAnswers,
+
+        spotRegistration: false,
+        isPaid: true,
+        regNumGenerated: true,
+        regNum: generatedRegNum,
+        isSuspended: false,
+        registrationType: "Online Registration",
+      });
+
+      return res.status(201).json({
+        success: true,
+        requiresPayment: false,
+        message: "Free event registration completed successfully",
+        data: registration,
+      });
+    }
+
+    // ======================================================
+    // PAID SLAB FLOW
+    // ======================================================
     const registration = await EventRegistration.create({
       userId,
       eventId,
@@ -359,7 +421,6 @@ export const registerForEvent = async (req, res) => {
       mobile,
       designation,
       affiliation,
-      //mealPreference,
       mciNumber,
       mciState,
       department,
@@ -372,6 +433,7 @@ export const registerForEvent = async (req, res) => {
       pincode,
       dynamicFormAnswers: validatedDynamicFormAnswers,
       additionalAnswers: validatedAdditionalAnswers,
+
       spotRegistration: false,
       isPaid: false,
       regNumGenerated: false,
@@ -381,12 +443,16 @@ export const registerForEvent = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Event registration created successfully (unpaid)",
+      requiresPayment: true,
+      message: "Event registration created successfully (payment pending)",
       data: registration,
     });
+
   } catch (error) {
     console.error("Event registration error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({
+      message: "Internal server error",
+    });
   }
 };
 
