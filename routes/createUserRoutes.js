@@ -1,6 +1,7 @@
 import express from "express";
 import {
   registerUser,
+  getAllUsers,
   getAllUsersCreatedByEventAdmin,
   getAllUsersCreatedBySponsor,
   updateUser,
@@ -25,6 +26,16 @@ router.post(
     allowSponsor: true,
   }),
   registerUser,
+);
+
+// =======================
+// Admin: Get All Users
+// =======================
+router.get(
+  "/admin/users",
+  protect,
+  authorizeRoles("admin"),
+  getAllUsers
 );
 
 // =======================

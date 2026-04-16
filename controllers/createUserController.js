@@ -140,6 +140,33 @@ export const registerUser = async (req, res) => {
 };
 
 // =======================
+// Admin: Get All Users
+// =======================
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find({
+      role: "user",
+    })
+      .select(
+        "-password -plainPassword -passwordResetToken -passwordResetExpires"
+      )
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: users.length,
+      users,
+    });
+  } catch (error) {
+    console.error("Get all users error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+// =======================
 // EventAdmin: Get ONLY EventAdmin Created Users
 // =======================
 export const getAllUsersCreatedByEventAdmin = async (req, res) => {
