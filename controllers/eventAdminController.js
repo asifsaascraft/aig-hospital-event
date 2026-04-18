@@ -175,7 +175,7 @@ export const resetPasswordEventAdmin = async (req, res) => {
 };
 
 /* =======================
-   Get Logged-in EventAdmin Events (NEW)
+   Get Logged-in EventAdmin Events 
 ======================= */
 export const myEvents = async (req, res) => {
   try {
@@ -218,35 +218,37 @@ export const myEvents = async (req, res) => {
       });
     }
 
-    const events = assignment.assignedEvents.map((item) => {
-      const event = item.eventId.toObject({ virtuals: true });
+    const events = assignment.assignedEvents
+      .filter(item => item.eventId)
+      .map((item) => {
+        const event = item.eventId.toObject({ virtuals: true });
 
-      return {
-        _id: event._id,
-        eventName: event.eventName,
-        eventImage: event.eventImage,
-        organizer: {
-          organizerName: event.organizer?.organizerName,
-        },
-        department: {
-          departmentName: event.department?.departmentName,
-        },
-        venueName: {
-          venueName: event.venueName?.venueName,
-        },
-        startDate: event.startDate,
-        endDate: event.endDate,
-        startTime: event.startTime,
-        endTime: event.endTime,
-        country: event.country,
-        state: event.state,
-        city: event.city,
-        eventType: event.eventType,
-        eventCategory: event.eventCategory,
-        isEventApp: event.isEventApp,
-        dynamicStatus: event.dynamicStatus,
-      };
-    });
+        return {
+          _id: event._id,
+          eventName: event.eventName,
+          eventImage: event.eventImage,
+          organizer: {
+            organizerName: event.organizer?.organizerName,
+          },
+          department: {
+            departmentName: event.department?.departmentName,
+          },
+          venueName: {
+            venueName: event.venueName?.venueName,
+          },
+          startDate: event.startDate,
+          endDate: event.endDate,
+          startTime: event.startTime,
+          endTime: event.endTime,
+          country: event.country,
+          state: event.state,
+          city: event.city,
+          eventType: event.eventType,
+          eventCategory: event.eventCategory,
+          isEventApp: event.isEventApp,
+          dynamicStatus: event.dynamicStatus,
+        };
+      });
 
     res.json({
       success: true,
