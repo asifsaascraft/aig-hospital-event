@@ -505,7 +505,6 @@ export const addAccompaniesByEventAdmin = async (req, res) => {
         relation: a.relation,
         gender: a.gender,
         age: a.age,
-        //mealPreference: a.mealPreference,
         amount: a.amount,
         spotRegistration: true,
         isPaid: true,

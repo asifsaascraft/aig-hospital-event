@@ -38,11 +38,6 @@ const AccompanySchema = new mongoose.Schema(
           type: Number,
           required: [true, "Age is required"],
         },
-        // mealPreference: {
-        //   type: String,
-        //   required: [true, "Meal Preference is required"],
-        //   trim: true,
-        // },
         // this field store only, when event admin add accompany
         amount: {
           type: Number,
