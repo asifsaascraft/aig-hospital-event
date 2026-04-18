@@ -13,11 +13,18 @@ export const createTravel = async (req, res) => {
     const {
       eventRegistrationId,
       travelAgentId,
-      pickupPoint,
-      pickupPointType,
-      date,
-      time,
-      dropPoint,
+
+      arrivalPickupPoint,
+      arrivalPickupPointType,
+      arrivalPickupDate,
+      arrivalPickupTime,
+      arrivalDropOffPoint,
+
+      departurePickupPoint,
+      departurePickupPointType,
+      departurePickupDate,
+      departurePickupTime,
+      departureDropOffPoint,
     } = req.body;
 
     // Validate required refs
@@ -51,13 +58,22 @@ export const createTravel = async (req, res) => {
       eventId,
       eventRegistrationId,
       travelAgentId,
-      pickupPoint,
-      pickupPointType,
-      date,
-      time,
-      dropPoint,
+
+      arrivalPickupPoint,
+      arrivalPickupPointType,
+      arrivalPickupDate,
+      arrivalPickupTime,
+      arrivalDropOffPoint,
+
+      departurePickupPoint,
+      departurePickupPointType,
+      departurePickupDate,
+      departurePickupTime,
+      departureDropOffPoint,
+
       createdBy: "eventAdmin",
     });
+
 
     res.status(201).json({
       success: true,
@@ -114,11 +130,18 @@ export const updateTravel = async (req, res) => {
     const {
       eventRegistrationId,
       travelAgentId,
-      pickupPoint,
-      pickupPointType,
-      date,
-      time,
-      dropPoint,
+
+      arrivalPickupPoint,
+      arrivalPickupPointType,
+      arrivalPickupDate,
+      arrivalPickupTime,
+      arrivalDropOffPoint,
+
+      departurePickupPoint,
+      departurePickupPointType,
+      departurePickupDate,
+      departurePickupTime,
+      departureDropOffPoint,
     } = req.body;
 
     // =======================
@@ -141,11 +164,18 @@ export const updateTravel = async (req, res) => {
 
     if (eventRegistrationId) travel.eventRegistrationId = eventRegistrationId;
     if (travelAgentId) travel.travelAgentId = travelAgentId;
-    if (pickupPoint) travel.pickupPoint = pickupPoint;
-    if (pickupPointType) travel.pickupPointType = pickupPointType;
-    if (date) travel.date = date;
-    if (time) travel.time = time;
-    if (dropPoint) travel.dropPoint = dropPoint;
+
+    if (arrivalPickupPoint) travel.arrivalPickupPoint = arrivalPickupPoint;
+    if (arrivalPickupPointType) travel.arrivalPickupPointType = arrivalPickupPointType;
+    if (arrivalPickupDate) travel.arrivalPickupDate = arrivalPickupDate;
+    if (arrivalPickupTime) travel.arrivalPickupTime = arrivalPickupTime;
+    if (arrivalDropOffPoint) travel.arrivalDropOffPoint = arrivalDropOffPoint;
+
+    if (departurePickupPoint) travel.departurePickupPoint = departurePickupPoint;
+    if (departurePickupPointType) travel.departurePickupPointType = departurePickupPointType;
+    if (departurePickupDate) travel.departurePickupDate = departurePickupDate;
+    if (departurePickupTime) travel.departurePickupTime = departurePickupTime;
+    if (departureDropOffPoint) travel.departureDropOffPoint = departureDropOffPoint;
 
     await travel.save();
 

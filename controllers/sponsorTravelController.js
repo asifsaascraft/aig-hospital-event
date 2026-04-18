@@ -16,11 +16,18 @@ export const createTravelBySponsor = async (req, res) => {
     const {
       eventRegistrationId,
       travelAgentId,
-      pickupPoint,
-      pickupPointType,
-      date,
-      time,
-      dropPoint,
+
+      arrivalPickupPoint,
+      arrivalPickupPointType,
+      arrivalPickupDate,
+      arrivalPickupTime,
+      arrivalDropOffPoint,
+
+      departurePickupPoint,
+      departurePickupPointType,
+      departurePickupDate,
+      departurePickupTime,
+      departureDropOffPoint,
     } = req.body;
 
     // =======================
@@ -29,11 +36,18 @@ export const createTravelBySponsor = async (req, res) => {
     if (
       !eventRegistrationId ||
       !travelAgentId ||
-      !pickupPoint ||
-      !pickupPointType ||
-      !date ||
-      !time ||
-      !dropPoint
+
+      !arrivalPickupPoint ||
+      !arrivalPickupPointType ||
+      !arrivalPickupDate ||
+      !arrivalPickupTime ||
+      !arrivalDropOffPoint ||
+
+      !departurePickupPoint ||
+      !departurePickupPointType ||
+      !departurePickupDate ||
+      !departurePickupTime ||
+      !departureDropOffPoint
     ) {
       return res.status(400).json({
         message: "All fields are required",
@@ -100,7 +114,9 @@ export const createTravelBySponsor = async (req, res) => {
     // =======================
     //  DATE VALIDATION
     // =======================
-    const travelDate = new Date(date.split("/").reverse().join("-"));
+    const travelDate = new Date(
+      arrivalPickupDate.split("/").reverse().join("-")
+    );
 
     //  Start Date Check
     if (quotaData.startDate && travelDate < quotaData.startDate) {
@@ -138,11 +154,19 @@ export const createTravelBySponsor = async (req, res) => {
       eventId,
       eventRegistrationId,
       travelAgentId,
-      pickupPoint,
-      pickupPointType,
-      date,
-      time,
-      dropPoint,
+
+      arrivalPickupPoint,
+      arrivalPickupPointType,
+      arrivalPickupDate,
+      arrivalPickupTime,
+      arrivalDropOffPoint,
+
+      departurePickupPoint,
+      departurePickupPointType,
+      departurePickupDate,
+      departurePickupTime,
+      departureDropOffPoint,
+
       sponsorId,
       createdBy: "sponsor",
     });

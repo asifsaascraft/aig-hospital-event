@@ -17,31 +17,55 @@ const TravelSchema = new mongoose.Schema(
       ref: "TravelAgent",
       required: true,
     },
-    pickupPoint: {
+    arrivalPickupPoint: {
       type: String,
-      required: [true, "Pickup point is required"],
+      required: [true, "Arrival Pickup point is required"],
     },
-    pickupPointType: {
+    arrivalPickupPointType: {
       type: String,
-      required: [true, "Pickup point type is required"],
+      required: [true, "Arrival Pickup point type is required"],
     },
-    date: {
+    arrivalPickupDate: {
       type: String, // Format: DD/MM/YYYY
-      required: [true, "Date is required"],
+      required: [true, "Arrival Pickup Date is required"],
     },
-    time: {
+    arrivalPickupTime: {
       type: String, // Format: hh:mm A (e.g., 09:00 AM)
-      required: [true, "Time is required"],
+      required: [true, "Arrival Pickup Time is required"],
     },
-    dropPoint: {
+    arrivalDropOffPoint: {
       type: String,
-      required: [true, "Drop off point is required"],
+      required: [true, "Arrival Drop off point is required"],
       trim: true,
     },
+
+    departurePickupPoint: {
+      type: String,
+      required: [true, "Departure Pickup point is required"],
+    },
+    departurePickupPointType: {
+      type: String,
+      required: [true, "Departure Pickup point type is required"],
+    },
+    departurePickupDate: {
+      type: String, // Format: DD/MM/YYYY
+      required: [true, "Departure Pickup Date is required"],
+    },
+    departurePickupTime: {
+      type: String, // Format: hh:mm A (e.g., 09:00 AM)
+      required: [true, "Departure Pickup Time is required"],
+    },
+    departureDropOffPoint: {
+      type: String,
+      required: [true, "Departure Drop off point is required"],
+      trim: true,
+    },
+
     sponsorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Sponsor",
     },
+
     createdBy: {
       type: String,
       enum: ["eventAdmin", "sponsor"],
