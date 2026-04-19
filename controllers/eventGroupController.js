@@ -56,7 +56,7 @@ export const createEventGroup = async (req, res) => {
       });
     }
 
-    // optional: prevent duplicate group name
+    // prevent duplicate group name
     const existingGroup = await EventGroup.findOne({ groupName });
     if (existingGroup) {
       return res.status(400).json({
