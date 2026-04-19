@@ -68,6 +68,7 @@ import eventRegistrationRoutes from "./routes/eventRegistrationRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import sponsorEventRegRoutes from "./routes/sponsorEventRegRoutes.js";
 import expenseCategoryRoutes from "./routes/expenseCategoryRoutes.js";
+import expenseHeadRoutes from "./routes/expenseHeadRoutes.js";
 
 
 await connectDB();
@@ -172,6 +173,7 @@ app.use("/api", eventRegistrationRoutes);
 app.use("/api", paymentRoutes);
 app.use("/api", sponsorEventRegRoutes);
 app.use("/api", expenseCategoryRoutes);
+app.use("/api", expenseHeadRoutes);
 
 
 // =======================
