@@ -16,11 +16,16 @@ const ExpenseHeadSchema = new mongoose.Schema(
       type: Number,
       required: [true, "Amount is required"],
     },
-     unit: {
+    unit: {
       type: Number,
-      required: [true, "Unit is required"],
+      default: 1,
+      immutable: true, 
     },
-     gstAmount: {
+    unitType: {
+      type: String,
+      required: [true, "Unit Type is required"],
+    },
+    gstAmount: {
       type: Number,
       required: [true, "GST Amount is required"],
     },

@@ -7,7 +7,7 @@ import ExpenseCategory from "../models/ExpenseCategory.js";
 export const getExpenseHeads = async (req, res) => {
   try {
     const heads = await ExpenseHead.find()
-      .populate("expenseCategoryId", "expenseCategoryName") 
+      .populate("expenseCategoryId", "expenseCategoryName")
       .sort({ createdAt: -1 });
 
     res.json({
@@ -54,13 +54,13 @@ export const createExpenseHead = async (req, res) => {
       expenseCategoryId,
       name,
       amount,
-      unit,
+      unitType,
       gstAmount,
       status,
     } = req.body;
 
     // validation
-    if (!expenseCategoryId || !name || !amount || !unit || !gstAmount) {
+    if (!expenseCategoryId || !name || !amount || !unitType  || !gstAmount) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
@@ -93,7 +93,7 @@ export const createExpenseHead = async (req, res) => {
       expenseCategoryId,
       name,
       amount,
-      unit,
+      unitType,
       gstAmount,
       status,
     });
@@ -121,7 +121,7 @@ export const updateExpenseHead = async (req, res) => {
       expenseCategoryId,
       name,
       amount,
-      unit,
+      unitType,
       gstAmount,
       status,
     } = req.body;
@@ -159,7 +159,7 @@ export const updateExpenseHead = async (req, res) => {
         expenseCategoryId,
         name,
         amount,
-        unit,
+        unitType,
         gstAmount,
         status,
       },
