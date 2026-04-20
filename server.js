@@ -70,6 +70,7 @@ import sponsorEventRegRoutes from "./routes/sponsorEventRegRoutes.js";
 import expenseCategoryRoutes from "./routes/expenseCategoryRoutes.js";
 import expenseHeadRoutes from "./routes/expenseHeadRoutes.js";
 import expenseRecordRoutes from "./routes/expenseRecordRoutes.js";
+import allExpenseRoutes from "./routes/allExpenseRoutes.js";
 
 await connectDB();
 
@@ -175,6 +176,7 @@ app.use("/api", sponsorEventRegRoutes);
 app.use("/api", expenseCategoryRoutes);
 app.use("/api", expenseHeadRoutes);
 app.use("/api", expenseRecordRoutes);
+app.use("/api", allExpenseRoutes);
 
 
 // =======================
