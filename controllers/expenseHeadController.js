@@ -99,6 +99,7 @@ export const createExpenseHead = async (req, res) => {
       amount,
       unitType,
       gstTax,
+      gstAmount,
       amountwithGst: amountWithGst,
       status,
     });
@@ -183,6 +184,7 @@ export const updateExpenseHead = async (req, res) => {
       const finalGst = gstTax !== undefined ? gstTax : existing.gstTax;
 
       const gstAmount = (finalAmount * finalGst) / 100;
+      updateData.gstAmount = gstAmount;
       updateData.amountwithGst = finalAmount + gstAmount;
     }
 
