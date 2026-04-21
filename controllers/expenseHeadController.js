@@ -55,12 +55,12 @@ export const createExpenseHead = async (req, res) => {
       name,
       amount,
       unitType,
-      gstAmount,
+      gstTax,
       status,
     } = req.body;
 
     // validation
-    if (!expenseCategoryId || !name || !amount || !unitType  || !gstAmount) {
+    if (!expenseCategoryId || !name || !amount || !unitType || gstTax === undefined) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
@@ -76,7 +76,7 @@ export const createExpenseHead = async (req, res) => {
       });
     }
 
-    // optional: prevent duplicate head under same category
+    // duplicate check
     const existing = await ExpenseHead.findOne({
       name: { $regex: new RegExp(`^${name}$`, "i") },
       expenseCategoryId,
@@ -89,12 +89,17 @@ export const createExpenseHead = async (req, res) => {
       });
     }
 
+    //  GST Calculation
+    const gstAmount = (amount * gstTax) / 100;
+    const amountWithGst = amount + gstAmount;
+
     const head = await ExpenseHead.create({
       expenseCategoryId,
       name,
       amount,
       unitType,
-      gstAmount,
+      gstTax,
+      amountwithGst: amountWithGst,
       status,
     });
 
@@ -122,11 +127,11 @@ export const updateExpenseHead = async (req, res) => {
       name,
       amount,
       unitType,
-      gstAmount,
+      gstTax,
       status,
     } = req.body;
 
-    // duplicate check (same category)
+    // duplicate check
     if (name && expenseCategoryId) {
       const existing = await ExpenseHead.findOne({
         name,
@@ -142,7 +147,7 @@ export const updateExpenseHead = async (req, res) => {
       }
     }
 
-    // optional: validate category if changed
+    // validate category
     if (expenseCategoryId) {
       const category = await ExpenseCategory.findById(expenseCategoryId);
       if (!category) {
@@ -153,16 +158,37 @@ export const updateExpenseHead = async (req, res) => {
       }
     }
 
+    const existing = await ExpenseHead.findById(id);
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        message: "Expense head not found",
+      });
+    }
+
+    let updateData = {};
+
+    if (expenseCategoryId !== undefined) updateData.expenseCategoryId = expenseCategoryId;
+    if (name !== undefined) updateData.name = name;
+    if (amount !== undefined) updateData.amount = amount;
+    if (unitType !== undefined) updateData.unitType = unitType;
+    if (gstTax !== undefined) updateData.gstTax = gstTax;
+    if (status !== undefined) updateData.status = status;
+
+
+    // Recalculate GST if either amount OR gstTax changes
+    if (amount !== undefined || gstTax !== undefined) {
+      const finalAmount = amount !== undefined ? amount : existing.amount;
+      const finalGst = gstTax !== undefined ? gstTax : existing.gstTax;
+
+      const gstAmount = (finalAmount * finalGst) / 100;
+      updateData.amountwithGst = finalAmount + gstAmount;
+    }
+
     const head = await ExpenseHead.findByIdAndUpdate(
       id,
-      {
-        expenseCategoryId,
-        name,
-        amount,
-        unitType,
-        gstAmount,
-        status,
-      },
+      updateData,
       { new: true, runValidators: true }
     );
 

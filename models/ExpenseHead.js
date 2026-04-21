@@ -25,9 +25,14 @@ const ExpenseHeadSchema = new mongoose.Schema(
       type: String,
       required: [true, "Unit Type is required"],
     },
-    gstAmount: {
+    gstTax: {
+      // In percentage
       type: Number,
-      required: [true, "GST Amount is required"],
+      required: [true, "GST tax is required"],
+      trim: true,
+    },
+    amountwithGst: {
+      type: Number,
     },
     status: {
       type: String,
