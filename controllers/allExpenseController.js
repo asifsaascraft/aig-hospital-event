@@ -153,6 +153,7 @@ export const getAllExpensesByEvent = async (req, res) => {
         baseAmount: item.baseAmount,
         unit: item.unit,
         unitType: item.unitType,
+        gstTax: item.gstTax,
         totalAmountWithoutGst: item.totalAmountWithoutGst,
         gstAmount: item.gstAmount,
         totalAmountWithGst: item.totalAmountWithGst,
