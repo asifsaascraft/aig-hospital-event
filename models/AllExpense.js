@@ -17,9 +17,9 @@ const AllExpenseSchema = new mongoose.Schema(
       required: [true, "Name is required"],
       trim: true,
     },
-    amount: {
+    baseAmount: {
       type: Number,
-      required: [true, "Amount is required"],
+      required: [true, "Base Amount is required"],
     },
     unit: {
       type: Number,
@@ -29,9 +29,20 @@ const AllExpenseSchema = new mongoose.Schema(
       type: String,
       required: [true, "Unit Type is required"],
     },
+    gstTax: {
+      // In percentage
+      type: Number,
+      required: [true, "GST tax is required"],
+      trim: true,
+    },
+    totalAmountWithoutGst: {
+      type: Number,
+    },
     gstAmount: {
       type: Number,
-      required: [true, "GST Amount is required"],
+    },
+    totalAmountWithGst: {
+      type: Number,
     },
   },
   { timestamps: true }

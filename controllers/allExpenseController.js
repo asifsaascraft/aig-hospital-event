@@ -12,40 +12,72 @@ export const createAllExpense = async (req, res) => {
     const {
       expenseCategoryId,
       name,
-      amount,
+      baseAmount,
       unit,
       unitType,
-      gstAmount,
+      gstTax,
     } = req.body;
 
-    //  Check Event Exists
+    // Check Event Exists
     const event = await Event.findById(eventId);
     if (!event) {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    //  Required validations
+    // Validation
     if (
       !expenseCategoryId ||
       !name ||
-      amount == null ||
+      baseAmount == null ||
       unit == null ||
       !unitType ||
-      gstAmount == null
+      gstTax == null
     ) {
       return res.status(400).json({
         message: "All fields are required",
       });
     }
 
+    if (baseAmount < 0 || unit < 0 || gstTax < 0) {
+      return res.status(400).json({
+        message: "Values cannot be negative",
+      });
+    }
+
+    const category = await ExpenseCategory.findById(expenseCategoryId);
+    if (!category) {
+      return res.status(400).json({
+        message: "Invalid expense category",
+      });
+    }
+
+    const duplicate = await AllExpense.findOne({
+      eventId,
+      expenseCategoryId,
+      name: { $regex: new RegExp(`^${name}$`, "i") },
+    });
+
+    if (duplicate) {
+      return res.status(400).json({
+        message: "Expense already exists for this event and category",
+      });
+    }
+    //  Calculations
+    const totalAmountWithoutGst = baseAmount * unit;
+    const gstAmount = (totalAmountWithoutGst * gstTax) / 100;
+    const totalAmountWithGst = totalAmountWithoutGst + gstAmount;
+
     const expense = await AllExpense.create({
       eventId,
       expenseCategoryId,
       name,
-      amount,
+      baseAmount,
       unit,
       unitType,
+      gstTax,
+      totalAmountWithoutGst,
       gstAmount,
+      totalAmountWithGst,
     });
 
     return res.status(201).json({
@@ -55,13 +87,6 @@ export const createAllExpense = async (req, res) => {
     });
   } catch (error) {
     console.error("Create AllExpense error:", error);
-
-    // mongoose validation error
-    if (error.name === "ValidationError") {
-      const errors = Object.values(error.errors).map((err) => err.message);
-      return res.status(400).json({ message: errors.join(", ") });
-    }
-
     return res.status(500).json({ message: "Server Error" });
   }
 };
@@ -76,7 +101,8 @@ export const getAllExpensesByEvent = async (req, res) => {
     const expenses = await AllExpense.find({ eventId })
       .populate("eventId", "eventName startDate startTime endDate endTime")
       .populate("expenseCategoryId", "expenseCategoryName")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     if (!expenses.length) {
       return res.status(200).json({
@@ -102,8 +128,8 @@ export const getAllExpensesByEvent = async (req, res) => {
     expenses.forEach((item) => {
       const catId = item.expenseCategoryId._id.toString();
 
-      //  ONLY amount 
-      totalAmount += item.amount;
+
+      totalAmount += item.totalAmountWithoutGst;
       totalGstAmount += item.gstAmount;
 
       if (!grouped[catId]) {
@@ -118,16 +144,18 @@ export const getAllExpensesByEvent = async (req, res) => {
       }
 
       //  Category totals
-      grouped[catId].totalAmount += item.amount;
+      grouped[catId].totalAmount += item.totalAmountWithoutGst;
       grouped[catId].totalGstAmount += item.gstAmount;
 
       grouped[catId].expenses.push({
         _id: item._id,
         name: item.name,
-        amount: item.amount,
+        baseAmount: item.baseAmount,
         unit: item.unit,
         unitType: item.unitType,
+        totalAmountWithoutGst: item.totalAmountWithoutGst,
         gstAmount: item.gstAmount,
+        totalAmountWithGst: item.totalAmountWithGst,
         createdAt: item.createdAt,
       });
     });
@@ -171,25 +199,61 @@ export const updateAllExpense = async (req, res) => {
       });
     }
 
-    const {
-      amount,
-      unit,
-      unitType,
-      gstAmount,
-    } = req.body;
-
-    //  Prevent updating restricted fields
+    // ❌ Restrict fields
     if (req.body.expenseCategoryId || req.body.name) {
       return res.status(400).json({
         message: "expenseCategoryId and name cannot be updated",
       });
     }
 
-    //  Update only allowed fields
-    if (amount != null) expense.amount = amount;
+    const {
+      baseAmount,
+      unit,
+      unitType,
+      gstTax,
+    } = req.body;
+
+    //  Prevent empty update
+    if (
+      baseAmount == null &&
+      unit == null &&
+      unitType === undefined &&
+      gstTax == null
+    ) {
+      return res.status(400).json({
+        message: "No valid fields provided for update",
+      });
+    }
+
+    //  Negative value validation
+    if (
+      (baseAmount != null && baseAmount < 0) ||
+      (unit != null && unit < 0) ||
+      (gstTax != null && gstTax < 0)
+    ) {
+      return res.status(400).json({
+        message: "Values cannot be negative",
+      });
+    }
+
+    // Update allowed fields
+    if (baseAmount != null) expense.baseAmount = baseAmount;
     if (unit != null) expense.unit = unit;
-    if (unitType) expense.unitType = unitType;
-    if (gstAmount != null) expense.gstAmount = gstAmount;
+    if (unitType !== undefined) expense.unitType = unitType;
+    if (gstTax != null) expense.gstTax = gstTax;
+
+    //  Recalculate using updated values
+    const finalBaseAmount = expense.baseAmount;
+    const finalUnit = expense.unit;
+    const finalGstTax = expense.gstTax;
+
+    const totalAmountWithoutGst = finalBaseAmount * finalUnit;
+    const gstAmount = (totalAmountWithoutGst * finalGstTax) / 100;
+    const totalAmountWithGst = totalAmountWithoutGst + gstAmount;
+
+    expense.totalAmountWithoutGst = totalAmountWithoutGst;
+    expense.gstAmount = gstAmount;
+    expense.totalAmountWithGst = totalAmountWithGst;
 
     await expense.save();
 
@@ -200,12 +264,6 @@ export const updateAllExpense = async (req, res) => {
     });
   } catch (error) {
     console.error("Update AllExpense error:", error);
-
-    if (error.name === "ValidationError") {
-      const errors = Object.values(error.errors).map((err) => err.message);
-      return res.status(400).json({ message: errors.join(", ") });
-    }
-
     return res.status(500).json({ message: "Server Error" });
   }
 };
