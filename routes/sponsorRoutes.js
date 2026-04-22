@@ -7,7 +7,6 @@ import {
   deleteSponsor,
   getSponsorSummary,
 } from "../controllers/sponsorController.js";
-import { uploadSponsorImage } from "../middlewares/uploadMiddleware.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
@@ -19,7 +18,6 @@ router.post(
   "/event-admin/events/:eventId/sponsors",
   protect,
   authorizeRoles("eventAdmin"),
-  uploadSponsorImage.single("sponsorImage"),
   createSponsor
 );
 
@@ -47,7 +45,6 @@ router.put(
   "/event-admin/sponsors/:id",
   protect,
   authorizeRoles("eventAdmin"),
-  uploadSponsorImage.single("sponsorImage"),
   updateSponsor
 );
 

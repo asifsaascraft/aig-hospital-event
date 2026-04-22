@@ -15,7 +15,7 @@ export const getSponsorsByEvent = async (req, res) => {
     const { eventId } = req.params;
     const sponsors = await Sponsor.find({ eventId })
       .sort({ createdAt: -1 })
-      .populate("eventId sponsorBooth");
+      .populate("eventId");
 
     res.json({ success: true, data: sponsors });
   } catch (error) {
@@ -39,7 +39,7 @@ export const getActiveSponsorsByEvent = async (req, res) => {
       status: "Active",
     })
       .sort({ createdAt: -1 })
-      .populate("eventId sponsorBooth");
+      .populate("eventId");
 
     res.json({
       success: true,
@@ -68,8 +68,6 @@ export const createSponsor = async (req, res) => {
       additionalEmail,
       gstNumber,
       companyAddress,
-      sponsorBooth,
-      sponsorCategory,
       status,
     } = req.body;
 
@@ -79,14 +77,12 @@ export const createSponsor = async (req, res) => {
       !contactPersonName ||
       !email ||
       !mobile ||
-      !companyAddress ||
-      !sponsorBooth ||
-      !sponsorCategory
+      !companyAddress
     ) {
       return res.status(400).json({
         success: false,
         message:
-          "Required fields: eventId, sponsorName, contactPersonName, email, mobile, companyAddress, sponsorBooth, sponsorCategory",
+          "Required fields: eventId, sponsorName, contactPersonName, email, mobile, companyAddress",
       });
     }
 
@@ -100,16 +96,7 @@ export const createSponsor = async (req, res) => {
           "This email is already registered, Please use a different email",
       });
     }
-    //  Handle sponsor image upload (using multer-s3)
-    let sponsorImage = "";
-    if (req.file && req.file.location) {
-      sponsorImage = req.file.location;
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: "Sponsor image is required",
-      });
-    }
+
     // Generate password
     const plainPassword = generateStrongPassword();
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
@@ -117,7 +104,6 @@ export const createSponsor = async (req, res) => {
     const sponsor = await Sponsor.create({
       eventId,
       sponsorName,
-      sponsorImage,
       contactPersonName,
       email,
       mobile,
@@ -126,8 +112,6 @@ export const createSponsor = async (req, res) => {
       plainPassword,
       gstNumber,
       companyAddress,
-      sponsorBooth,
-      sponsorCategory,
       status: status || "Active",
     });
 
@@ -154,13 +138,6 @@ export const updateSponsor = async (req, res) => {
   try {
     const { id } = req.params;
     const updatedData = { ...req.body };
-
-    // ============================
-    // Update sponsor image
-    // ============================
-    if (req.file && req.file.location) {
-      updatedData.sponsorImage = req.file.location;
-    }
 
     // ============================
     // Fetch current sponsor
