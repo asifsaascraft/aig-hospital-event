@@ -97,7 +97,7 @@ export const getUnassignedTravels = async (req, res) => {
     })
       .populate({
         path: "eventRegistrationId",
-        select: "prefix name email mobile",
+        select: "prefix name email mobile regNum",
       })
       .populate({
         path: "travelAgentId",
@@ -129,7 +129,7 @@ export const getMarketingTeamTravelSummary = async (req, res) => {
         populate: [
           {
             path: "eventRegistrationId",
-            select: "prefix name email mobile",
+            select: "prefix name email mobile regNum",
           },
           {
             path: "travelAgentId",
