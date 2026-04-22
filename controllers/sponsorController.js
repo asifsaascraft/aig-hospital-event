@@ -15,7 +15,7 @@ export const getSponsorsByEvent = async (req, res) => {
     const { eventId } = req.params;
     const sponsors = await Sponsor.find({ eventId })
       .sort({ createdAt: -1 })
-      .populate("eventId");
+      .populate("eventId", "eventName");
 
     res.json({ success: true, data: sponsors });
   } catch (error) {
@@ -39,7 +39,7 @@ export const getActiveSponsorsByEvent = async (req, res) => {
       status: "Active",
     })
       .sort({ createdAt: -1 })
-      .populate("eventId");
+      .populate("eventId", "eventName");
 
     res.json({
       success: true,
