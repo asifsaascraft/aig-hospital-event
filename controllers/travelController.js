@@ -16,16 +16,27 @@ export const createTravel = async (req, res) => {
 
       arrivalPickupPoint,
       arrivalPickupPointType,
-      arrivalPickupDate,
-      arrivalPickupTime,
+      arrivalPickupDateTime,
       arrivalDropOffPoint,
 
       departurePickupPoint,
       departurePickupPointType,
-      departurePickupDate,
-      departurePickupTime,
+      departurePickupDateTime,
       departureDropOffPoint,
     } = req.body;
+    
+    // Date validation format
+    if (isNaN(new Date(arrivalPickupDateTime))) {
+      return res.status(400).json({
+        message: "Invalid arrival pickup datetime format",
+      });
+    }
+
+    if (isNaN(new Date(departurePickupDateTime))) {
+      return res.status(400).json({
+        message: "Invalid departure pickup datetime format",
+      });
+    }
 
     // Validate required refs
     const event = await Event.findById(eventId);
@@ -61,14 +72,12 @@ export const createTravel = async (req, res) => {
 
       arrivalPickupPoint,
       arrivalPickupPointType,
-      arrivalPickupDate,
-      arrivalPickupTime,
+      arrivalPickupDateTime,
       arrivalDropOffPoint,
 
       departurePickupPoint,
       departurePickupPointType,
-      departurePickupDate,
-      departurePickupTime,
+      departurePickupDateTime,
       departureDropOffPoint,
 
       createdBy: "eventAdmin",
@@ -133,14 +142,12 @@ export const updateTravel = async (req, res) => {
 
       arrivalPickupPoint,
       arrivalPickupPointType,
-      arrivalPickupDate,
-      arrivalPickupTime,
+      arrivalPickupDateTime,
       arrivalDropOffPoint,
 
       departurePickupPoint,
       departurePickupPointType,
-      departurePickupDate,
-      departurePickupTime,
+      departurePickupDateTime,
       departureDropOffPoint,
     } = req.body;
 
@@ -167,14 +174,12 @@ export const updateTravel = async (req, res) => {
 
     if (arrivalPickupPoint) travel.arrivalPickupPoint = arrivalPickupPoint;
     if (arrivalPickupPointType) travel.arrivalPickupPointType = arrivalPickupPointType;
-    if (arrivalPickupDate) travel.arrivalPickupDate = arrivalPickupDate;
-    if (arrivalPickupTime) travel.arrivalPickupTime = arrivalPickupTime;
+    if (arrivalPickupDateTime) travel.arrivalPickupDateTime = arrivalPickupDateTime;
     if (arrivalDropOffPoint) travel.arrivalDropOffPoint = arrivalDropOffPoint;
 
     if (departurePickupPoint) travel.departurePickupPoint = departurePickupPoint;
     if (departurePickupPointType) travel.departurePickupPointType = departurePickupPointType;
-    if (departurePickupDate) travel.departurePickupDate = departurePickupDate;
-    if (departurePickupTime) travel.departurePickupTime = departurePickupTime;
+    if (departurePickupDateTime) travel.departurePickupDateTime = departurePickupDateTime;
     if (departureDropOffPoint) travel.departureDropOffPoint = departureDropOffPoint;
 
     await travel.save();

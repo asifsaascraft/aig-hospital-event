@@ -19,14 +19,12 @@ export const createTravelBySponsor = async (req, res) => {
 
       arrivalPickupPoint,
       arrivalPickupPointType,
-      arrivalPickupDate,
-      arrivalPickupTime,
+      arrivalPickupDateTime,
       arrivalDropOffPoint,
 
       departurePickupPoint,
       departurePickupPointType,
-      departurePickupDate,
-      departurePickupTime,
+      departurePickupDateTime,
       departureDropOffPoint,
     } = req.body;
 
@@ -39,18 +37,29 @@ export const createTravelBySponsor = async (req, res) => {
 
       !arrivalPickupPoint ||
       !arrivalPickupPointType ||
-      !arrivalPickupDate ||
-      !arrivalPickupTime ||
+      !arrivalPickupDateTime ||
       !arrivalDropOffPoint ||
 
       !departurePickupPoint ||
       !departurePickupPointType ||
-      !departurePickupDate ||
-      !departurePickupTime ||
+      !departurePickupDateTime ||
       !departureDropOffPoint
     ) {
       return res.status(400).json({
         message: "All fields are required",
+      });
+    }
+
+    // Date validation format
+    if (isNaN(new Date(arrivalPickupDateTime))) {
+      return res.status(400).json({
+        message: "Invalid arrival pickup datetime format",
+      });
+    }
+
+    if (isNaN(new Date(departurePickupDateTime))) {
+      return res.status(400).json({
+        message: "Invalid departure pickup datetime format",
       });
     }
 
@@ -114,9 +123,7 @@ export const createTravelBySponsor = async (req, res) => {
     // =======================
     //  DATE VALIDATION
     // =======================
-    const travelDate = new Date(
-      arrivalPickupDate.split("/").reverse().join("-")
-    );
+    const travelDate = new Date(arrivalPickupDateTime);
 
     //  Start Date Check
     if (quotaData.startDate && travelDate < quotaData.startDate) {
@@ -157,14 +164,12 @@ export const createTravelBySponsor = async (req, res) => {
 
       arrivalPickupPoint,
       arrivalPickupPointType,
-      arrivalPickupDate,
-      arrivalPickupTime,
+      arrivalPickupDateTime,
       arrivalDropOffPoint,
 
       departurePickupPoint,
       departurePickupPointType,
-      departurePickupDate,
-      departurePickupTime,
+      departurePickupDateTime,
       departureDropOffPoint,
 
       sponsorId,

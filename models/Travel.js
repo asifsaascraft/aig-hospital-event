@@ -25,13 +25,9 @@ const TravelSchema = new mongoose.Schema(
       type: String,
       required: [true, "Arrival Pickup point type is required"],
     },
-    arrivalPickupDate: {
-      type: String, // Format: DD/MM/YYYY
-      required: [true, "Arrival Pickup Date is required"],
-    },
-    arrivalPickupTime: {
-      type: String, // Format: hh:mm A (e.g., 09:00 AM)
-      required: [true, "Arrival Pickup Time is required"],
+    arrivalPickupDateTime: {
+      type: Date, 
+      required: [true, "Arrival pickup date and time is required"],
     },
     arrivalDropOffPoint: {
       type: String,
@@ -47,13 +43,9 @@ const TravelSchema = new mongoose.Schema(
       type: String,
       required: [true, "Departure Pickup point type is required"],
     },
-    departurePickupDate: {
-      type: String, // Format: DD/MM/YYYY
-      required: [true, "Departure Pickup Date is required"],
-    },
-    departurePickupTime: {
-      type: String, // Format: hh:mm A (e.g., 09:00 AM)
-      required: [true, "Departure Pickup Time is required"],
+    departurePickupDateTime: {
+      type: Date,
+      required: [true, "Departure pickup date and time is required"],
     },
     departureDropOffPoint: {
       type: String,
