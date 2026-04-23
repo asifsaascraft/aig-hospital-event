@@ -14,6 +14,7 @@ export const createRegistrationSetting = async (req, res) => {
       banquetRegistration,
       eventRegistrationStartDate,
       eventRegistrationEndDate,
+      regClosedMessage,
     } = req.body;
 
     // Validate event existence
@@ -39,6 +40,7 @@ export const createRegistrationSetting = async (req, res) => {
       banquetRegistration,
       eventRegistrationStartDate,
       eventRegistrationEndDate,
+      regClosedMessage,
     });
 
     res.status(201).json({
@@ -87,6 +89,7 @@ export const updateRegistrationSetting = async (req, res) => {
       banquetRegistration,
       eventRegistrationStartDate,
       eventRegistrationEndDate,
+      regClosedMessage,
     } = req.body;
 
     // Find existing setting
@@ -108,6 +111,8 @@ export const updateRegistrationSetting = async (req, res) => {
       setting.eventRegistrationStartDate = eventRegistrationStartDate;
     if (eventRegistrationEndDate)
       setting.eventRegistrationEndDate = eventRegistrationEndDate;
+    if (regClosedMessage !== undefined)
+      setting.regClosedMessage = regClosedMessage;
 
     await setting.save();
 

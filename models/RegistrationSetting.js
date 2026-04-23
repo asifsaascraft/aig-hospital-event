@@ -35,6 +35,10 @@ const RegistrationSettingSchema = new mongoose.Schema(
         message: "Event Registration End date must be greater than or equal to start date",
       },
     },
+    regClosedMessage: {
+      type: String,
+      trim: true,
+    }
   },
   { timestamps: true }
 );
