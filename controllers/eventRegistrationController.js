@@ -134,6 +134,40 @@ export const registerForEvent = async (req, res) => {
     }
 
     // ===============================
+    // SLAB DATE VALIDATION
+    // ===============================
+    const today = moment().startOf("day");
+
+    const slabStart = moment(slab.startDate, "DD/MM/YYYY", true);
+    const slabEnd = moment(slab.endDate, "DD/MM/YYYY", true);
+
+    // 1. Check valid format
+    if (!slabStart.isValid() || !slabEnd.isValid()) {
+      return res.status(400).json({
+        message: "Invalid slab date format. Expected DD/MM/YYYY",
+      });
+    }
+
+    // 2. Check logical order
+    if (slabStart.isAfter(slabEnd)) {
+      return res.status(400).json({
+        message: "Slab startDate cannot be after endDate",
+      });
+    }
+
+    // 3. Check current date within slab range
+    if (today.isBefore(slabStart)) {
+      return res.status(400).json({
+        message: `Registration for this slab starts on ${slab.startDate}`,
+      });
+    }
+
+    if (today.isAfter(slabEnd)) {
+      return res.status(400).json({
+        message: `Registration for this slab has ended on ${slab.endDate}`,
+      });
+    }
+    // ===============================
     // Suspended Check
     // ===============================
     const suspendedReg = await EventRegistration.findOne({
@@ -400,36 +434,36 @@ export const registerForEvent = async (req, res) => {
       });
 
       // ==============================================
-  // SEND ONLY REGISTRATION EMAIL (NO PAYMENT EMAIL)
-  // ==============================================
-  try {
-    const slabName = slab?.slabName || "N/A";
+      // SEND ONLY REGISTRATION EMAIL (NO PAYMENT EMAIL)
+      // ==============================================
+      try {
+        const slabName = slab?.slabName || "N/A";
 
-    await sendEmailWithTemplate({
-      to: registration.email,
-      name: registration.name,
-      templateKey:
-        "2518b.554b0da719bc314.k1.f7c9f490-a7f1-11f0-8b9c-8e9a6c33ddc2.199dbf3d259",
-      mergeInfo: {
-        name: registration.name,
-        eventName: event.eventName,
-        registrationNumber: registration.regNum,
-        registrationSlabName: slabName,
-        startDate: event.startDate
-          ? moment(event.startDate, "DD/MM/YYYY").format("DD MMM YYYY")
-          : "N/A",
-        endDate: event.endDate
-          ? moment(event.endDate, "DD/MM/YYYY").format("DD MMM YYYY")
-          : "N/A",
-        designation: registration.designation || "N/A",
-        affiliation: registration.affiliation || "N/A",
-        country: registration.country || "N/A",
-        city: registration.city || "N/A",
-      },
-    });
-  } catch (emailErr) {
-    console.error("Free registration email sending failed:", emailErr);
-  }
+        await sendEmailWithTemplate({
+          to: registration.email,
+          name: registration.name,
+          templateKey:
+            "2518b.554b0da719bc314.k1.f7c9f490-a7f1-11f0-8b9c-8e9a6c33ddc2.199dbf3d259",
+          mergeInfo: {
+            name: registration.name,
+            eventName: event.eventName,
+            registrationNumber: registration.regNum,
+            registrationSlabName: slabName,
+            startDate: event.startDate
+              ? moment(event.startDate, "DD/MM/YYYY").format("DD MMM YYYY")
+              : "N/A",
+            endDate: event.endDate
+              ? moment(event.endDate, "DD/MM/YYYY").format("DD MMM YYYY")
+              : "N/A",
+            designation: registration.designation || "N/A",
+            affiliation: registration.affiliation || "N/A",
+            country: registration.country || "N/A",
+            city: registration.city || "N/A",
+          },
+        });
+      } catch (emailErr) {
+        console.error("Free registration email sending failed:", emailErr);
+      }
 
       return res.status(201).json({
         success: true,
@@ -724,6 +758,41 @@ export const registerForEventByEventAdmin = async (req, res) => {
       return res.status(400).json({
         message: "This slab does not belong to the selected event",
       });
+
+    // ===============================
+    // SLAB DATE VALIDATION
+    // ===============================
+    const today = moment().startOf("day");
+
+    const slabStart = moment(slab.startDate, "DD/MM/YYYY", true);
+    const slabEnd = moment(slab.endDate, "DD/MM/YYYY", true);
+
+    // 1. Check valid format
+    if (!slabStart.isValid() || !slabEnd.isValid()) {
+      return res.status(400).json({
+        message: "Invalid slab date format. Expected DD/MM/YYYY",
+      });
+    }
+
+    // 2. Check logical order
+    if (slabStart.isAfter(slabEnd)) {
+      return res.status(400).json({
+        message: "Slab startDate cannot be after endDate",
+      });
+    }
+
+    // 3. Check current date within slab range
+    if (today.isBefore(slabStart)) {
+      return res.status(400).json({
+        message: `Registration for this slab starts on ${slab.startDate}`,
+      });
+    }
+
+    if (today.isAfter(slabEnd)) {
+      return res.status(400).json({
+        message: `Registration for this slab has ended on ${slab.endDate}`,
+      });
+    }
 
     // Suspended?
     const suspendedReg = await EventRegistration.findOne({
