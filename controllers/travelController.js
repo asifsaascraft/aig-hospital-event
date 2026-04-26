@@ -12,6 +12,7 @@ export const createTravel = async (req, res) => {
     const { eventId } = req.params;
     const {
       eventRegistrationId,
+      fullName,
       travelAgentId,
 
       arrivalPickupPoint,
@@ -24,7 +25,15 @@ export const createTravel = async (req, res) => {
       departurePickupDateTime,
       departureDropOffPoint,
     } = req.body;
-    
+
+    if (!fullName) {
+      return res.status(400).json({ message: "Full name is required" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "ID PDF is required" });
+    }
+
     // Date validation format
     if (isNaN(new Date(arrivalPickupDateTime))) {
       return res.status(400).json({
@@ -68,6 +77,8 @@ export const createTravel = async (req, res) => {
     const travel = await Travel.create({
       eventId,
       eventRegistrationId,
+      fullName,
+      idUpload: req.file.location,
       travelAgentId,
 
       arrivalPickupPoint,
@@ -137,6 +148,7 @@ export const updateTravel = async (req, res) => {
     }
 
     const {
+      fullName,
       eventRegistrationId,
       travelAgentId,
 
@@ -152,22 +164,41 @@ export const updateTravel = async (req, res) => {
     } = req.body;
 
     // =======================
-    // CHECK DUPLICATE BOOKING
+    // DATE VALIDATION
+    // =======================
+    if (arrivalPickupDateTime && isNaN(new Date(arrivalPickupDateTime))) {
+      return res.status(400).json({
+        message: "Invalid arrival pickup datetime format",
+      });
+    }
+
+    if (departurePickupDateTime && isNaN(new Date(departurePickupDateTime))) {
+      return res.status(400).json({
+        message: "Invalid departure pickup datetime format",
+      });
+    }
+
+    // =======================
+    // CHECK DUPLICATE
     // =======================
     if (eventRegistrationId) {
       const existingTravel = await Travel.findOne({
         eventId: travel.eventId,
         eventRegistrationId,
-        _id: { $ne: id }, // exclude current record
+        _id: { $ne: id },
       });
 
       if (existingTravel) {
         return res.status(400).json({
-          success: false,
           message: "Travel already booked for this registration",
         });
       }
     }
+
+    // =======================
+    // UPDATE FIELDS
+    // =======================
+    if (fullName) travel.fullName = fullName;
 
     if (eventRegistrationId) travel.eventRegistrationId = eventRegistrationId;
     if (travelAgentId) travel.travelAgentId = travelAgentId;
@@ -182,6 +213,13 @@ export const updateTravel = async (req, res) => {
     if (departurePickupDateTime) travel.departurePickupDateTime = departurePickupDateTime;
     if (departureDropOffPoint) travel.departureDropOffPoint = departureDropOffPoint;
 
+    // =======================
+    // FILE UPDATE
+    // =======================
+    if (req.file) {
+      travel.idUpload = req.file.location;
+    }
+
     await travel.save();
 
     res.status(200).json({
@@ -189,6 +227,7 @@ export const updateTravel = async (req, res) => {
       message: "Travel record updated successfully",
       data: travel,
     });
+
   } catch (error) {
     console.error("Update travel error:", error);
     res.status(500).json({ message: "Server Error" });

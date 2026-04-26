@@ -15,6 +15,7 @@ export const createTravelBySponsor = async (req, res) => {
 
     const {
       eventRegistrationId,
+      fullName,
       travelAgentId,
 
       arrivalPickupPoint,
@@ -33,6 +34,7 @@ export const createTravelBySponsor = async (req, res) => {
     // =======================
     if (
       !eventRegistrationId ||
+      !fullName ||
       !travelAgentId ||
 
       !arrivalPickupPoint ||
@@ -48,6 +50,10 @@ export const createTravelBySponsor = async (req, res) => {
       return res.status(400).json({
         message: "All fields are required",
       });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "ID PDF is required" });
     }
 
     // Date validation format
@@ -160,6 +166,8 @@ export const createTravelBySponsor = async (req, res) => {
     const travel = await Travel.create({
       eventId,
       eventRegistrationId,
+      fullName: req.body.fullName,
+      idUpload: req.file.location,
       travelAgentId,
 
       arrivalPickupPoint,
@@ -242,7 +250,7 @@ export const updateTravelBySponsor = async (req, res) => {
     }
 
     // =======================
-    // CHECK DUPLICATE
+    // DUPLICATE CHECK
     // =======================
     if (req.body.eventRegistrationId) {
       const existingTravel = await Travel.findOne({
@@ -258,7 +266,34 @@ export const updateTravelBySponsor = async (req, res) => {
       }
     }
 
+    // =======================
+    // DATE VALIDATION
+    // =======================
+    if (req.body.arrivalPickupDateTime &&
+      isNaN(new Date(req.body.arrivalPickupDateTime))) {
+      return res.status(400).json({
+        message: "Invalid arrival pickup datetime format",
+      });
+    }
+
+    if (req.body.departurePickupDateTime &&
+      isNaN(new Date(req.body.departurePickupDateTime))) {
+      return res.status(400).json({
+        message: "Invalid departure pickup datetime format",
+      });
+    }
+
+    // =======================
+    // UPDATE DATA
+    // =======================
     Object.assign(travel, req.body);
+
+    // =======================
+    // FILE UPDATE
+    // =======================
+    if (req.file) {
+      travel.idUpload = req.file.location;
+    }
 
     await travel.save();
 
@@ -267,6 +302,7 @@ export const updateTravelBySponsor = async (req, res) => {
       message: "Sponsor travel updated",
       data: travel,
     });
+
   } catch (error) {
     console.error("Sponsor update error:", error);
     res.status(500).json({ message: "Server Error" });

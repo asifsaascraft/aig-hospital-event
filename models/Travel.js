@@ -12,6 +12,14 @@ const TravelSchema = new mongoose.Schema(
       ref: "EventRegistration",
       required: true,
     },
+    fullName: {
+      type: String,
+      required: [true, "Full name is required"],
+    },
+    idUpload: {
+      type: String,  // store file path or URL 
+      required: [true, "Only PDF is required"],
+    },
     travelAgentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "TravelAgent",

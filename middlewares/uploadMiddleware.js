@@ -75,3 +75,26 @@ export const uploadSponsorImage = createUploader("sponsors");
 
 export const uploadBoothPDF = createUploader("booths", pdfFileFilter);
 export const uploadAbstractPDF = createUploader("abstract-files", pdfFileFilter);
+
+// Govenoment Id for Travel booked Upload (PDF only, 2MB)
+export const uploadIdForTravel = multer({
+  storage: multerS3({
+    s3,
+    bucket: process.env.AWS_BUCKET_NAME,
+    acl: "public-read",
+    contentDisposition: "inline",
+    contentType: multerS3.AUTO_CONTENT_TYPE,
+    key: (req, file, cb) => {
+      const fileName = `governoment-ids/${Date.now()}-${file.originalname}`;
+      cb(null, fileName);
+    },
+  }),
+  limits: { fileSize: 2 * 1024 * 1024 }, //  2 MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === "application/pdf") {
+      cb(null, true);
+    } else {
+      cb(new Error("Only PDF files are allowed"), false);
+    }
+  },
+});

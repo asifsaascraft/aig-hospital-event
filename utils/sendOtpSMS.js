@@ -2,7 +2,9 @@ import axios from "axios";
 
 const sendOtpSMS = async (mobile, otp, purpose = "reset") => {
   try {
-    const message = `Login OTP for AIG Academics is ${otp}. Do not share this OTP to anyone for security reasons. - SaaScraft Studio`;
+    const name = "AIG Academics"
+    //const message = `Login OTP for AIG Academics is ${otp}. Do not share this OTP to anyone for security reasons. - SaaScraft Studio`;
+    const message = `Your password reset OTP for ${name} is ${otp}. Do not share this OTP to anyone for security reasons. - SaaScraft`;
 
 
     const params = {

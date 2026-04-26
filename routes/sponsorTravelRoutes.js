@@ -1,5 +1,6 @@
 import express from "express";
 import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
+import { uploadIdForTravel } from "../middlewares/uploadMiddleware.js";
 
 import {
   createTravelBySponsor,
@@ -15,6 +16,7 @@ const router = express.Router();
 router.post(
   "/sponsor/events/:eventId/travel",
   protectSponsor,
+  uploadIdForTravel.single("idUpload"),
   createTravelBySponsor
 );
 
@@ -43,6 +45,7 @@ router.get(
 router.put(
   "/sponsor/travel/:id",
   protectSponsor,
+  uploadIdForTravel.single("idUpload"),
   updateTravelBySponsor
 );
 
