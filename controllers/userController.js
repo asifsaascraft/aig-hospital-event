@@ -5,6 +5,8 @@ import sendEmailWithTemplate from "../utils/sendEmail.js";
 import jwt from "jsonwebtoken";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import s3 from "../config/s3.js";
+import sendOtpSMS from "../utils/sendOtpSMS.js";
+
 
 // =======================
 // User Signup (Public)
@@ -207,39 +209,35 @@ export const logoutUser = (req, res) => {
 // =======================
 export const forgotPasswordUser = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { mobile } = req.body;
 
-    const user = await User.findOne({ email, role: "user" });
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!mobile) {
+      return res.status(400).json({ message: "Mobile number is required" });
+    }
 
-    const token = crypto.randomBytes(32).toString("hex");
-    const resetToken = crypto
-      .createHash("sha256")
-      .update(token.trim())
-      .digest("hex");
+    const user = await User.findOne({ mobile, role: "user" });
 
-    user.passwordResetToken = resetToken;
-    user.passwordResetExpires = Date.now() + 24 * 60 * 60 * 1000;
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Generate 6 digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    user.otp = otp;
+    user.otpExpires = Date.now() + 10 * 60 * 1000; // 10 min
+
     await user.save({ validateBeforeSave: false });
 
-    const frontendUrl = process.env.USER_FRONTEND_URL;
-    const resetUrl = `${frontendUrl}/reset-password/${token}`;
+    // Send OTP via SMS
+    await sendOtpSMS(user.mobile, otp, "reset");
 
-    await sendEmailWithTemplate({
-      to: user.email,
-      name: user.name,
-      templateKey:
-        "2518b.554b0da719bc314.k1.01bb6360-9c50-11f0-8ac3-ae9c7e0b6a9f.1998fb77496",
-      mergeInfo: {
-        name: user.name,
-        password_reset_link: resetUrl,
-      },
+    res.status(200).json({
+      message: "OTP sent to your registered mobile number",
     });
-
-    res.json({ message: "Password reset link sent to your email address" });
   } catch (error) {
     console.error("Forgot password error:", error);
-    res.status(500).json({ message: "Failed to send reset email" });
+    res.status(500).json({ message: "Failed to send OTP" });
   }
 };
 
@@ -248,29 +246,42 @@ export const forgotPasswordUser = async (req, res) => {
 // =======================
 export const resetPasswordUser = async (req, res) => {
   try {
-    let { token } = req.params;
-    const { password } = req.body;
+    const { mobile, otp, newPassword } = req.body;
 
-    if (!token) return res.status(400).json({ message: "Token is required" });
+    if (!mobile || !otp || !newPassword) {
+      return res.status(400).json({
+        message: "Mobile, OTP and new password are required",
+      });
+    }
 
-    token = token.trim();
-    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+    const user = await User.findOne({ mobile, role: "user" });
 
-    const user = await User.findOne({
-      passwordResetToken: hashedToken,
-      passwordResetExpires: { $gt: Date.now() },
-      role: "user",
-    });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-    if (!user)
-      return res.status(400).json({ message: "Invalid or expired token" });
+    // Check OTP
+    if (user.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
 
-    user.password = password; // hashed in pre-save hook
-    user.passwordResetToken = null;
-    user.passwordResetExpires = null;
+    // Check expiry
+    if (user.otpExpires < Date.now()) {
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    // Update password
+    user.password = newPassword; // will hash automatically
+
+    // Clear OTP
+    user.otp = null;
+    user.otpExpires = null;
+
     await user.save();
 
-    res.json({ message: "Password reset successful" });
+    res.status(200).json({
+      message: "Password reset successful",
+    });
   } catch (error) {
     console.error("Reset password error:", error);
     res.status(500).json({ message: error.message });

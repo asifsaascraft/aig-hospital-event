@@ -53,6 +53,15 @@ const UserSchema = new mongoose.Schema(
       default: null,
     },
 
+    otp: {
+      type: String,
+      default: null,
+    },
+    otpExpires: {
+      type: Date,
+      default: null,
+    },
+
     // -------------------------
     // Additional fields for general "user" role (added; optional — no defaults)
     // ---------------
