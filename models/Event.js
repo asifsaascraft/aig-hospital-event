@@ -41,18 +41,18 @@ const EventSchema = new mongoose.Schema(
       ref: "EventGroup",
       required: [true, "Event group is required"],
     },
-    startDate: {
+    startDateTime: {
       type: Date,
-      required: [true, "Start Date is required"],
+      required: [true, "Start Date time is required"],
     },
-    endDate: {
+    endDateTime: {
       type: Date,
       validate: {
         validator: function (value) {
-          if (!this.startDate || !value) return true;
-          return value >= this.startDate;
+          if (!this.startDateTime || !value) return true;
+          return value >= this.startDateTime;
         },
-        message: "End date must be greater than or equal to start date",
+        message: "End date time must be greater than or equal to start date time",
       },
       required: [true, "End Date is required"],
     },
@@ -109,12 +109,12 @@ const EventSchema = new mongoose.Schema(
  * Virtual: Dynamic event status
  */
 EventSchema.virtual("dynamicStatus").get(function () {
-  if (!this.startDate || !this.endDate) return "Unknown";
+  if (!this.startDateTime || !this.endDateTime) return "Unknown";
 
   const now = new Date();
 
-  if (now < this.startDate) return "Upcoming";
-  if (now >= this.startDate && now <= this.endDate) return "Live";
+  if (now < this.startDateTime) return "Upcoming";
+  if (now >= this.startDateTime && now <= this.endDateTime) return "Live";
   return "Past";
 });
 

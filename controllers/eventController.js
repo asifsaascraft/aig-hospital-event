@@ -28,21 +28,20 @@ export const getEvents = async (req, res) => {
 // =======================
 export const getLiveEvents = async (req, res) => {
   try {
-    const events = await Event.find()
-      .populate("organizer department venueName groupName")
-      .sort({ startDate: 1 }); // sort by start date ascending
+    const now = new Date();
 
-    // Filter events where dynamicStatus is "Live" or "Upcomming"
-    const liveEvents = events
-      .map((e) => e.toObject({ virtuals: true }))
-      .filter(
-        (e) => e.dynamicStatus === "Upcoming" || e.dynamicStatus === "Live",
-      );
+    const events = await Event.find({
+      endDateTime: { $gte: now }, // Live + Upcoming
+    })
+      .populate("organizer department venueName groupName")
+      .sort({ startDateTime: 1 });
 
     res.json({
       success: true,
-      data: liveEvents,
+      count: events.length,
+      data: events.map(e => e.toObject({ virtuals: true })),
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -108,28 +107,39 @@ export const createEvent = async (req, res) => {
       brochureUpload: req.files.brochureUpload[0].location,
     };
 
-    //  VALIDATION Dates
-    if (eventData.startDate && isNaN(new Date(eventData.startDate))) {
+    // VALIDATION Dates
+    if (eventData.startDateTime && isNaN(new Date(eventData.startDateTime))) {
       return res.status(400).json({
         success: false,
-        message: "Invalid startDate format",
+        message: "Invalid startDateTime format",
       });
     }
 
-    if (eventData.endDate && isNaN(new Date(eventData.endDate))) {
+    if (eventData.endDateTime && isNaN(new Date(eventData.endDateTime))) {
       return res.status(400).json({
         success: false,
-        message: "Invalid endDate format",
+        message: "Invalid endDateTime format",
       });
     }
 
     // Convert dates
-    if (eventData.startDate) {
-      eventData.startDate = new Date(eventData.startDate);
+    if (eventData.startDateTime) {
+      eventData.startDateTime = new Date(eventData.startDateTime);
     }
 
-    if (eventData.endDate) {
-      eventData.endDate = new Date(eventData.endDate);
+    if (eventData.endDateTime) {
+      eventData.endDateTime = new Date(eventData.endDateTime);
+    }
+
+    if (
+      eventData.startDateTime &&
+      eventData.endDateTime &&
+      eventData.endDateTime < eventData.startDateTime
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "End date time must be greater than start date time",
+      });
     }
 
     const newEvent = await Event.create(eventData);
@@ -187,28 +197,39 @@ export const updateEvent = async (req, res) => {
 
     const updatedData = { ...req.body };
 
-    //  VALIDATION Dates
-    if (updatedData.startDate && isNaN(new Date(updatedData.startDate))) {
+    // VALIDATION Dates
+    if (updatedData.startDateTime && isNaN(new Date(updatedData.startDateTime))) {
       return res.status(400).json({
         success: false,
-        message: "Invalid startDate format",
+        message: "Invalid startDateTime format",
       });
     }
 
-    if (updatedData.endDate && isNaN(new Date(updatedData.endDate))) {
+    if (updatedData.endDateTime && isNaN(new Date(updatedData.endDateTime))) {
       return res.status(400).json({
         success: false,
-        message: "Invalid endDate format",
+        message: "Invalid endDateTime format",
       });
     }
 
-    //  convert Dates
-    if (updatedData.startDate) {
-      updatedData.startDate = new Date(updatedData.startDate);
+    // Convert Dates
+    if (updatedData.startDateTime) {
+      updatedData.startDateTime = new Date(updatedData.startDateTime);
     }
 
-    if (updatedData.endDate) {
-      updatedData.endDate = new Date(updatedData.endDate);
+    if (updatedData.endDateTime) {
+      updatedData.endDateTime = new Date(updatedData.endDateTime);
+    }
+
+    if (
+      updatedData.startDateTime &&
+      updatedData.endDateTime &&
+      updatedData.endDateTime < updatedData.startDateTime
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "End date time must be greater than start date time",
+      });
     }
 
     //  Normalize fields (VERY IMPORTANT)

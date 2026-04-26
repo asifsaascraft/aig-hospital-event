@@ -67,12 +67,17 @@ export const getHotelById = async (req, res) => {
 export const createHotel = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ success: false, message: "Hotel image is required" });
+      return res.status(400).json({
+        success: false,
+        message: "Hotel image is required",
+      });
     }
 
     const {
       hotelName,
       hotelAddress,
+      checkinTime,
+      checkoutTime,
       country,
       state,
       city,
@@ -85,13 +90,30 @@ export const createHotel = async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!hotelName || !hotelAddress || !country || !state || !city || !status || !distanceFromAirport || !distanceFromRailwayStation || !nearestMetroStation) {
-      return res.status(400).json({ success: false, message: "All required fields must be provided" });
+    if (
+      !hotelName ||
+      !hotelAddress ||
+      !checkinTime ||
+      !checkoutTime ||
+      !country ||
+      !state ||
+      !city ||
+      !status ||
+      !distanceFromAirport ||
+      !distanceFromRailwayStation ||
+      !nearestMetroStation
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "All required fields must be provided",
+      });
     }
 
     const newHotel = await Hotel.create({
       hotelName,
       hotelAddress,
+      checkinTime,
+      checkoutTime,
       hotelImage: req.file.location,
       country,
       state,
@@ -104,7 +126,11 @@ export const createHotel = async (req, res) => {
       nearestMetroStation,
     });
 
-    res.status(201).json({ success: true, data: newHotel });
+    res.status(201).json({
+      success: true,
+      message: "Hotel created successfully",
+      data: newHotel,
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -121,6 +147,20 @@ export const updateHotel = async (req, res) => {
   try {
     const { id } = req.params;
     const updatedData = { ...req.body };
+
+    if (updatedData.checkinTime && !updatedData.checkinTime.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Check-in time cannot be empty",
+      });
+    }
+
+    if (updatedData.checkoutTime && !updatedData.checkoutTime.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Check-out time cannot be empty",
+      });
+    }
 
     // If new image uploaded
     if (req.file) {
