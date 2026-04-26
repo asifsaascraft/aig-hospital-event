@@ -209,31 +209,58 @@ export const logoutUser = (req, res) => {
 // =======================
 export const forgotPasswordUser = async (req, res) => {
   try {
-    const { mobile } = req.body;
+    const { email } = req.body;
 
-    if (!mobile) {
-      return res.status(400).json({ message: "Mobile number is required" });
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
     }
 
-    const user = await User.findOne({ mobile, role: "user" });
+    const user = await User.findOne({ email, role: "user" });
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Generate 6 digit OTP
+    // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    user.otp = otp;
+    const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
+
+    user.otp = hashedOtp;
     user.otpExpires = Date.now() + 10 * 60 * 1000; // 10 min
 
     await user.save({ validateBeforeSave: false });
 
-    // Send OTP via SMS
-    await sendOtpSMS(user.mobile, otp, "reset");
+    // =======================
+    // Send SMS
+    // =======================
+    try {
+      if (user.mobile) {
+        await sendOtpSMS(user.mobile, otp, "reset");
+      }
+    } catch (smsError) {
+      console.error("SMS Error:", smsError.message);
+    }
+
+    // =======================
+    // Send Email
+    // =======================
+    try {
+      await sendEmailWithTemplate({
+        to: user.email,
+        name: user.name,
+        templateKey: "2518b.554b0da719bc314.k1.2c1b3910-4140-11f1-8a49-ae9c7e0b6a9f.19dc8a7bf21",
+        mergeInfo: {
+          name: user.name,
+          otp: otp,
+        },
+      });
+    } catch (emailError) {
+      console.error("Email Error:", emailError.message);
+    }
 
     res.status(200).json({
-      message: "OTP sent to your registered mobile number",
+      message: "OTP sent to your email and mobile",
     });
   } catch (error) {
     console.error("Forgot password error:", error);
@@ -246,32 +273,33 @@ export const forgotPasswordUser = async (req, res) => {
 // =======================
 export const resetPasswordUser = async (req, res) => {
   try {
-    const { mobile, otp, newPassword } = req.body;
+    const { email, otp, newPassword } = req.body;
 
-    if (!mobile || !otp || !newPassword) {
+    if (!email || !otp || !newPassword) {
       return res.status(400).json({
-        message: "Mobile, OTP and new password are required",
+        message: "Email, OTP and new password are required",
       });
     }
 
-    const user = await User.findOne({ mobile, role: "user" });
+    const user = await User.findOne({ email, role: "user" });
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check OTP
-    if (user.otp !== otp) {
+    const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
+
+    if (user.otp !== hashedOtp) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
-    // Check expiry
+    // Expiry check
     if (user.otpExpires < Date.now()) {
       return res.status(400).json({ message: "OTP expired" });
     }
 
     // Update password
-    user.password = newPassword; // will hash automatically
+    user.password = newPassword;
 
     // Clear OTP
     user.otp = null;

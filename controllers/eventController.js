@@ -24,7 +24,7 @@ export const getEvents = async (req, res) => {
 };
 
 // =======================
-// Get all live events (public)
+// Get all live and upcomming events (public)
 // =======================
 export const getLiveEvents = async (req, res) => {
   try {
@@ -32,11 +32,11 @@ export const getLiveEvents = async (req, res) => {
       .populate("organizer department venueName groupName")
       .sort({ startDate: 1 }); // sort by start date ascending
 
-    // Filter events where dynamicStatus is "Live" or "Running"
+    // Filter events where dynamicStatus is "Live" or "Upcomming"
     const liveEvents = events
       .map((e) => e.toObject({ virtuals: true }))
       .filter(
-        (e) => e.dynamicStatus === "Live" || e.dynamicStatus === "Running",
+        (e) => e.dynamicStatus === "Upcoming" || e.dynamicStatus === "Live",
       );
 
     res.json({
@@ -108,6 +108,30 @@ export const createEvent = async (req, res) => {
       brochureUpload: req.files.brochureUpload[0].location,
     };
 
+    //  VALIDATION Dates
+    if (eventData.startDate && isNaN(new Date(eventData.startDate))) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid startDate format",
+      });
+    }
+
+    if (eventData.endDate && isNaN(new Date(eventData.endDate))) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid endDate format",
+      });
+    }
+
+    // Convert dates
+    if (eventData.startDate) {
+      eventData.startDate = new Date(eventData.startDate);
+    }
+
+    if (eventData.endDate) {
+      eventData.endDate = new Date(eventData.endDate);
+    }
+
     const newEvent = await Event.create(eventData);
 
     res.status(201).json({
@@ -162,6 +186,30 @@ export const updateEvent = async (req, res) => {
     }
 
     const updatedData = { ...req.body };
+
+    //  VALIDATION Dates
+    if (updatedData.startDate && isNaN(new Date(updatedData.startDate))) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid startDate format",
+      });
+    }
+
+    if (updatedData.endDate && isNaN(new Date(updatedData.endDate))) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid endDate format",
+      });
+    }
+
+    //  convert Dates
+    if (updatedData.startDate) {
+      updatedData.startDate = new Date(updatedData.startDate);
+    }
+
+    if (updatedData.endDate) {
+      updatedData.endDate = new Date(updatedData.endDate);
+    }
 
     //  Normalize fields (VERY IMPORTANT)
     if (Array.isArray(updatedData.brochureUpload)) {

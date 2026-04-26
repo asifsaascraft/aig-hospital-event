@@ -43,7 +43,7 @@ router.post(
 router.post("/forgot-password", forgotPasswordUser);
 
 // Reset Password
-router.post("/reset-password/:token", resetPasswordUser);
+router.post("/reset-password", resetPasswordUser);
 
 // Get User Profile - User only
 router.get(

@@ -1,6 +1,5 @@
 // models/Event.js
 import mongoose from "mongoose";
-import moment from "moment-timezone";
 
 // Schema
 const EventSchema = new mongoose.Schema(
@@ -43,25 +42,21 @@ const EventSchema = new mongoose.Schema(
       required: [true, "Event group is required"],
     },
     startDate: {
-      type: String, // Format: DD/MM/YYYY
+      type: Date,
       required: [true, "Start Date is required"],
     },
     endDate: {
-      type: String, // Format: DD/MM/YYYY
+      type: Date,
+      validate: {
+        validator: function (value) {
+          if (!this.startDate || !value) return true;
+          return value >= this.startDate;
+        },
+        message: "End date must be greater than or equal to start date",
+      },
       required: [true, "End Date is required"],
     },
-    startTime: {
-      type: String, // Format: hh:mm A (e.g., 09:00 AM)
-      required: [true, "Start Time is required"],
-    },
-    endTime: {
-      type: String, // Format: hh:mm A (e.g., 05:00 PM)
-      required: [true, "End Time is required"],
-    },
-    timeZone: {
-      type: String, // e.g., "Asia/Kolkata"
-      required: [true, "Time Zone is required"],
-    },
+
     venueName: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Venue",
@@ -114,29 +109,15 @@ const EventSchema = new mongoose.Schema(
  * Virtual: Dynamic event status
  */
 EventSchema.virtual("dynamicStatus").get(function () {
-  const tz = this.timeZone || "UTC";
+  if (!this.startDate || !this.endDate) return "Unknown";
 
-  const start = moment.tz(
-    `${this.startDate} ${this.startTime}`,
-    "DD/MM/YYYY hh:mm A",
-    tz
-  );
+  const now = new Date();
 
-  const end = moment.tz(
-    `${this.endDate} ${this.endTime}`,
-    "DD/MM/YYYY hh:mm A",
-    tz
-  );
-
-  const now = moment.tz(tz);
-
-  if (now.isBefore(start)) return "Live";
-  if (now.isBetween(start, end, null, "[]")) return "Running";
+  if (now < this.startDate) return "Upcoming";
+  if (now >= this.startDate && now <= this.endDate) return "Live";
   return "Past";
 });
 
 // Avoid model overwrite during hot-reload
 export default mongoose.models.Event ||
   mongoose.model("Event", EventSchema);
-
-
