@@ -374,7 +374,7 @@ export const getAllRegistrationsByEvent = async (req, res) => {
     })
       .populate({
         path: "eventId",
-        select: "eventName startDate endDate",
+        select: "eventName startDateTime endDateTime",
       })
       .sort({ createdAt: -1 });
 

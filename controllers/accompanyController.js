@@ -145,7 +145,7 @@ export const getAllPaidAccompaniesByEvent = async (req, res) => {
     const accompanies = await Accompany.find({ userId, eventId })
       .populate({
         path: "eventId",
-        select: "eventName eventCode startDate endDate",
+        select: "eventName eventCode startDateTime endDateTime",
       })
       .populate({
         path: "eventRegistrationId",

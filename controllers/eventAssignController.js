@@ -11,7 +11,7 @@ export const getEventAssignments = async (req, res) => {
   try {
     const assignments = await EventAssign.find()
       .populate("eventAdminId", "name email mobile")
-      .populate("assignedEvents.eventId", "eventName eventType startDate endDate")
+      .populate("assignedEvents.eventId", "eventName eventType startDateTime endDateTime")
       .sort({ createdAt: -1 });
 
     res.json({ 

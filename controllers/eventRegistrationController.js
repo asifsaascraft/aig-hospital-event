@@ -537,7 +537,7 @@ export const getMyRegistrations = async (req, res) => {
     })
       .populate({
         path: "eventId",
-        select: "eventName shortName startDate endDate dynamicStatus",
+        select: "eventName shortName startDateTime endDateTime dynamicStatus",
       })
       .populate({
         path: "registrationSlabId",
@@ -573,7 +573,7 @@ export const getRegistrationById = async (req, res) => {
     })
       .populate({
         path: "eventId",
-        select: "eventName shortName startDate endDate dynamicStatus",
+        select: "eventName shortName startDateTime endDateTime dynamicStatus",
       })
       .populate({
         path: "registrationSlabId",

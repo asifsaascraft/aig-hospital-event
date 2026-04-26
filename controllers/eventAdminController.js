@@ -189,8 +189,7 @@ export const myEvents = async (req, res) => {
       .populate({
         path: "assignedEvents.eventId",
         select: `
-          eventName eventImage startDate endDate startTime endTime
-          country state city eventType eventCategory createdAt updatedAt
+          eventName eventImage startDateTime endDateTime country state city eventType eventCategory createdAt updatedAt
         `,
         populate: [
           {
@@ -236,10 +235,8 @@ export const myEvents = async (req, res) => {
           venueName: {
             venueName: event.venueName?.venueName,
           },
-          startDate: event.startDate,
-          endDate: event.endDate,
-          startTime: event.startTime,
-          endTime: event.endTime,
+          startDateTime: event.startDateTime,
+          endDateTime: event.endDateTime,
           country: event.country,
           state: event.state,
           city: event.city,

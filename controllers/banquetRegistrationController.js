@@ -105,7 +105,7 @@ export const getAllPaidBanquetsByEvent = async (req, res) => {
     const banquetRegs = await BanquetRegistration.find({ userId, eventId })
       .populate({
         path: "eventId",
-        select: "eventName eventCode startDate endDate",
+        select: "eventName eventCode startDateTime endDateTime",
       })
       .populate({
         path: "eventRegistrationId",

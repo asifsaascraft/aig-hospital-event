@@ -99,7 +99,7 @@ export const getAllExpensesByEvent = async (req, res) => {
     const { eventId } = req.params;
 
     const expenses = await AllExpense.find({ eventId })
-      .populate("eventId", "eventName startDate startTime endDate endTime")
+      .populate("eventId", "eventName startDateTime endDateTime")
       .populate("expenseCategoryId", "expenseCategoryName")
       .sort({ createdAt: -1 })
       .lean();
