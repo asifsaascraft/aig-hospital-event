@@ -134,40 +134,6 @@ export const registerForEvent = async (req, res) => {
     }
 
     // ===============================
-    // SLAB DATE VALIDATION
-    // ===============================
-    const today = moment().startOf("day");
-
-    const slabStart = moment(slab.startDate, "DD/MM/YYYY", true);
-    const slabEnd = moment(slab.endDate, "DD/MM/YYYY", true);
-
-    // 1. Check valid format
-    if (!slabStart.isValid() || !slabEnd.isValid()) {
-      return res.status(400).json({
-        message: "Invalid slab date format. Expected DD/MM/YYYY",
-      });
-    }
-
-    // 2. Check logical order
-    if (slabStart.isAfter(slabEnd)) {
-      return res.status(400).json({
-        message: "Slab startDate cannot be after endDate",
-      });
-    }
-
-    // 3. Check current date within slab range
-    if (today.isBefore(slabStart)) {
-      return res.status(400).json({
-        message: `Registration for this slab starts on ${slab.startDate}`,
-      });
-    }
-
-    if (today.isAfter(slabEnd)) {
-      return res.status(400).json({
-        message: `Registration for this slab has ended on ${slab.endDate}`,
-      });
-    }
-    // ===============================
     // Suspended Check
     // ===============================
     const suspendedReg = await EventRegistration.findOne({
@@ -759,41 +725,6 @@ export const registerForEventByEventAdmin = async (req, res) => {
       return res.status(400).json({
         message: "This slab does not belong to the selected event",
       });
-
-    // ===============================
-    // SLAB DATE VALIDATION
-    // ===============================
-    const today = moment().startOf("day");
-
-    const slabStart = moment(slab.startDate, "DD/MM/YYYY", true);
-    const slabEnd = moment(slab.endDate, "DD/MM/YYYY", true);
-
-    // 1. Check valid format
-    if (!slabStart.isValid() || !slabEnd.isValid()) {
-      return res.status(400).json({
-        message: "Invalid slab date format. Expected DD/MM/YYYY",
-      });
-    }
-
-    // 2. Check logical order
-    if (slabStart.isAfter(slabEnd)) {
-      return res.status(400).json({
-        message: "Slab startDate cannot be after endDate",
-      });
-    }
-
-    // 3. Check current date within slab range
-    if (today.isBefore(slabStart)) {
-      return res.status(400).json({
-        message: `Registration for this slab starts on ${slab.startDate}`,
-      });
-    }
-
-    if (today.isAfter(slabEnd)) {
-      return res.status(400).json({
-        message: `Registration for this slab has ended on ${slab.endDate}`,
-      });
-    }
 
     // Suspended?
     const suspendedReg = await EventRegistration.findOne({
