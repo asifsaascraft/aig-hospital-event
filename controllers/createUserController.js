@@ -355,7 +355,7 @@ export const checkUserEmailExists = async (req, res) => {
     }
 
     const user = await User.findOne({ email, role: "user" }).select(
-      "-password -plainPassword -passwordResetToken -passwordResetExpires",
+      "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires",
     );
 
     if (user) {

@@ -29,28 +29,42 @@ export const checkEmailExists = async (req, res) => {
     // Normalize email
     const normalizedEmail = email.trim().toLowerCase();
 
-    //  Check existing registration WITH isPaid = true
-    const existing = await EventRegistration.findOne({
+    // ===============================
+    // 1️ CHECK EVENT REGISTRATION (PAID)
+    // ===============================
+    const existingRegistration = await EventRegistration.findOne({
       eventId,
       email: normalizedEmail,
-      isPaid: true, 
+      isPaid: true,
       isSuspended: false,
-    }).select("userId name email mobile gender designation affiliation regNum");
+    });
 
-    //  IF EXISTS (AND PAID)
-    if (existing) {
+    if (existingRegistration) {
       return res.status(200).json({
-        success: true,
-        message: "Email already registered and paid for this event",
-        data: existing,
+        success: false,
+        message: "This email is already registered for this event",
       });
     }
 
-    //  NOT FOUND OR NOT PAID
+    // ===============================
+    // 2️ CHECK USER MODEL
+    // ===============================
+    const user = await User.findOne({
+      email: normalizedEmail,
+      role: "user"
+    }).select(
+      "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires"
+    );
+
+    // ===============================
+    // 3️ RESPONSE
+    // ===============================
     return res.status(200).json({
-      success: false,
-      message: "Email not registered",
-      data: null,
+      success: true,
+      message: user
+        ? "User exist but not registered for this event"
+        : "User not found",
+      data: user || null,
     });
 
   } catch (error) {

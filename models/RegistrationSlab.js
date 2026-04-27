@@ -68,15 +68,22 @@ const RegistrationSlabSchema = new mongoose.Schema(
       min: [0, "Accompany amount must be a positive number"],
     },
 
-    startDate: {
-      type: String, // Format: DD/MM/YYYY
-      required: [true, "Start Date is required"],
+    startDateTime: {
+      type: Date,
+      required: [true, "Start Date time is required"],
     },
-    
-    endDate: {
-      type: String, // Format: DD/MM/YYYY
+    endDateTime: {
+      type: Date,
+      validate: {
+        validator: function (value) {
+          if (!this.startDateTime || !value) return true;
+          return value >= this.startDateTime;
+        },
+        message: "End date time must be greater than or equal to start date time",
+      },
       required: [true, "End Date is required"],
     },
+
 
     // Additional Information Switch
     needAdditionalInfo: {
