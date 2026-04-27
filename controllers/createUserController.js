@@ -1,10 +1,12 @@
 import User from "../models/User.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
+import { generateStrongPassword } from "../utils/generatePassword.js";
+
 
 // =======================
-// (EventAdmin or Sponsor Authoriza): Create User (signup)
+// (EventAdmin Authorize): Create User (signup)
 // =======================
-export const registerUser = async (req, res) => {
+export const registerUserByEventAdmin = async (req, res) => {
   try {
     const {
       name,
@@ -37,8 +39,10 @@ export const registerUser = async (req, res) => {
       });
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     // Check email
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -61,15 +65,9 @@ export const registerUser = async (req, res) => {
     let createdById = null;
 
     // EVENT ADMIN
-    if (req.authType === "user" && req.user?.role === "eventAdmin") {
+    if (req.user?.role === "eventAdmin") {
       createdByValue = "eventAdmin";
       createdById = req.user._id;
-    }
-
-    // SPONSOR
-    if (req.authType === "sponsor") {
-      createdByValue = "sponsor";
-      createdById = req.sponsor._id;
     }
 
     // =======================
@@ -77,7 +75,7 @@ export const registerUser = async (req, res) => {
     // =======================
     const user = await User.create({
       name,
-      email,
+      email: normalizedEmail,
       password,
       termAndCondition,
       prefix,
@@ -341,7 +339,7 @@ export const deleteUser = async (req, res) => {
 };
 
 // =======================
-// (EventAdmin or Sponsor Authoriza): Check Email Exists (Role: user)
+// (EventAdmin Authorize): Check Email Exists (Role: user)
 // =======================
 export const checkUserEmailExists = async (req, res) => {
   try {
@@ -354,7 +352,13 @@ export const checkUserEmailExists = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ email, role: "user" }).select(
+    const normalizedEmail = email.trim().toLowerCase();
+
+
+    const user = await User.findOne({
+      email: normalizedEmail,
+      role: "user"
+    }).select(
       "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires",
     );
 
@@ -378,6 +382,144 @@ export const checkUserEmailExists = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Internal Server Error",
+    });
+  }
+};
+
+// =======================
+// (Sponsor Only): Create User (signup)
+// =======================
+export const registerUserBySponsor = async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      prefix,
+      designation,
+      affiliation,
+      mobile,
+      mciRegistered,
+      mciNumber,
+      mciState,
+      department,
+      gender,
+      address,
+      state,
+      city,
+      pincode,
+      country,
+    } = req.body;
+
+    // =======================
+    // Validation
+    // =======================
+    if (!name || !email) {
+      return res.status(400).json({
+        success: false,
+        message: "Name and email are required",
+      });
+    }
+
+    // Check email
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already registered",
+      });
+    }
+
+    // Check mobile
+    if (mobile) {
+      const existingMobile = await User.findOne({ mobile });
+      if (existingMobile) {
+        return res.status(400).json({
+          success: false,
+          message: "Mobile already exists",
+        });
+      }
+    }
+
+    // Generate password
+    const plainPassword = generateStrongPassword();
+
+    if (!req.sponsor) {
+      return res.status(401).json({
+        success: false,
+        message: "Sponsor not authorized",
+      });
+    }
+
+    // created By SPONSOR
+    let createdByValue = "sponsor";
+    let createdById = req.sponsor._id;
+
+
+    // =======================
+    // Create User
+    // =======================
+    const user = await User.create({
+      name,
+      email: normalizedEmail,
+      password: plainPassword,
+      termAndCondition: true,
+      prefix,
+      designation,
+      affiliation,
+      mobile,
+      mciRegistered,
+      mciNumber,
+      mciState,
+      department,
+      gender,
+      address,
+      state,
+      city,
+      pincode,
+      country,
+      role: "user",
+      status: "Active",
+      createdBy: createdByValue,
+      createdById: createdById,
+    });
+
+    // =======================
+    // Send Email
+    // =======================
+    try {
+      await sendEmailWithTemplate({
+        to: user.email,
+        name: user.name,
+        templateKey:
+          "2518b.554b0da719bc314.k1.4b76afb1-a361-11f0-bc12-525400c92439.199be08ce2b",
+        mergeInfo: {
+          name: user.name,
+          email: user.email,
+          mobile: user.mobile,
+          affiliation: user.affiliation || "N/A",
+        },
+      });
+    } catch (err) {
+      console.error("Email error:", err);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "User created successfully by Sponsor",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("Create user error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 };

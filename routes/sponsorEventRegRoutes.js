@@ -8,7 +8,6 @@ import {
 
  } from "../controllers/sponsorEventRegController.js";
 import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
-import { eventUpload } from "../middlewares/eventUploadMiddleware.js";
 
 const router = express.Router();
 
@@ -25,13 +24,12 @@ router.post(
 
 /*
 ==============================================================
-  2. ADD SPONSOR EVENT REGISTRATION (Protected)
+  2. ADD EVENT REGISTRATION By SPONSOR (Protected)
 ==============================================================
 */
 router.post(
   "/sponsor/event/:eventId/register",
   protectSponsor,
-  eventUpload(),
   sponsorRegisterForEvent
 );
 

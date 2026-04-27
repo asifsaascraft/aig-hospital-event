@@ -1,7 +1,6 @@
 import EventRegistration from "../models/EventRegistration.js";
 import Event from "../models/Event.js";
 import SponsorRegistrationQuota from "../models/SponsorRegistrationQuota.js";
-import DynamicRegForm from "../models/DynamicRegForm.js";
 import User from "../models/User.js";
 
 // =====================================
@@ -214,94 +213,6 @@ export const sponsorRegisterForEvent = async (req, res) => {
     }
 
     // ===============================
-    // FILE MAP (IMPORTANT)
-    // ===============================
-    const fileMap = {};
-    (req.files || []).forEach((file) => {
-      fileMap[file.fieldname] = fileMap[file.fieldname] || [];
-      fileMap[file.fieldname].push(file);
-    });
-
-    // ===============================
-    // DYNAMIC FORM VALIDATION
-    // ===============================
-    const dynamicForm = await DynamicRegForm.findOne({ eventId });
-
-    let validatedDynamicFormAnswers = [];
-
-    if (dynamicForm && dynamicForm.fields.length > 0) {
-      let parsedDynamic = [];
-
-      if (typeof req.body.dynamicFormAnswers === "string") {
-        try {
-          parsedDynamic = JSON.parse(req.body.dynamicFormAnswers);
-        } catch {
-          return res.status(400).json({
-            message: "Invalid JSON format for dynamicFormAnswers",
-          });
-        }
-      } else if (Array.isArray(req.body.dynamicFormAnswers)) {
-        parsedDynamic = req.body.dynamicFormAnswers;
-      }
-
-      for (const field of dynamicForm.fields) {
-        const answered = parsedDynamic.find(
-          (a) => String(a.id) === String(field.id),
-        );
-
-        const fileKey = `file_dyn_${field.id}`;
-        const fileUpload = fileMap?.[fileKey]?.[0];
-
-        // FILE FIELD
-        if (field.type === "input" && field.inputTypes === "file") {
-          if (field.required && !fileUpload) {
-            return res.status(400).json({
-              message: `File required: ${field.label}`,
-            });
-          }
-
-          if (fileUpload && field.maxFileSize) {
-            const sizeMB = fileUpload.size / (1024 * 1024);
-            if (sizeMB > field.maxFileSize) {
-              return res.status(400).json({
-                message: `${field.label} must be < ${field.maxFileSize} MB`,
-              });
-            }
-          }
-
-          validatedDynamicFormAnswers.push({
-            id: field.id,
-            label: field.label,
-            type: field.type,
-            required: field.required,
-            value: null,
-            fileUrl: fileUpload ? fileUpload.location : null,
-          });
-
-          continue;
-        }
-
-        // NORMAL FIELD
-        const value = answered?.value;
-
-        if (field.required && (value === undefined || value === "")) {
-          return res.status(400).json({
-            message: `Value required: ${field.label}`,
-          });
-        }
-
-        validatedDynamicFormAnswers.push({
-          id: field.id,
-          label: field.label,
-          type: field.type,
-          required: field.required,
-          value: value ?? null,
-          fileUrl: null,
-        });
-      }
-    }
-
-    // ===============================
     // Generate Reg Number
     // ===============================
     const last = await EventRegistration.findOne({
@@ -339,7 +250,6 @@ export const sponsorRegisterForEvent = async (req, res) => {
       state,
       address,
       pincode,
-      dynamicFormAnswers: validatedDynamicFormAnswers,
       isPaid: true,
       regNumGenerated: true,
       regNum: generatedRegNum,

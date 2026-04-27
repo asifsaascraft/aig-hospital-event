@@ -1,31 +1,36 @@
 import express from "express";
 import {
-  registerUser,
+  registerUserByEventAdmin,
   getAllUsers,
   getAllUsersCreatedByEventAdmin,
   getAllUsersCreatedBySponsor,
   updateUser,
   deleteUser,
   checkUserEmailExists,
+  registerUserBySponsor,
 } from "../controllers/createUserController.js";
 import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
-import { protectUniversal } from "../middlewares/protectUniversal.js";
-import { authorizeUniversal } from "../middlewares/authorizeUniversal.js";
 
 const router = express.Router();
 
 // =======================
-// (EventAdmin or Sponsor Authoriza): Create User (signup)
+// (EventAdmin Authorize): Create User (signup)
 // =======================
 router.post(
   "/create-user",
-  protectUniversal,
-  authorizeUniversal({
-    allowUserRoles: ["eventAdmin"],
-    allowSponsor: true,
-  }),
-  registerUser,
+  protect,
+  authorizeRoles("eventAdmin"),
+  registerUserByEventAdmin,
+);
+
+// =======================
+// (Sponsor Authorize): Create User (signup)
+// =======================
+router.post(
+  "/sponsor/create-user",
+  protectSponsor,
+  registerUserBySponsor,
 );
 
 // =======================
@@ -53,7 +58,7 @@ router.get(
 // =======================
 router.get(
   "/sponsor/users",
-  protectSponsor, 
+  protectSponsor,
   getAllUsersCreatedBySponsor,
 );
 
@@ -78,15 +83,12 @@ router.delete(
 );
 
 // =======================
-// (EventAdmin or Sponsor Authoriza): Check Email Exists (Role: user)
+// (EventAdmin Authorize): Check Email Exists (Role: user)
 // =======================
 router.post(
   "/check-user-email",
-  protectUniversal,
-  authorizeUniversal({
-    allowUserRoles: ["eventAdmin"],
-    allowSponsor: true,
-  }),
+  protect,
+  authorizeRoles("eventAdmin"),
   checkUserEmailExists
 );
 
