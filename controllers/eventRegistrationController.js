@@ -449,11 +449,12 @@ export const registerForEvent = async (req, res) => {
             eventName: event.eventName,
             registrationNumber: registration.regNum,
             registrationSlabName: slabName,
-            startDate: event.startDate
-              ? moment(event.startDate, "DD/MM/YYYY").format("DD MMM YYYY")
+            startDate: event.startDateTime
+              ? moment(event.startDateTime).format("DD MMM YYYY, hh:mm A")
               : "N/A",
-            endDate: event.endDate
-              ? moment(event.endDate, "DD/MM/YYYY").format("DD MMM YYYY")
+
+            endDate: event.endDateTime
+              ? moment(event.endDateTime).format("DD MMM YYYY, hh:mm A")
               : "N/A",
             designation: registration.designation || "N/A",
             affiliation: registration.affiliation || "N/A",
@@ -1092,11 +1093,12 @@ export const registerForEventByEventAdmin = async (req, res) => {
         mergeInfo: {
           eventName: event.eventName,
           registrationNumber: generatedRegNum,
-          startDate: event.startDate
-            ? moment(event.startDate, "DD/MM/YYYY").format("DD MMM YYYY")
+          startDate: event.startDateTime
+            ? moment(event.startDateTime).format("DD MMM YYYY, hh:mm A")
             : "N/A",
-          endDate: event.endDate
-            ? moment(event.endDate, "DD/MM/YYYY").format("DD MMM YYYY")
+
+          endDate: event.endDateTime
+            ? moment(event.endDateTime).format("DD MMM YYYY, hh:mm A")
             : "N/A",
           prefix,
           name,

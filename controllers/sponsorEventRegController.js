@@ -2,6 +2,8 @@ import EventRegistration from "../models/EventRegistration.js";
 import Event from "../models/Event.js";
 import SponsorRegistrationQuota from "../models/SponsorRegistrationQuota.js";
 import User from "../models/User.js";
+import sendEmailWithTemplate from "../utils/sendEmail.js";
+import moment from "moment";
 
 // =====================================
 //  1. CHECK EMAIL EXISTS FOR EVENT REGISTRATION (Protected)
@@ -255,6 +257,48 @@ export const sponsorRegisterForEvent = async (req, res) => {
       regNum: generatedRegNum,
       registrationType: "Sponsor Registration",
     });
+
+    // -----------------------------
+        // SAFE FALLBACKS (IMPORTANT)
+        // -----------------------------
+        const finalEmail = email || targetUser.email;
+        const finalName = name || targetUser.name;
+    
+        // ----------------------------------------------------
+        //  Send Email Notification to User
+        // ----------------------------------------------------
+        try {
+          await sendEmailWithTemplate({
+            to: finalEmail,
+            name: finalName,
+            templateKey: "2518b.554b0da719bc314.k1.84e00a60-c384-11f0-807d-8e9a6c33ddc2.19a90a6be06",
+            mergeInfo: {
+              eventName: event.eventName,
+              registrationNumber: generatedRegNum,
+              startDate: event.startDateTime
+                ? moment(event.startDateTime).format("DD MMM YYYY, hh:mm A")
+                : "N/A",
+    
+              endDate: event.endDateTime
+                ? moment(event.endDateTime).format("DD MMM YYYY, hh:mm A")
+                : "N/A",
+              prefix,
+              name,
+              email,
+              mobile,
+              designation,
+              affiliation,
+              country,
+              state,
+              city,
+              address,
+              pincode,
+            },
+          });
+        } catch (emailError) {
+          console.error("Email sending failed:", emailError);
+        }
+    
 
     return res.status(201).json({
       success: true,
