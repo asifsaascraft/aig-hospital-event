@@ -8,26 +8,25 @@ import Sponsor from "../models/Sponsor.js";
 export const createIncomeRecord = async (req, res) => {
   try {
     const { eventId } = req.params;
+    const { sponsorId, amountReceived, utrNumber, dateTime } = req.body;
 
-    const { sponsorId, amountReceived, utrNumber, date } = req.body;
+    // Validate required
+    if (!sponsorId || !amountReceived || !utrNumber || !dateTime) {
+      return res.status(400).json({
+        message: "sponsorId, amountReceived, utrNumber and dateTime are required",
+      });
+    }
 
-    //  Check Event Exists
+    // Check Event
     const event = await Event.findById(eventId);
     if (!event) {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    //  Check Sponsor Exists
+    // Check Sponsor
     const sponsor = await Sponsor.findById(sponsorId);
     if (!sponsor) {
       return res.status(404).json({ message: "Sponsor not found" });
-    }
-
-    //  Manual validation
-    if (!sponsorId || !amountReceived || !utrNumber || !date) {
-      return res.status(400).json({
-        message: "All required fields must be provided",
-      });
     }
 
     const income = await IncomeRecord.create({
@@ -35,7 +34,7 @@ export const createIncomeRecord = async (req, res) => {
       sponsorId,
       amountReceived,
       utrNumber,
-      date,
+      dateTime: new Date(dateTime), // ensure Date format
     });
 
     return res.status(201).json({
@@ -43,6 +42,7 @@ export const createIncomeRecord = async (req, res) => {
       message: "Income record created successfully",
       data: income,
     });
+
   } catch (error) {
     console.error("Create Income error:", error);
 
@@ -86,6 +86,7 @@ export const getIncomeRecordsByEvent = async (req, res) => {
 export const updateIncomeRecord = async (req, res) => {
   try {
     const { id } = req.params;
+    const { sponsorId, amountReceived, utrNumber, dateTime } = req.body;
 
     const income = await IncomeRecord.findById(id);
     if (!income) {
@@ -94,9 +95,6 @@ export const updateIncomeRecord = async (req, res) => {
       });
     }
 
-    const { sponsorId, amountReceived, utrNumber, date } = req.body;
-
-    //  Validate sponsor if updating
     if (sponsorId) {
       const sponsor = await Sponsor.findById(sponsorId);
       if (!sponsor) {
@@ -105,9 +103,9 @@ export const updateIncomeRecord = async (req, res) => {
       income.sponsorId = sponsorId;
     }
 
-    if (amountReceived) income.amountReceived = amountReceived;
+    if (amountReceived !== undefined) income.amountReceived = amountReceived;
     if (utrNumber) income.utrNumber = utrNumber;
-    if (date) income.date = date;
+    if (dateTime) income.dateTime = new Date(dateTime);
 
     await income.save();
 
@@ -116,6 +114,7 @@ export const updateIncomeRecord = async (req, res) => {
       message: "Income record updated successfully",
       data: income,
     });
+
   } catch (error) {
     console.error("Update Income error:", error);
 

@@ -14,7 +14,7 @@ export const createExpenseRecord = async (req, res) => {
       contactPersonMobile,
       contactPersonEmail,
       invoiceNumber,
-      date,
+      dateTime,
       amount,
     } = req.body;
 
@@ -25,7 +25,7 @@ export const createExpenseRecord = async (req, res) => {
     }
 
     // Manual Validations (extra safety)
-    if (!companyName || !contactPersonName || !invoiceNumber || !date || !amount) {
+    if (!companyName || !contactPersonName || !invoiceNumber || !dateTime || !amount) {
       return res.status(400).json({
         message: "All required fields must be provided",
       });
@@ -52,7 +52,7 @@ export const createExpenseRecord = async (req, res) => {
       contactPersonMobile,
       contactPersonEmail,
       invoiceNumber,
-      date,
+      dateTime: new Date(dateTime), // ensure date format
       amount,
     });
 
@@ -129,7 +129,7 @@ export const updateExpenseRecord = async (req, res) => {
       contactPersonMobile,
       contactPersonEmail,
       invoiceNumber,
-      date,
+      dateTime,
       amount,
     } = req.body;
 
@@ -151,7 +151,7 @@ export const updateExpenseRecord = async (req, res) => {
     if (contactPersonMobile) expense.contactPersonMobile = contactPersonMobile;
     if (contactPersonEmail) expense.contactPersonEmail = contactPersonEmail;
     if (invoiceNumber) expense.invoiceNumber = invoiceNumber;
-    if (date) expense.date = date;
+    if (dateTime) expense.dateTime = new Date(dateTime);
     if (amount) expense.amount = amount;
 
     await expense.save();

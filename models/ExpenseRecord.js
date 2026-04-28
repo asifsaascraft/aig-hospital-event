@@ -32,14 +32,14 @@ const ExpenseRecordSchema = new mongoose.Schema(
       match: [/^\S+@\S+\.\S+$/, "Invalid email format"],
       unique: true,
     },
-    invoiceNumber : {
+    invoiceNumber: {
       type: String,
       required: [true, "Invoice is required"],
       trim: true,
     },
-    date: {
-      type: String, // Format: DD/MM/YYYY
-      required: [true, "Date is required"],
+    dateTime: {
+      type: Date,
+      required: [true, "Date time is required"],
     },
     amount: {
       type: Number,
