@@ -5,6 +5,7 @@ import DynamicRegForm from "../models/DynamicRegForm.js";
 import User from "../models/User.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
 import moment from "moment";
+import { getIndianFormattedDate } from "../utils/dateUtils.js";
 
 /* 
 ========================================================
@@ -155,17 +156,17 @@ export const registerForEvent = async (req, res) => {
       });
     }
 
-    // Not started yet
+
+
     if (now.isBefore(slabStart)) {
       return res.status(400).json({
-        message: `Registration will start on ${slabStart.format("DD MMM YYYY, hh:mm A")}`,
+        message: `Registration will start on ${getIndianFormattedDate(slab.startDateTime)}`,
       });
     }
 
-    // Already expired
     if (now.isAfter(slabEnd)) {
       return res.status(400).json({
-        message: `Registration ended on ${slabEnd.format("DD MMM YYYY, hh:mm A")}`,
+        message: `Registration ended on ${getIndianFormattedDate(slab.endDateTime)}`,
       });
     }
 
@@ -784,13 +785,13 @@ export const registerForEventByEventAdmin = async (req, res) => {
 
     if (now.isBefore(slabStart)) {
       return res.status(400).json({
-        message: `Registration will start on ${slabStart.format("DD MMM YYYY, hh:mm A")}`,
+        message: `Registration will start on ${getIndianFormattedDate(slab.startDateTime)}`,
       });
     }
 
     if (now.isAfter(slabEnd)) {
       return res.status(400).json({
-        message: `Registration ended on ${slabEnd.format("DD MMM YYYY, hh:mm A")}`,
+        message: `Registration ended on ${getIndianFormattedDate(slab.endDateTime)}`,
       });
     }
 
