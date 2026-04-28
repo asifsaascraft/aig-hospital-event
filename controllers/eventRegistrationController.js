@@ -134,6 +134,42 @@ export const registerForEvent = async (req, res) => {
     }
 
     // ===============================
+    // Validate Slab DateTime
+    // ===============================
+    const now = moment();
+
+    const slabStart = moment(slab.startDateTime);
+    const slabEnd = moment(slab.endDateTime);
+
+    // Safety check
+    if (!slabStart.isValid() || !slabEnd.isValid()) {
+      return res.status(400).json({
+        message: "Invalid slab dateTime configuration",
+      });
+    }
+
+    // Logical check
+    if (slabEnd.isBefore(slabStart)) {
+      return res.status(400).json({
+        message: "Slab endDateTime must be greater than startDateTime",
+      });
+    }
+
+    // Not started yet
+    if (now.isBefore(slabStart)) {
+      return res.status(400).json({
+        message: `Registration will start on ${slabStart.format("DD MMM YYYY, hh:mm A")}`,
+      });
+    }
+
+    // Already expired
+    if (now.isAfter(slabEnd)) {
+      return res.status(400).json({
+        message: `Registration ended on ${slabEnd.format("DD MMM YYYY, hh:mm A")}`,
+      });
+    }
+
+    // ===============================
     // Suspended Check
     // ===============================
     const suspendedReg = await EventRegistration.findOne({
@@ -725,6 +761,39 @@ export const registerForEventByEventAdmin = async (req, res) => {
       return res.status(400).json({
         message: "This slab does not belong to the selected event",
       });
+
+    // ===============================
+    // Validate Slab DateTime
+    // ===============================
+    const now = moment();
+
+    const slabStart = moment(slab.startDateTime);
+    const slabEnd = moment(slab.endDateTime);
+
+    if (!slabStart.isValid() || !slabEnd.isValid()) {
+      return res.status(400).json({
+        message: "Invalid slab dateTime configuration",
+      });
+    }
+
+    if (slabEnd.isBefore(slabStart)) {
+      return res.status(400).json({
+        message: "Slab endDateTime must be greater than startDateTime",
+      });
+    }
+
+    if (now.isBefore(slabStart)) {
+      return res.status(400).json({
+        message: `Registration will start on ${slabStart.format("DD MMM YYYY, hh:mm A")}`,
+      });
+    }
+
+    if (now.isAfter(slabEnd)) {
+      return res.status(400).json({
+        message: `Registration ended on ${slabEnd.format("DD MMM YYYY, hh:mm A")}`,
+      });
+    }
+
 
     // Suspended?
     const suspendedReg = await EventRegistration.findOne({
