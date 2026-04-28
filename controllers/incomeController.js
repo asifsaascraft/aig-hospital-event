@@ -71,6 +71,7 @@ export const getIncomeByEvent = async (req, res) => {
     const { eventId } = req.params;
 
     const incomes = await Income.find({ eventId })
+      .populate("eventId", "eventName startDateTime endDateTime")
       .populate("sponsorId", "sponsorName contactPersonName email mobile")
       .sort({ createdAt: -1 });
 

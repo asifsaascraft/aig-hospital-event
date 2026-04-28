@@ -68,9 +68,9 @@ export const getCardProfilesByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
 
-    const profiles = await CardProfile.find({ eventId })
-      .populate("eventId", "eventName startDateTime endDateTime")
-      .sort({ createdAt: -1 });
+    const profiles = await CardProfile.find({ eventId }).sort({
+      createdAt: -1,
+    });
 
     res.status(200).json({
       success: true,
@@ -94,9 +94,7 @@ export const getActiveCardProfilesByEvent = async (req, res) => {
     const profiles = await CardProfile.find({
       eventId,
       status: "Active",
-    })
-      .populate("eventId", "eventName startDateTime endDateTime")
-      .sort({ createdAt: -1 });
+    }).sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
