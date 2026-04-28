@@ -14,7 +14,7 @@ const router = express.Router();
 // Get All Income Records by Event (Public)
 // =======================
 router.get(
-  "/events/:eventId/income",
+  "/events/:eventId/income-record",
   getIncomeRecordsByEvent
 );
 
@@ -22,7 +22,7 @@ router.get(
 // EventAdmin: Create Income Record
 // =======================
 router.post(
-  "/event-admin/events/:eventId/income",
+  "/event-admin/events/:eventId/income-record",
   protect,
   authorizeRoles("eventAdmin"),
   createIncomeRecord
@@ -32,7 +32,7 @@ router.post(
 // EventAdmin: Update Income Record
 // =======================
 router.put(
-  "/event-admin/income/:id",
+  "/event-admin/income-record/:id",
   protect,
   authorizeRoles("eventAdmin"),
   updateIncomeRecord
@@ -42,7 +42,7 @@ router.put(
 // EventAdmin: Delete Income Record
 // =======================
 router.delete(
-  "/event-admin/income/:id",
+  "/event-admin/income-record/:id",
   protect,
   authorizeRoles("eventAdmin"),
   deleteIncomeRecord

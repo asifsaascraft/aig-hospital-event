@@ -73,6 +73,8 @@ import expenseHeadRoutes from "./routes/expenseHeadRoutes.js";
 import expenseRecordRoutes from "./routes/expenseRecordRoutes.js";
 import allExpenseRoutes from "./routes/allExpenseRoutes.js";
 import incomeRecordRoutes from "./routes/incomeRecordRoutes.js";
+import incomeRoutes from "./routes/incomeRoutes.js";
+
 
 await connectDB();
 
@@ -181,6 +183,7 @@ app.use("/api", expenseHeadRoutes);
 app.use("/api", expenseRecordRoutes);
 app.use("/api", allExpenseRoutes);
 app.use("/api", incomeRecordRoutes);
+app.use("/api", incomeRoutes);
 
 
 // =======================
