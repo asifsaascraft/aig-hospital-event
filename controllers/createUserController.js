@@ -11,8 +11,6 @@ export const registerUserByEventAdmin = async (req, res) => {
     const {
       name,
       email,
-      password,
-      termAndCondition,
       prefix,
       designation,
       affiliation,
@@ -32,10 +30,10 @@ export const registerUserByEventAdmin = async (req, res) => {
     // =======================
     // Validation
     // =======================
-    if (!name || !email || !password) {
+    if (!name || !email) {
       return res.status(400).json({
         success: false,
-        message: "Name, Email and Password are required",
+        message: "Name, and email are required",
       });
     }
 
@@ -60,11 +58,15 @@ export const registerUserByEventAdmin = async (req, res) => {
         });
       }
     }
+    // Generate password
+    const plainPassword = generateStrongPassword();
 
-    let createdByValue = "self";
-    let createdById = null;
 
-    // EVENT ADMIN
+
+
+    let createdByValue;
+    let createdById;
+
     if (req.user?.role === "eventAdmin") {
       createdByValue = "eventAdmin";
       createdById = req.user._id;
@@ -76,8 +78,8 @@ export const registerUserByEventAdmin = async (req, res) => {
     const user = await User.create({
       name,
       email: normalizedEmail,
-      password,
-      termAndCondition,
+      password: plainPassword,
+      termAndCondition: true,
       prefix,
       designation,
       affiliation,

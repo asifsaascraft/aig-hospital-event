@@ -8,6 +8,10 @@ import {
   getAllRegistrationsByEvent,
   updateRegistrationSuspension,
   registerForEventByEventAdmin,
+  checkEmailRegister,
+  bulkRegisterForEventByEventAdmin,
+  getMyEventAdminRegistrations,
+  updateEventRegistration,
 } from "../controllers/eventRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 import { eventUpload } from "../middlewares/eventUploadMiddleware.js";
@@ -72,6 +76,46 @@ router.post(
   authorizeRoles("eventAdmin"),
   eventUpload(),
   registerForEventByEventAdmin
+);
+
+// =====================================
+//  8. CHECK EMAIL EXISTS FOR EVENT REGISTRATION (Protected) (for bulk registration)
+// =====================================
+router.post(
+  "/event-admin/events/:eventId/check-email-exist",
+  protect,
+  authorizeRoles("eventAdmin"),
+  checkEmailRegister
+);
+
+// ======================================
+//  9. ADD EVENT REGISTRATION (Protected) (Bulk registration)
+// ======================================
+router.post(
+  "/event-admin/events/:eventId/bulk-register",
+  protect,
+  authorizeRoles("eventAdmin"),
+  bulkRegisterForEventByEventAdmin
+);
+
+// =====================================
+//  10. Get Registrations (Only registrations created by logged-in eventAdmin)
+// =====================================
+router.get(
+  "/event-admin/events/:eventId/my-registrations",
+  protect,
+  authorizeRoles("eventAdmin"),
+  getMyEventAdminRegistrations
+);
+
+// =====================================
+//  11. Update Registration (Only registrations created by logged-in eventAdmin)
+// =====================================
+router.put(
+  "/event-admin/registrations/:registrationId",
+  protect,
+  authorizeRoles("eventAdmin"),
+  updateEventRegistration
 );
 
 export default router;

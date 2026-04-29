@@ -1129,3 +1129,337 @@ export const registerForEventByEventAdmin = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
+// =====================================
+//  8. CHECK EMAIL EXISTS FOR EVENT REGISTRATION (Protected) (for bulk registration)
+// =====================================
+export const checkEmailRegister = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { email } = req.body;
+
+    if (!eventId) {
+      return res.status(400).json({
+        success: false,
+        message: "Event ID is required in the URL",
+      });
+    }
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    // Normalize email
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // ===============================
+    // 1️ CHECK EVENT REGISTRATION (PAID)
+    // ===============================
+    const existingRegistration = await EventRegistration.findOne({
+      eventId,
+      email: normalizedEmail,
+      isPaid: true,
+      isSuspended: false,
+    });
+
+    if (existingRegistration) {
+      return res.status(200).json({
+        success: false,
+        message: "This email is already registered for this event",
+      });
+    }
+
+    // ===============================
+    // 2️ CHECK USER MODEL
+    // ===============================
+    const user = await User.findOne({
+      email: normalizedEmail,
+      role: "user"
+    }).select(
+      "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires"
+    );
+
+    // ===============================
+    // 3️ RESPONSE
+    // ===============================
+    return res.status(200).json({
+      success: true,
+      message: user
+        ? "User exist but not registered for this event"
+        : "User not found",
+      data: user || null,
+    });
+
+  } catch (error) {
+    console.error("Error checking email:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while checking email",
+    });
+  }
+};
+
+// ======================================
+//  9. ADD EVENT REGISTRATION (Protected) (Bulk registration)
+// ======================================
+export const bulkRegisterForEventByEventAdmin = async (req, res) => {
+  try {
+    const eventAdminId = req.user._id;
+    const { eventId } = req.params;
+
+    const {
+      userId,
+      prefix,
+      name,
+      gender,
+      email,
+      mobile,
+      designation,
+      affiliation,
+      mciNumber,
+      mciState,
+      department,
+      alternateEmail,
+      alternateMobile,
+      country,
+      city,
+      state,
+      address,
+      pincode,
+    } = req.body;
+
+    // ===============================
+    // Validate Event
+    // ===============================
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "userId is required",
+      });
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // ===============================
+    // Validate Event
+    // ===============================
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: "Event not found" });
+
+    // ===============================
+    // Suspended Check
+    // ===============================
+    const suspendedReg = await EventRegistration.findOne({
+      userId,
+      eventId,
+      isSuspended: true,
+    });
+
+    if (suspendedReg) {
+      return res.status(403).json({
+        success: false,
+        message: "Your previous registration for this event is suspended.",
+      });
+    }
+
+    // ===============================
+    // Already Paid Check
+    // ===============================
+    const existingPaidReg = await EventRegistration.findOne({
+      userId,
+      eventId,
+      isPaid: true,
+    });
+
+    if (existingPaidReg) {
+      return res.status(400).json({
+        success: false,
+        message: "User already registered for this event",
+      });
+    }
+
+    // ===============================
+    // Generate Reg Number
+    // ===============================
+    const last = await EventRegistration.findOne({
+      eventId,
+      regNumGenerated: true,
+    }).sort({ createdAt: -1 });
+
+    let newNum = last?.regNum
+      ? parseInt(last.regNum.split("-").pop()) + 1
+      : parseInt(event.regNum || 0) + 1;
+
+    const generatedRegNum = `${event.eventCode}-${newNum}`;
+
+    // ===============================
+    // Create Registration
+    // ===============================
+    const registration = await EventRegistration.create({
+      eventAdminId,
+      userId,
+      eventId,
+      prefix,
+      name,
+      gender,
+      email,
+      mobile,
+      designation,
+      affiliation,
+      mciNumber,
+      mciState,
+      department,
+      alternateEmail,
+      alternateMobile,
+      country,
+      city,
+      state,
+      address,
+      pincode,
+      isPaid: true,
+      regNumGenerated: true,
+      regNum: generatedRegNum,
+      registrationType: "Offline Registration",
+    });
+
+    // -----------------------------
+    // SAFE FALLBACKS (IMPORTANT)
+    // -----------------------------
+    const finalEmail = email || targetUser.email;
+    const finalName = name || targetUser.name;
+
+    // ----------------------------------------------------
+    //  Send Email Notification to User
+    // ----------------------------------------------------
+    try {
+      await sendEmailWithTemplate({
+        to: finalEmail,
+        name: finalName,
+        templateKey: "2518b.554b0da719bc314.k1.6e017640-d986-11f0-8c89-62d0161cbd93.19b20e123a4",
+        mergeInfo: {
+          eventName: event.eventName,
+          registrationNumber: generatedRegNum,
+          startDate: event.startDateTime
+            ? moment(event.startDateTime).format("DD MMM YYYY, hh:mm A")
+            : "N/A",
+
+          endDate: event.endDateTime
+            ? moment(event.endDateTime).format("DD MMM YYYY, hh:mm A")
+            : "N/A",
+          prefix,
+          name,
+          email,
+          mobile,
+          designation,
+          affiliation,
+          country,
+          state,
+          city,
+          address,
+          pincode,
+        },
+      });
+    } catch (emailError) {
+      console.error("Email sending failed:", emailError);
+    }
+
+
+    return res.status(201).json({
+      success: true,
+      message: "Event registration created successfully by event admin",
+      data: registration,
+    });
+  } catch (error) {
+    console.error("Sponsor registration error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+/* 
+========================================================
+  10. Get All Registrations for an Event per eventAdmin (Event Admin)
+========================================================
+*/
+export const getMyEventAdminRegistrations = async (req, res) => {
+  try {
+    const eventAdminId = req.user._id;
+    const { eventId } = req.params;
+
+    const registrations = await EventRegistration.find({
+      eventAdminId,
+      eventId,
+    })
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      total: registrations.length,
+      data: registrations,
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
+/* 
+========================================================
+  11. Update Registrations By eventAdmin (Event Admin)
+========================================================
+*/
+export const updateEventRegistration = async (req, res) => {
+  try {
+    const { registrationId } = req.params;
+
+    const restrictedFields = [
+      "email",
+      "regNum",
+      "isPaid",
+      "regNumGenerated",
+      "registrationType",
+    ];
+
+    // Remove restricted fields
+    const updateData = { ...req.body };
+    restrictedFields.forEach((field) => delete updateData[field]);
+
+    const registration = await EventRegistration.findById(registrationId);
+
+    if (!registration) {
+      return res.status(404).json({
+        success: false,
+        message: "Registration not found",
+      });
+    }
+
+    Object.assign(registration, updateData);
+
+    await registration.save();
+
+    res.json({
+      success: true,
+      message: "Registration updated successfully",
+      data: registration,
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};

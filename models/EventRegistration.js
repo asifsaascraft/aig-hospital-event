@@ -30,6 +30,10 @@ const AdditionalAnswerSchema = new mongoose.Schema(
 
 const EventRegistrationSchema = new mongoose.Schema(
   {
+    eventAdminId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
