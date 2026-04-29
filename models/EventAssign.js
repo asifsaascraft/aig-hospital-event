@@ -22,19 +22,7 @@ const EventAssignSchema = new mongoose.Schema(
           type: Boolean,
           default: false,
         },
-        abstract: {
-          type: Boolean,
-          default: false,
-        },
-        faculty: {
-          type: Boolean,
-          default: false,
-        },
-        agenda: {
-          type: Boolean,
-          default: false,
-        },
-        exhibitor: {
+        bulk: {
           type: Boolean,
           default: false,
         },
@@ -50,27 +38,7 @@ const EventAssignSchema = new mongoose.Schema(
           type: Boolean,
           default: false,
         },
-        marketing: {
-          type: Boolean,
-          default: false,
-        },
-        communication: {
-          type: Boolean,
-          default: false,
-        },
         accounting: {
-          type: Boolean,
-          default: false,
-        },
-        badging: {
-          type: Boolean,
-          default: false,
-        },
-        eventapp: {
-          type: Boolean,
-          default: false,
-        },
-        presentation: {
           type: Boolean,
           default: false,
         },
