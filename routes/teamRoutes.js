@@ -11,14 +11,9 @@ import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 const router = express.Router();
 
 // =======================
-// Admin-only: Get all teams (eventAdmins)
+// Public: Get all teams (eventAdmins)
 // =======================
-router.get(
-  "/admin/teams",
-  protect,
-  authorizeRoles("admin"),
-  getTeams
-);
+router.get("/teams", getTeams);
 
 // =======================
 // Admin-only: Create a new team (eventAdmin user)
