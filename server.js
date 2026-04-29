@@ -76,6 +76,8 @@ import incomeRecordRoutes from "./routes/incomeRecordRoutes.js";
 import incomeRoutes from "./routes/incomeRoutes.js";
 import cardProfileRoutes from "./routes/cardProfileRoutes.js";
 import assignProfileRoutes from "./routes/assignProfileRoutes.js";
+import assignTravelServiceRoutes from "./routes/assignTravelServiceRoutes.js";
+import assignAccomodationServiceRoutes from "./routes/assignAccomodationServiceRoutes.js";
 
 
 await connectDB();
@@ -188,6 +190,8 @@ app.use("/api", incomeRecordRoutes);
 app.use("/api", incomeRoutes);
 app.use("/api", cardProfileRoutes);
 app.use("/api", assignProfileRoutes);
+app.use("/api", assignTravelServiceRoutes);
+app.use("/api", assignAccomodationServiceRoutes);
 
 
 // =======================
