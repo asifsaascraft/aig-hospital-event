@@ -1,7 +1,6 @@
 import AddRoom from "../models/AddRoom.js";
 import Event from "../models/Event.js";
 import Hotel from "../models/Hotel.js";
-import RoomCategory from "../models/RoomCategory.js";
 
 // =======================
 // Create AddRoom (EventAdmin only)
@@ -11,11 +10,16 @@ export const createAddRoom = async (req, res) => {
     const { eventId } = req.params;
     const {
       hotelId,
-      roomCategoryId,
       numberOfRooms,
       startDateTime,
       endDateTime,
     } = req.body;
+
+    if (numberOfRooms === undefined || numberOfRooms < 1) {
+      return res.status(400).json({
+        message: "Number of rooms must be at least 1",
+      });
+    }
 
     // ===============================
     // Required check
@@ -73,27 +77,13 @@ export const createAddRoom = async (req, res) => {
     }
 
     // ===============================
-    // Validate Room Category
-    // ===============================
-    const category = await RoomCategory.findById(roomCategoryId);
-    if (!category) {
-      return res.status(404).json({ message: "Room category not found" });
-    }
-
-    if (category.hotel.toString() !== hotelId.toString()) {
-      return res.status(400).json({
-        message: "Room category does not belong to selected hotel",
-      });
-    }
-
-    // ===============================
     // Create
     // ===============================
     const newAddRoom = await AddRoom.create({
       eventId,
       hotelId,
-      roomCategoryId,
       numberOfRooms,
+      availableRooms: numberOfRooms,
       startDateTime: parsedStart,
       endDateTime: parsedEnd,
     });
@@ -120,7 +110,6 @@ export const getAddRoomsByEvent = async (req, res) => {
 
     const rooms = await AddRoom.find({ eventId })
       .populate("hotelId", "hotelName")
-      .populate("roomCategoryId", "roomCategory roomType")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -145,7 +134,6 @@ export const getAddRoomById = async (req, res) => {
 
     const room = await AddRoom.findById(id)
       .populate("hotelId", "hotelName")
-      .populate("roomCategoryId", "roomCategory roomType");
 
     if (!room) {
       return res.status(404).json({ message: "Room not found" });
@@ -171,11 +159,16 @@ export const updateAddRoom = async (req, res) => {
     const { id } = req.params;
     const {
       hotelId,
-      roomCategoryId,
       numberOfRooms,
       startDateTime,
       endDateTime,
     } = req.body;
+
+    if (numberOfRooms !== undefined && numberOfRooms < 1) {
+      return res.status(400).json({
+        message: "Number of rooms must be at least 1",
+      });
+    }
 
     const existingRoom = await AddRoom.findById(id);
     if (!existingRoom) {
@@ -227,30 +220,21 @@ export const updateAddRoom = async (req, res) => {
     }
 
     // ===============================
-    // Validate Room Category
-    // ===============================
-    const finalRoomCategoryId =
-      roomCategoryId || existingRoom.roomCategoryId;
-
-    const category = await RoomCategory.findById(finalRoomCategoryId);
-    if (!category) {
-      return res.status(404).json({ message: "Room category not found" });
-    }
-
-    if (category.hotel.toString() !== finalHotelId.toString()) {
-      return res.status(400).json({
-        message: "Room category does not belong to selected hotel",
-      });
-    }
-
-    // ===============================
     // Update fields
     // ===============================
     existingRoom.hotelId = finalHotelId;
-    existingRoom.roomCategoryId = finalRoomCategoryId;
 
     if (numberOfRooms !== undefined) {
+      const diff = numberOfRooms - existingRoom.numberOfRooms;
+
       existingRoom.numberOfRooms = numberOfRooms;
+      existingRoom.availableRooms =
+        (existingRoom.availableRooms || 0) + diff;
+
+      // Prevent negative
+      if (existingRoom.availableRooms < 0) {
+        existingRoom.availableRooms = 0;
+      }
     }
 
     existingRoom.startDateTime = finalStart;

@@ -1,6 +1,5 @@
 // controllers/hotelController.js
 import Hotel from "../models/Hotel.js";
-import RoomCategory from "../models/RoomCategory.js";
 
 // =======================
 // Get all hotels (public for logged-in users)
