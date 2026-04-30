@@ -9,49 +9,93 @@ import RoomCategory from "../models/RoomCategory.js";
 export const createAddRoom = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { hotelId, roomCategoryId, numberOfRooms } = req.body;
+    const {
+      hotelId,
+      roomCategoryId,
+      numberOfRooms,
+      startDateTime,
+      endDateTime,
+    } = req.body;
 
+    // ===============================
+    // Required check
+    // ===============================
+    if (!startDateTime || !endDateTime) {
+      return res.status(400).json({
+        message: "Start and End date time are required",
+      });
+    }
+
+    // ===============================
+    // Validate format
+    // ===============================
+    if (isNaN(new Date(startDateTime))) {
+      return res.status(400).json({
+        message: "Invalid startDateTime format",
+      });
+    }
+
+    if (isNaN(new Date(endDateTime))) {
+      return res.status(400).json({
+        message: "Invalid endDateTime format",
+      });
+    }
+
+    // ===============================
+    // Convert
+    // ===============================
+    const parsedStart = new Date(startDateTime);
+    const parsedEnd = new Date(endDateTime);
+
+    // ===============================
+    // Compare
+    // ===============================
+    if (parsedEnd < parsedStart) {
+      return res.status(400).json({
+        message: "End date must be greater than or equal to start date",
+      });
+    }
+
+    // ===============================
+    // Validate Event
+    // ===============================
     const event = await Event.findById(eventId);
     if (!event) {
       return res.status(404).json({ message: "Event not found" });
     }
 
+    // ===============================
+    // Validate Hotel
+    // ===============================
     const hotel = await Hotel.findById(hotelId);
     if (!hotel) {
       return res.status(404).json({ message: "Hotel not found" });
     }
 
+    // ===============================
+    // Validate Room Category
+    // ===============================
     const category = await RoomCategory.findById(roomCategoryId);
     if (!category) {
       return res.status(404).json({ message: "Room category not found" });
     }
 
-    if (category.hotel.toString() !== hotelId) {
+    if (category.hotel.toString() !== hotelId.toString()) {
       return res.status(400).json({
         message: "Room category does not belong to selected hotel",
       });
     }
 
-    //  DUPLICATE CHECK
-    const existingRoom = await AddRoom.findOne({
-      eventId,
-      hotelId,
-      roomCategoryId,
-    });
-
-    if (existingRoom) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "This combination (event + hotel + room category) already exists",
-      });
-    }
-
+    // ===============================
+    // Create
+    // ===============================
     const newAddRoom = await AddRoom.create({
       eventId,
       hotelId,
       roomCategoryId,
       numberOfRooms,
+      startDateTime: parsedStart,
+      endDateTime: parsedEnd,
     });
 
     res.status(201).json({
@@ -125,7 +169,13 @@ export const getAddRoomById = async (req, res) => {
 export const updateAddRoom = async (req, res) => {
   try {
     const { id } = req.params;
-    const { hotelId, roomCategoryId, numberOfRooms } = req.body;
+    const {
+      hotelId,
+      roomCategoryId,
+      numberOfRooms,
+      startDateTime,
+      endDateTime,
+    } = req.body;
 
     const existingRoom = await AddRoom.findById(id);
     if (!existingRoom) {
@@ -133,30 +183,60 @@ export const updateAddRoom = async (req, res) => {
     }
 
     // ===============================
-    // Step 1: Prepare final values
+    // Validate format
     // ===============================
-    const finalHotelId = hotelId || existingRoom.hotelId;
-    const finalRoomCategoryId =
-      roomCategoryId || existingRoom.roomCategoryId;
-    const finalEventId = existingRoom.eventId;
+    if (startDateTime && isNaN(new Date(startDateTime))) {
+      return res.status(400).json({
+        message: "Invalid startDateTime format",
+      });
+    }
+
+    if (endDateTime && isNaN(new Date(endDateTime))) {
+      return res.status(400).json({
+        message: "Invalid endDateTime format",
+      });
+    }
 
     // ===============================
-    // Step 2: Validate hotel
+    // Final values + conversion
     // ===============================
+    const finalStart = startDateTime
+      ? new Date(startDateTime)
+      : existingRoom.startDateTime;
+
+    const finalEnd = endDateTime
+      ? new Date(endDateTime)
+      : existingRoom.endDateTime;
+
+    // ===============================
+    // Compare
+    // ===============================
+    if (finalEnd < finalStart) {
+      return res.status(400).json({
+        message: "End date must be greater than or equal to start date",
+      });
+    }
+
+    // ===============================
+    // Validate Hotel
+    // ===============================
+    const finalHotelId = hotelId || existingRoom.hotelId;
     const hotel = await Hotel.findById(finalHotelId);
     if (!hotel) {
       return res.status(404).json({ message: "Hotel not found" });
     }
 
     // ===============================
-    // Step 3: Validate room category
+    // Validate Room Category
     // ===============================
+    const finalRoomCategoryId =
+      roomCategoryId || existingRoom.roomCategoryId;
+
     const category = await RoomCategory.findById(finalRoomCategoryId);
     if (!category) {
       return res.status(404).json({ message: "Room category not found" });
     }
 
-    // Ensure category belongs to hotel
     if (category.hotel.toString() !== finalHotelId.toString()) {
       return res.status(400).json({
         message: "Room category does not belong to selected hotel",
@@ -164,24 +244,7 @@ export const updateAddRoom = async (req, res) => {
     }
 
     // ===============================
-    //  Step 4: DUPLICATE CHECK
-    // ===============================
-    const duplicate = await AddRoom.findOne({
-      eventId: finalEventId,
-      hotelId: finalHotelId,
-      roomCategoryId: finalRoomCategoryId,
-      _id: { $ne: id }, // VERY IMPORTANT (exclude current)
-    });
-
-    if (duplicate) {
-      return res.status(400).json({
-        message:
-          "This combination (event + hotel + room category) already exists",
-      });
-    }
-
-    // ===============================
-    // Step 5: Update fields
+    // Update fields
     // ===============================
     existingRoom.hotelId = finalHotelId;
     existingRoom.roomCategoryId = finalRoomCategoryId;
@@ -189,6 +252,9 @@ export const updateAddRoom = async (req, res) => {
     if (numberOfRooms !== undefined) {
       existingRoom.numberOfRooms = numberOfRooms;
     }
+
+    existingRoom.startDateTime = finalStart;
+    existingRoom.endDateTime = finalEnd;
 
     await existingRoom.save();
 
