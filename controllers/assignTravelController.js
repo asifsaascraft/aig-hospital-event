@@ -88,6 +88,16 @@ export const removeTravel = async (req, res) => {
       (id) => id.toString() !== travelId
     );
 
+    //  If empty → delete document
+    if (record.travelIds.length === 0) {
+      await AssignTravel.findByIdAndDelete(assignId);
+
+      return res.status(200).json({
+        success: true,
+        message: "Travel removed and assignment deleted (no travels left)",
+      });
+    }
+
     await record.save();
 
     res.status(200).json({
@@ -114,8 +124,11 @@ export const reassignTravel = async (req, res) => {
       otherTeamId,
     } = req.body;
 
+    // ======================
     // REMOVE FROM OLD
+    // ======================
     const from = await AssignTravel.findById(fromAssignId);
+
     if (!from) {
       return res.status(404).json({ message: "Source not found" });
     }
@@ -123,13 +136,23 @@ export const reassignTravel = async (req, res) => {
     from.travelIds = from.travelIds.filter(
       (id) => id.toString() !== travelId
     );
-    await from.save();
 
+    //  If empty → delete old record
+    if (from.travelIds.length === 0) {
+      await AssignTravel.findByIdAndDelete(fromAssignId);
+    } else {
+      await from.save();
+    }
+
+    // ======================
     // ADD TO NEW
-    const query = getAssigneeQuery(
-      { marketingTeamId, eventAdminId, otherTeamId },
-      eventId
-    );
+    // ======================
+    const query = {
+      eventId,
+      ...(marketingTeamId && { marketingTeamId }),
+      ...(eventAdminId && { eventAdminId }),
+      ...(otherTeamId && { otherTeamId }),
+    };
 
     let to = await AssignTravel.findOne(query);
 
