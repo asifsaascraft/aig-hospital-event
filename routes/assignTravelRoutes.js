@@ -1,9 +1,11 @@
 import express from "express";
 import {
-  assignTravelToMarketingTeam,
+  assignTravel,
+  removeTravel,
+  reassignTravel,
   getUnassignedTravels,
-  getMarketingTeamTravelSummary,
-} from "../controllers/marketingTeamTravelController.js";
+  getAssignSummary,
+} from "../controllers/assignTravelController.js";
 
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -14,10 +16,26 @@ router.post(
   "/event-admin/events/:eventId/assign-travel",
   protect,
   authorizeRoles("eventAdmin"),
-  assignTravelToMarketingTeam
+  assignTravel
 );
 
-// Get Unassigned
+// Remove single travel
+router.put(
+  "/event-admin/assign/:assignId/remove",
+  protect,
+  authorizeRoles("eventAdmin"),
+  removeTravel
+);
+
+// Reassign
+router.put(
+  "/event-admin/events/:eventId/reassign",
+  protect,
+  authorizeRoles("eventAdmin"),
+  reassignTravel
+);
+
+// Unassigned
 router.get(
   "/event-admin/events/:eventId/unassigned-travels",
   protect,
@@ -27,10 +45,10 @@ router.get(
 
 // Summary
 router.get(
-  "/event-admin/events/:eventId/marketing-team-summary",
+  "/event-admin/events/:eventId/summary",
   protect,
   authorizeRoles("eventAdmin"),
-  getMarketingTeamTravelSummary
+  getAssignSummary
 );
 
 export default router;
