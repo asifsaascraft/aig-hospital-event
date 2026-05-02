@@ -1,59 +1,141 @@
 import SponsorAccomodationQuota from "../models/SponsorAccomodationQuota.js";
+import AddRoom from "../models/AddRoom.js";
 import Event from "../models/Event.js";
 import Sponsor from "../models/Sponsor.js";
 
 // =======================
-// Create Sponsor Accomodation Quota (EventAdmin Only)
+// Create Sponsor Accommodation Quota
 // =======================
 export const createSponsorAccomodationQuota = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { sponsorId, quota, status, startDate, endDate } = req.body;
+    const { sponsorId, QuotaId, numberOfQuota, startDateTime, endDateTime } = req.body;
 
-    // Validate event
-    const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ message: "Event not found" });
-    }
-
-    // Validate sponsor
-    const sponsor = await Sponsor.findById(sponsorId);
-    if (!sponsor) {
-      return res.status(404).json({ message: "Sponsor not found" });
-    }
-
-    //  Check if sponsorId already exists globally
-    const existingQuota = await SponsorAccomodationQuota.findOne({ sponsorId });
-    if (existingQuota) {
+    // ===============================
+    // Required check
+    // ===============================
+    if (!startDateTime || !endDateTime) {
       return res.status(400).json({
-        success: false,
-        message: "This sponsor already has an accomodation quota.",
+        message: "Start and End date time are required",
       });
     }
 
-    // Create quota record
+    if (numberOfQuota === undefined || numberOfQuota < 1) {
+      return res.status(400).json({
+        message: "Number of quota must be at least 1",
+      });
+    }
+
+    // ===============================
+    // Validate format
+    // ===============================
+    if (isNaN(new Date(startDateTime))) {
+      return res.status(400).json({ message: "Invalid startDateTime format" });
+    }
+
+    if (isNaN(new Date(endDateTime))) {
+      return res.status(400).json({ message: "Invalid endDateTime format" });
+    }
+
+    const parsedStart = new Date(startDateTime);
+    const parsedEnd = new Date(endDateTime);
+
+    if (parsedEnd < parsedStart) {
+      return res.status(400).json({
+        message: "End date must be greater than or equal to start date",
+      });
+    }
+
+    // ===============================
+    // Validate Event
+    // ===============================
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: "Event not found" });
+
+    // ===============================
+    // Validate Sponsor
+    // ===============================
+    const sponsor = await Sponsor.findById(sponsorId);
+    if (!sponsor) return res.status(404).json({ message: "Sponsor not found" });
+
+    // ===============================
+    // Validate AddRoom (QuotaId)
+    // ===============================
+    const room = await AddRoom.findById(QuotaId);
+    if (!room) {
+      return res.status(404).json({ message: "Room quota not found" });
+    }
+
+    //  NEW: event validation
+    if (room.eventId.toString() !== eventId) {
+      return res.status(400).json({
+        message: "Room does not belong to this event",
+      });
+    }
+
+    //  Prevent global over-allocation
+    const totalAllocated = await SponsorAccomodationQuota.aggregate([
+      {
+        $match: { QuotaId },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$numberOfQuota" },
+        },
+      },
+    ]);
+
+    const alreadyAllocated = totalAllocated[0]?.total || 0;
+
+    if (alreadyAllocated + numberOfQuota > room.numberOfRooms) {
+      return res.status(400).json({
+        message: "Total quota exceeds available rooms",
+      });
+    }
+
+    // ===============================
+    // Check availability
+    // ===============================
+    if (room.availableRooms < numberOfQuota) {
+      return res.status(400).json({
+        message: `Only ${room.availableRooms} rooms available`,
+      });
+    }
+
+    // ===============================
+    // Deduct rooms
+    // ===============================
+    room.availableRooms -= numberOfQuota;
+    await room.save();
+
+    // ===============================
+    // Create record
+    // ===============================
     const newQuota = await SponsorAccomodationQuota.create({
       eventId,
       sponsorId,
-      quota,
-      startDate,
-      endDate,
-      status,
+      QuotaId,
+      numberOfQuota,
+      startDateTime: parsedStart,
+      endDateTime: parsedEnd,
     });
 
     res.status(201).json({
       success: true,
-      message: "Sponsor accomodation quota created successfully",
+      message: "Sponsor accommodation quota created successfully",
       data: newQuota,
     });
+
   } catch (error) {
-    console.error("Create Sponsor Accomodation Quota error:", error);
+    console.error("Create Accommodation Quota error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
 
+
 // =======================
-// Get All Accomodation Quotas by Event ID (Public/User)
+// Get All by Event
 // =======================
 export const getSponsorAccomodationQuotasByEvent = async (req, res) => {
   try {
@@ -61,86 +143,161 @@ export const getSponsorAccomodationQuotasByEvent = async (req, res) => {
 
     const quotas = await SponsorAccomodationQuota.find({ eventId })
       .populate("sponsorId")
+      .populate("QuotaId")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
-      message: "Sponsor accomodation quotas fetched successfully",
       data: quotas,
     });
+
   } catch (error) {
-    console.error("Get Sponsor Accomodation Quotas error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
 
+
 // =======================
-// Update Sponsor Accomodation Quota (EventAdmin Only)
+// Update
 // =======================
 export const updateSponsorAccomodationQuota = async (req, res) => {
   try {
     const { id } = req.params;
-    const { sponsorId, quota, status, startDate, endDate } = req.body;
+    const { numberOfQuota, startDateTime, endDateTime } = req.body;
 
-    const quotaRecord = await SponsorAccomodationQuota.findById(id);
-    if (!quotaRecord) {
-      return res
-        .status(404)
-        .json({ message: "Sponsor accomodation quota not found" });
+    const record = await SponsorAccomodationQuota.findById(id);
+    if (!record) {
+      return res.status(404).json({ message: "Quota not found" });
     }
 
-    //  If sponsorId is being updated, ensure it's unique globally
-    if (sponsorId && sponsorId.toString() !== quotaRecord.sponsorId.toString()) {
-      const existingQuota = await SponsorAccomodationQuota.findOne({ sponsorId });
-      if (existingQuota) {
+    const room = await AddRoom.findById(record.QuotaId);
+
+    if (!room) {
+      return res.status(404).json({
+        message: "Associated room not found",
+      });
+    }
+
+    // ===============================
+    // Handle quota change
+    // ===============================
+    if (numberOfQuota !== undefined) {
+      //  NEW: total allocation check
+      const totalAllocated = await SponsorAccomodationQuota.aggregate([
+        {
+          $match: {
+            QuotaId: record.QuotaId,
+            _id: { $ne: record._id },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: "$numberOfQuota" },
+          },
+        },
+      ]);
+
+      const alreadyAllocated = totalAllocated[0]?.total || 0;
+
+      if (alreadyAllocated + numberOfQuota > room.numberOfRooms) {
         return res.status(400).json({
-          success: false,
-          message: "This sponsor already has an accomodation quota.",
+          message: "Total quota exceeds available rooms",
         });
       }
-      quotaRecord.sponsorId = sponsorId;
+
+      //  EXISTING LOGIC (keep this)
+      const diff = numberOfQuota - record.numberOfQuota;
+
+      if (diff > 0 && room.availableRooms < diff) {
+        return res.status(400).json({
+          message: `Only ${room.availableRooms} additional rooms available`,
+        });
+      }
+
+      room.availableRooms -= diff;
+      record.numberOfQuota = numberOfQuota;
+
+      await room.save();
+    }
+    // ===============================
+    // Date validation (same logic)
+    // ===============================
+    if (startDateTime && isNaN(new Date(startDateTime))) {
+      return res.status(400).json({ message: "Invalid startDateTime format" });
     }
 
-    if (quota !== undefined) quotaRecord.quota = quota;
-    if (startDate !== undefined) quotaRecord.startDate = startDate;
-    if (endDate !== undefined) quotaRecord.endDate = endDate;
-    if (status) quotaRecord.status = status;
+    if (endDateTime && isNaN(new Date(endDateTime))) {
+      return res.status(400).json({ message: "Invalid endDateTime format" });
+    }
 
-    await quotaRecord.save();
+    const finalStart = startDateTime
+      ? new Date(startDateTime)
+      : record.startDateTime;
+
+    const finalEnd = endDateTime
+      ? new Date(endDateTime)
+      : record.endDateTime;
+
+    if (finalEnd < finalStart) {
+      return res.status(400).json({
+        message: "End date must be greater than or equal to start date",
+      });
+    }
+
+    record.startDateTime = finalStart;
+    record.endDateTime = finalEnd;
+
+    await record.save();
 
     res.status(200).json({
       success: true,
-      message: "Sponsor accomodation quota updated successfully",
-      data: quotaRecord,
+      data: record,
     });
+
   } catch (error) {
-    console.error("Update Sponsor Accomodation Quota error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
 
+
 // =======================
-// Delete Sponsor Accomodation Quota (EventAdmin Only)
+// Delete
 // =======================
 export const deleteSponsorAccomodationQuota = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const quotaRecord = await SponsorAccomodationQuota.findById(id);
-    if (!quotaRecord) {
-      return res
-        .status(404)
-        .json({ message: "Sponsor accomodation quota not found" });
+    const record = await SponsorAccomodationQuota.findById(id);
+    if (!record) {
+      return res.status(404).json({ message: "Quota not found" });
     }
 
-    await quotaRecord.deleteOne();
+    const room = await AddRoom.findById(record.QuotaId);
+
+    if (!room) {
+      return res.status(404).json({
+        message: "Associated room not found",
+      });
+    }
+
+    room.availableRooms += record.numberOfQuota;
+
+    //  Clamp (Fix 2 also here)
+    if (room.availableRooms > room.numberOfRooms) {
+      room.availableRooms = room.numberOfRooms;
+    }
+
+    await room.save();
+
+    await record.deleteOne();
 
     res.status(200).json({
       success: true,
-      message: "Sponsor accomodation quota deleted successfully",
+      message: "Quota deleted successfully",
     });
+
   } catch (error) {
-    console.error("Delete Sponsor Accomodation Quota error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };

@@ -12,27 +12,29 @@ const SponsorAccomodationQuotaSchema = new mongoose.Schema(
       ref: "Sponsor",
       required: true,
     },
-    quota: {
+    QuotaId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AddRoom",
+      required: true,
+    },
+    numberOfQuota: {
       type: Number,
-      required: [true, "Quota is required"],
+      required: [true, "Number of accomodation quota is required"],
     },
-    startDate: {
+    startDateTime: {
       type: Date,
+      required: [true, "Start Date time is required"],
     },
-    endDate: {
+    endDateTime: {
       type: Date,
       validate: {
         validator: function (value) {
-          return !this.startDate || value >= this.startDate;
+          if (!this.startDateTime || !value) return true;
+          return value >= this.startDateTime;
         },
-        message: "End date must be greater than or equal to start date",
+        message: "End date time must be greater than or equal to start date time",
       },
-    },
-    status: {
-      type: String,
-      enum: ["Active", "Inactive"], //  restricts to these values
-      default: "Active",
-      required: [true, "Status is required"],
+      required: [true, "End Date is required"],
     },
   },
   { timestamps: true }

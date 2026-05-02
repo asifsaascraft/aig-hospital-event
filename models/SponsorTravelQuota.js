@@ -16,23 +16,20 @@ const SponsorTravelQuotaSchema = new mongoose.Schema(
       type: Number,
       required: [true, "Quota is required"],
     },
-    startDate: {
+    startDateTime: {
       type: Date,
+      required: [true, "Start Date time is required"],
     },
-    endDate: {
+    endDateTime: {
       type: Date,
       validate: {
         validator: function (value) {
-          return !this.startDate || value >= this.startDate;
+          if (!this.startDateTime || !value) return true;
+          return value >= this.startDateTime;
         },
-        message: "End date must be greater than or equal to start date",
+        message: "End date time must be greater than or equal to start date time",
       },
-    },
-    status: {
-      type: String,
-      enum: ["Active", "Inactive"], //  restricts to these values
-      default: "Active",
-      required: [true, "Status is required"],
+      required: [true, "End Date is required"],
     },
   },
   { timestamps: true }

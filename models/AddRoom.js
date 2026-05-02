@@ -18,6 +18,7 @@ const AddRoomSchema = new mongoose.Schema(
     },
     availableRooms: {
       type: Number,
+      default: 0,
     },
     startDateTime: {
       type: Date,

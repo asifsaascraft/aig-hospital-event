@@ -133,7 +133,7 @@ export const getAddRoomById = async (req, res) => {
     const { id } = req.params;
 
     const room = await AddRoom.findById(id)
-      .populate("hotelId", "hotelName")
+      .populate("hotelId", "hotelName");
 
     if (!room) {
       return res.status(404).json({ message: "Room not found" });
@@ -225,18 +225,23 @@ export const updateAddRoom = async (req, res) => {
     existingRoom.hotelId = finalHotelId;
 
     if (numberOfRooms !== undefined) {
-      const diff = numberOfRooms - existingRoom.numberOfRooms;
 
-      existingRoom.numberOfRooms = numberOfRooms;
-      existingRoom.availableRooms =
-        (existingRoom.availableRooms || 0) + diff;
+  //  NEW: calculate already allocated
+  const allocated =
+    existingRoom.numberOfRooms - existingRoom.availableRooms;
 
-      // Prevent negative
-      if (existingRoom.availableRooms < 0) {
-        existingRoom.availableRooms = 0;
-      }
-    }
+  if (numberOfRooms < allocated) {
+    return res.status(400).json({
+      message: `Cannot reduce rooms below allocated (${allocated})`,
+    });
+  }
 
+  const diff = numberOfRooms - existingRoom.numberOfRooms;
+
+  existingRoom.numberOfRooms = numberOfRooms;
+  existingRoom.availableRooms =
+    (existingRoom.availableRooms || 0) + diff;
+}
     existingRoom.startDateTime = finalStart;
     existingRoom.endDateTime = finalEnd;
 

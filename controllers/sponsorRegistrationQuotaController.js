@@ -8,7 +8,47 @@ import Sponsor from "../models/Sponsor.js";
 export const createSponsorRegistrationQuota = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { sponsorId, quota, status, startDate, endDate } = req.body;
+    const { sponsorId, quota, startDateTime, endDateTime } = req.body;
+
+
+    // ===============================
+    // Required check
+    // ===============================
+    if (!startDateTime || !endDateTime) {
+      return res.status(400).json({
+        message: "Start and End date time are required",
+      });
+    }
+
+    // ===============================
+    // Validate format
+    // ===============================
+    if (isNaN(new Date(startDateTime))) {
+      return res.status(400).json({
+        message: "Invalid startDateTime format",
+      });
+    }
+
+    if (isNaN(new Date(endDateTime))) {
+      return res.status(400).json({
+        message: "Invalid endDateTime format",
+      });
+    }
+
+    // ===============================
+    // Convert
+    // ===============================
+    const parsedStart = new Date(startDateTime);
+    const parsedEnd = new Date(endDateTime);
+
+    // ===============================
+    // Compare
+    // ===============================
+    if (parsedEnd < parsedStart) {
+      return res.status(400).json({
+        message: "End date must be greater than or equal to start date",
+      });
+    }
 
     // Validate event
     const event = await Event.findById(eventId);
@@ -21,8 +61,8 @@ export const createSponsorRegistrationQuota = async (req, res) => {
     if (!sponsor) {
       return res.status(404).json({ message: "Sponsor not found" });
     }
-    
-    //  Check if sponsorId already exists globally
+
+    //  Check if sponsorId already exists 
     const existingQuota = await SponsorRegistrationQuota.findOne({ sponsorId, eventId });
     if (existingQuota) {
       return res.status(400).json({
@@ -36,9 +76,8 @@ export const createSponsorRegistrationQuota = async (req, res) => {
       eventId,
       sponsorId,
       quota,
-      startDate,
-      endDate,
-      status,
+      startDateTime: parsedStart,
+      endDateTime: parsedEnd,
     });
 
     res.status(201).json({
@@ -80,7 +119,22 @@ export const getSponsorRegistrationQuotasByEvent = async (req, res) => {
 export const updateSponsorRegistrationQuota = async (req, res) => {
   try {
     const { id } = req.params;
-    const { sponsorId, quota, status, startDate, endDate } = req.body;
+    const { sponsorId, quota, startDateTime, endDateTime } = req.body;
+
+    // ===============================
+    // Validate format
+    // ===============================
+    if (startDateTime && isNaN(new Date(startDateTime))) {
+      return res.status(400).json({
+        message: "Invalid startDateTime format",
+      });
+    }
+
+    if (endDateTime && isNaN(new Date(endDateTime))) {
+      return res.status(400).json({
+        message: "Invalid endDateTime format",
+      });
+    }
 
     const quotaRecord = await SponsorRegistrationQuota.findById(id);
     if (!quotaRecord) {
@@ -102,9 +156,29 @@ export const updateSponsorRegistrationQuota = async (req, res) => {
     }
 
     if (quota !== undefined) quotaRecord.quota = quota;
-    if (startDate !== undefined) quotaRecord.startDate = startDate;
-    if (endDate !== undefined) quotaRecord.endDate = endDate;
-    if (status) quotaRecord.status = status;
+
+    // ===============================
+    // Final values + conversion
+    // ===============================
+    const finalStart = startDateTime
+      ? new Date(startDateTime)
+      : quotaRecord.startDateTime;
+
+    const finalEnd = endDateTime
+      ? new Date(endDateTime)
+      : quotaRecord.endDateTime;
+
+    // ===============================
+    // Compare
+    // ===============================
+    if (finalEnd < finalStart) {
+      return res.status(400).json({
+        message: "End date must be greater than or equal to start date",
+      });
+    }
+
+    quotaRecord.startDateTime = finalStart;
+    quotaRecord.endDateTime = finalEnd;
 
     await quotaRecord.save();
 
