@@ -59,6 +59,21 @@ export const createSponsorAccomodationQuota = async (req, res) => {
     if (!sponsor) return res.status(404).json({ message: "Sponsor not found" });
 
     // ===============================
+    // Prevent duplicate sponsor quota (same event)
+    // ===============================
+    const existingQuota = await SponsorAccomodationQuota.findOne({
+      sponsorId,
+      eventId,
+    });
+
+    if (existingQuota) {
+      return res.status(400).json({
+        success: false,
+        message: "This sponsor already has an accommodation quota.",
+      });
+    }
+
+    // ===============================
     // Validate AddRoom (QuotaId)
     // ===============================
     const room = await AddRoom.findById(QuotaId);
@@ -163,11 +178,34 @@ export const getSponsorAccomodationQuotasByEvent = async (req, res) => {
 export const updateSponsorAccomodationQuota = async (req, res) => {
   try {
     const { id } = req.params;
-    const { numberOfQuota, startDateTime, endDateTime } = req.body;
+    const { sponsorId, numberOfQuota, startDateTime, endDateTime } = req.body;
 
     const record = await SponsorAccomodationQuota.findById(id);
+
     if (!record) {
       return res.status(404).json({ message: "Quota not found" });
+    }
+
+    // ===============================
+    // Prevent duplicate sponsor quota on update
+    // ===============================
+    if (
+      sponsorId &&
+      sponsorId.toString() !== record.sponsorId.toString()
+    ) {
+      const existingQuota = await SponsorAccomodationQuota.findOne({
+        sponsorId,
+        eventId: record.eventId,
+      });
+
+      if (existingQuota) {
+        return res.status(400).json({
+          success: false,
+          message: "This sponsor already has an accommodation quota.",
+        });
+      }
+
+      record.sponsorId = sponsorId;
     }
 
     const room = await AddRoom.findById(record.QuotaId);
