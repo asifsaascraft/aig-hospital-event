@@ -38,10 +38,10 @@ router.put(
 );
 
 // =======================
-// EventAdmin: Delete Sponsor Accomodation Quota
+// EventAdmin: Delete Sponsor Accomodation Quota for a specific quota
 // =======================
 router.delete(
-  "/event-admin/accomodation-quotas/:id",
+  "/event-admin/accomodation-quotas/:id/:quotaId",
   protect,
   authorizeRoles("eventAdmin"),
   deleteSponsorAccomodationQuota

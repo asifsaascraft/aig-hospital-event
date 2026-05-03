@@ -217,14 +217,18 @@ export const updateSponsorAccomodationQuota = async (req, res) => {
 
     const diff = numberOfQuota - quotaItem.numberOfQuota;
 
-    if (diff > 0 && room.availableRooms < diff) {
-      return res.status(400).json({
-        success: false,
-        message: `Not enough rooms available. Only ${room.availableRooms} rooms left`,
-      });
+    if (diff > 0) {
+      if (room.availableRooms < diff) {
+        return res.status(400).json({
+          success: false,
+          message: `Not enough rooms available. Only ${room.availableRooms} rooms left`,
+        });
+      }
+      room.availableRooms -= diff;
+    } else if (diff < 0) {
+      room.availableRooms += Math.abs(diff);
     }
 
-    room.availableRooms -= diff;
     quotaItem.numberOfQuota = numberOfQuota;
 
     await room.save();
@@ -251,15 +255,8 @@ export const updateSponsorAccomodationQuota = async (req, res) => {
 // =======================
 export const deleteSponsorAccomodationQuota = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { quotaId } = req.body;
+    const { id, quotaId } = req.params;
 
-    if (!quotaId) {
-      return res.status(400).json({
-        success: false,
-        message: "quota is required to delete quota",
-      });
-    }
 
     const record = await SponsorAccomodationQuota.findById(id);
     if (!record) {
