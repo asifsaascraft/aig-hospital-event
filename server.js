@@ -79,7 +79,7 @@ import assignProfileRoutes from "./routes/assignProfileRoutes.js";
 import assignTravelServiceRoutes from "./routes/assignTravelServiceRoutes.js";
 import assignAccomodationServiceRoutes from "./routes/assignAccomodationServiceRoutes.js";
 import noteRoutes from "./routes/noteRoutes.js";
-
+import sponsorAccomodationRoutes from "./routes/sponsorAccomodationRoutes.js";
 await connectDB();
 
 const app = express();
@@ -193,6 +193,7 @@ app.use("/api", assignProfileRoutes);
 app.use("/api", assignTravelServiceRoutes);
 app.use("/api", assignAccomodationServiceRoutes);
 app.use("/api", noteRoutes);
+app.use("/api", sponsorAccomodationRoutes);
 
 
 // =======================

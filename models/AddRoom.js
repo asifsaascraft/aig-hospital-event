@@ -28,6 +28,12 @@ const AddRoomSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+//  Prevent duplicate (eventId + hotel + checkinDate)
+AddRoomSchema.index(
+  { eventId: 1, hotelId: 1, checkinDate: 1 },
+  { unique: true }
+);
+
 // Avoid model overwrite during hot-reload
 export default mongoose.models.AddRoom ||
   mongoose.model("AddRoom", AddRoomSchema);

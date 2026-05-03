@@ -56,6 +56,22 @@ export const createAddRoom = async (req, res) => {
     }
 
     // ===============================
+    // Check duplicate (IMPORTANT)
+    // ===============================
+    const existingRoom = await AddRoom.findOne({
+      eventId,
+      hotelId,
+      checkinDate: parsedCheckinDate,
+    });
+
+    if (existingRoom) {
+      return res.status(400).json({
+        success: false,
+        message: "Room already exists for this hotel on selected date",
+      });
+    }
+
+    // ===============================
     // Create
     // ===============================
     const newAddRoom = await AddRoom.create({
@@ -137,12 +153,18 @@ export const updateAddRoom = async (req, res) => {
     const { id } = req.params;
     const { hotelId, numberOfRooms, checkinDate } = req.body;
 
+    // ===============================
+    // Validate numberOfRooms
+    // ===============================
     if (numberOfRooms !== undefined && numberOfRooms < 1) {
       return res.status(400).json({
         message: "Number of rooms must be at least 1",
       });
     }
 
+    // ===============================
+    // Find existing room
+    // ===============================
     const existingRoom = await AddRoom.findById(id);
     if (!existingRoom) {
       return res.status(404).json({ message: "Room not found" });
@@ -157,17 +179,38 @@ export const updateAddRoom = async (req, res) => {
       });
     }
 
+    // ===============================
+    // Prepare final values
+    // ===============================
     const finalCheckinDate = checkinDate
       ? new Date(checkinDate)
       : existingRoom.checkinDate;
 
+    const finalHotelId = hotelId || existingRoom.hotelId;
+
     // ===============================
     // Validate Hotel
     // ===============================
-    const finalHotelId = hotelId || existingRoom.hotelId;
     const hotel = await Hotel.findById(finalHotelId);
     if (!hotel) {
       return res.status(404).json({ message: "Hotel not found" });
+    }
+
+    // ===============================
+    // Prevent duplicate (IMPORTANT)
+    // ===============================
+    const duplicate = await AddRoom.findOne({
+      _id: { $ne: id }, // exclude current record
+      eventId: existingRoom.eventId,
+      hotelId: finalHotelId,
+      checkinDate: finalCheckinDate,
+    });
+
+    if (duplicate) {
+      return res.status(400).json({
+        success: false,
+        message: "Room already exists for this hotel on selected date",
+      });
     }
 
     // ===============================
@@ -179,6 +222,7 @@ export const updateAddRoom = async (req, res) => {
       const allocated =
         existingRoom.numberOfRooms - existingRoom.availableRooms;
 
+      // Prevent reducing below already allocated
       if (numberOfRooms < allocated) {
         return res.status(400).json({
           message: `Cannot reduce rooms below allocated (${allocated})`,
@@ -194,6 +238,9 @@ export const updateAddRoom = async (req, res) => {
 
     existingRoom.checkinDate = finalCheckinDate;
 
+    // ===============================
+    // Save
+    // ===============================
     await existingRoom.save();
 
     res.status(200).json({
@@ -204,6 +251,17 @@ export const updateAddRoom = async (req, res) => {
 
   } catch (error) {
     console.error("Update AddRoom error:", error);
+
+    // ===============================
+    // Handle duplicate index error
+    // ===============================
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "Duplicate room entry not allowed",
+      });
+    }
+
     res.status(500).json({ message: "Server Error" });
   }
 };
