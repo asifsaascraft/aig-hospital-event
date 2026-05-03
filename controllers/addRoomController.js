@@ -8,12 +8,7 @@ import Hotel from "../models/Hotel.js";
 export const createAddRoom = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const {
-      hotelId,
-      numberOfRooms,
-      startDateTime,
-      endDateTime,
-    } = req.body;
+    const { hotelId, numberOfRooms, checkinDate } = req.body;
 
     if (numberOfRooms === undefined || numberOfRooms < 1) {
       return res.status(400).json({
@@ -24,41 +19,25 @@ export const createAddRoom = async (req, res) => {
     // ===============================
     // Required check
     // ===============================
-    if (!startDateTime || !endDateTime) {
+    if (!checkinDate) {
       return res.status(400).json({
-        message: "Start and End date time are required",
+        message: "Checkin date is required",
       });
     }
 
     // ===============================
     // Validate format
     // ===============================
-    if (isNaN(new Date(startDateTime))) {
+    if (isNaN(new Date(checkinDate))) {
       return res.status(400).json({
-        message: "Invalid startDateTime format",
-      });
-    }
-
-    if (isNaN(new Date(endDateTime))) {
-      return res.status(400).json({
-        message: "Invalid endDateTime format",
+        message: "Invalid checkinDate format",
       });
     }
 
     // ===============================
     // Convert
     // ===============================
-    const parsedStart = new Date(startDateTime);
-    const parsedEnd = new Date(endDateTime);
-
-    // ===============================
-    // Compare
-    // ===============================
-    if (parsedEnd < parsedStart) {
-      return res.status(400).json({
-        message: "End date must be greater than or equal to start date",
-      });
-    }
+    const parsedCheckinDate = new Date(checkinDate);
 
     // ===============================
     // Validate Event
@@ -84,8 +63,7 @@ export const createAddRoom = async (req, res) => {
       hotelId,
       numberOfRooms,
       availableRooms: numberOfRooms,
-      startDateTime: parsedStart,
-      endDateTime: parsedEnd,
+      checkinDate: parsedCheckinDate,
     });
 
     res.status(201).json({
@@ -109,7 +87,7 @@ export const getAddRoomsByEvent = async (req, res) => {
     const { eventId } = req.params;
 
     const rooms = await AddRoom.find({ eventId })
-      .populate("hotelId", "hotelName")
+      .populate("hotelId", "hotelName checkinTime checkoutTime")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -133,7 +111,7 @@ export const getAddRoomById = async (req, res) => {
     const { id } = req.params;
 
     const room = await AddRoom.findById(id)
-      .populate("hotelId", "hotelName");
+      .populate("hotelId", "hotelName checkinTime checkoutTime");
 
     if (!room) {
       return res.status(404).json({ message: "Room not found" });
@@ -157,12 +135,7 @@ export const getAddRoomById = async (req, res) => {
 export const updateAddRoom = async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      hotelId,
-      numberOfRooms,
-      startDateTime,
-      endDateTime,
-    } = req.body;
+    const { hotelId, numberOfRooms, checkinDate } = req.body;
 
     if (numberOfRooms !== undefined && numberOfRooms < 1) {
       return res.status(400).json({
@@ -176,39 +149,17 @@ export const updateAddRoom = async (req, res) => {
     }
 
     // ===============================
-    // Validate format
+    // Validate checkinDate format
     // ===============================
-    if (startDateTime && isNaN(new Date(startDateTime))) {
+    if (checkinDate && isNaN(new Date(checkinDate))) {
       return res.status(400).json({
-        message: "Invalid startDateTime format",
+        message: "Invalid checkinDate format",
       });
     }
 
-    if (endDateTime && isNaN(new Date(endDateTime))) {
-      return res.status(400).json({
-        message: "Invalid endDateTime format",
-      });
-    }
-
-    // ===============================
-    // Final values + conversion
-    // ===============================
-    const finalStart = startDateTime
-      ? new Date(startDateTime)
-      : existingRoom.startDateTime;
-
-    const finalEnd = endDateTime
-      ? new Date(endDateTime)
-      : existingRoom.endDateTime;
-
-    // ===============================
-    // Compare
-    // ===============================
-    if (finalEnd < finalStart) {
-      return res.status(400).json({
-        message: "End date must be greater than or equal to start date",
-      });
-    }
+    const finalCheckinDate = checkinDate
+      ? new Date(checkinDate)
+      : existingRoom.checkinDate;
 
     // ===============================
     // Validate Hotel
@@ -225,25 +176,23 @@ export const updateAddRoom = async (req, res) => {
     existingRoom.hotelId = finalHotelId;
 
     if (numberOfRooms !== undefined) {
+      const allocated =
+        existingRoom.numberOfRooms - existingRoom.availableRooms;
 
-  //  NEW: calculate already allocated
-  const allocated =
-    existingRoom.numberOfRooms - existingRoom.availableRooms;
+      if (numberOfRooms < allocated) {
+        return res.status(400).json({
+          message: `Cannot reduce rooms below allocated (${allocated})`,
+        });
+      }
 
-  if (numberOfRooms < allocated) {
-    return res.status(400).json({
-      message: `Cannot reduce rooms below allocated (${allocated})`,
-    });
-  }
+      const diff = numberOfRooms - existingRoom.numberOfRooms;
 
-  const diff = numberOfRooms - existingRoom.numberOfRooms;
+      existingRoom.numberOfRooms = numberOfRooms;
+      existingRoom.availableRooms =
+        (existingRoom.availableRooms || 0) + diff;
+    }
 
-  existingRoom.numberOfRooms = numberOfRooms;
-  existingRoom.availableRooms =
-    (existingRoom.availableRooms || 0) + diff;
-}
-    existingRoom.startDateTime = finalStart;
-    existingRoom.endDateTime = finalEnd;
+    existingRoom.checkinDate = finalCheckinDate;
 
     await existingRoom.save();
 
