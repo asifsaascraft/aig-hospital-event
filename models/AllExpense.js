@@ -35,6 +35,10 @@ const AllExpenseSchema = new mongoose.Schema(
       required: [true, "GST tax is required"],
       trim: true,
     },
+    date: {
+      type: Date,
+      required: [true, "Date is required"],
+    },
     totalAmountWithoutGst: {
       type: Number,
     },

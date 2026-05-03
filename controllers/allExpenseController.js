@@ -16,6 +16,7 @@ export const createAllExpense = async (req, res) => {
       unit,
       unitType,
       gstTax,
+      date,
     } = req.body;
 
     // Check Event Exists
@@ -31,10 +32,17 @@ export const createAllExpense = async (req, res) => {
       baseAmount == null ||
       unit == null ||
       !unitType ||
-      gstTax == null
+      gstTax == null ||
+      !date
     ) {
       return res.status(400).json({
         message: "All fields are required",
+      });
+    }
+
+    if (isNaN(new Date(date))) {
+      return res.status(400).json({
+        message: "Invalid date format",
       });
     }
 
@@ -75,6 +83,7 @@ export const createAllExpense = async (req, res) => {
       unit,
       unitType,
       gstTax,
+      date: new Date(date),
       totalAmountWithoutGst,
       gstAmount,
       totalAmountWithGst,
@@ -154,6 +163,7 @@ export const getAllExpensesByEvent = async (req, res) => {
         unit: item.unit,
         unitType: item.unitType,
         gstTax: item.gstTax,
+        date: item.date,
         totalAmountWithoutGst: item.totalAmountWithoutGst,
         gstAmount: item.gstAmount,
         totalAmountWithGst: item.totalAmountWithGst,
@@ -212,6 +222,7 @@ export const updateAllExpense = async (req, res) => {
       unit,
       unitType,
       gstTax,
+      date,
     } = req.body;
 
     //  Prevent empty update
@@ -219,10 +230,17 @@ export const updateAllExpense = async (req, res) => {
       baseAmount == null &&
       unit == null &&
       unitType === undefined &&
-      gstTax == null
+      gstTax == null &&
+      !date
     ) {
       return res.status(400).json({
         message: "No valid fields provided for update",
+      });
+    }
+
+    if (date && isNaN(new Date(date))) {
+      return res.status(400).json({
+        message: "Invalid date format",
       });
     }
 
@@ -242,6 +260,7 @@ export const updateAllExpense = async (req, res) => {
     if (unit != null) expense.unit = unit;
     if (unitType !== undefined) expense.unitType = unitType;
     if (gstTax != null) expense.gstTax = gstTax;
+    if (date) expense.date = new Date(date);
 
     //  Recalculate using updated values
     const finalBaseAmount = expense.baseAmount;
