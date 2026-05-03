@@ -25,14 +25,14 @@ export const createSponsorAccomodationQuota = async (req, res) => {
     if (!quotaId) {
       return res.status(400).json({
         success: false,
-        message: "Quota (Room/Hotel) is required",
+        message: "Accomodation quota is required",
       });
     }
 
     if (numberOfQuota === undefined || numberOfQuota < 1) {
       return res.status(400).json({
         success: false,
-        message: "Number of quota must be at least 1",
+        message: "Number of accomodation quota must be at least 1",
       });
     }
 
@@ -59,14 +59,14 @@ export const createSponsorAccomodationQuota = async (req, res) => {
     if (!room) {
       return res.status(404).json({
         success: false,
-        message: "Room quota not found for given quota",
+        message: "Accomodation quota not found for given quota",
       });
     }
 
     if (room.eventId.toString() !== eventId) {
       return res.status(400).json({
         success: false,
-        message: "Selected room does not belong to this event",
+        message: "Selected accomodation quota does not belong to this event",
       });
     }
 
@@ -109,7 +109,7 @@ export const createSponsorAccomodationQuota = async (req, res) => {
     if (existingQuota) {
       return res.status(400).json({
         success: false,
-        message: "This quota is already assigned to this sponsor. You can update",
+        message: "This Accomodation quota is already assigned to this sponsor. You can update",
       });
     }
 
@@ -121,7 +121,7 @@ export const createSponsorAccomodationQuota = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "New quota added to existing sponsor successfully",
+      message: "New accomodation quota added to existing sponsor successfully",
       data: record,
     });
 
@@ -177,14 +177,14 @@ export const updateSponsorAccomodationQuota = async (req, res) => {
     if (!quotaId) {
       return res.status(400).json({
         success: false,
-        message: "quota is required",
+        message: "Accomodation quota is required",
       });
     }
 
     if (numberOfQuota === undefined || numberOfQuota < 1) {
       return res.status(400).json({
         success: false,
-        message: "number of quota must be at least 1",
+        message: "number of accomodation quota must be at least 1",
       });
     }
 
@@ -203,7 +203,7 @@ export const updateSponsorAccomodationQuota = async (req, res) => {
     if (!quotaItem) {
       return res.status(404).json({
         success: false,
-        message: "Specified quota not found in this sponsor record",
+        message: "Specified accomodation quota not found in this sponsor record",
       });
     }
 
@@ -276,7 +276,7 @@ export const deleteSponsorAccomodationQuota = async (req, res) => {
     if (index === -1) {
       return res.status(404).json({
         success: false,
-        message: "Quota not found in this sponsor record",
+        message: "Accomodation quota not found in this sponsor record",
       });
     }
 
