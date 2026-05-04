@@ -165,6 +165,90 @@ export const getSponsorAccomodationQuotasByEvent = async (req, res) => {
   }
 };
 
+// =======================
+// Get My Quotas (Sponsor Only)
+// =======================
+export const getMyAccomodationQuotas = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const sponsorId = req.sponsor._id;
+
+    const quota = await SponsorAccomodationQuota.findOne({
+      eventId,
+      sponsorId,
+    })
+      .populate({
+        path: "quotas.quotaId",
+        select: "checkinDate hotelId",
+        populate: {
+          path: "hotelId",
+          select: "hotelName checkinTime checkoutTime",
+        },
+      });
+
+    if (!quota) {
+      return res.status(404).json({
+        success: false,
+        message: "No accommodation quota assigned to this sponsor",
+      });
+    }
+
+    // ===============================
+    //  GROUP BY HOTEL
+    // ===============================
+    const hotelMap = {};
+
+    quota.quotas.forEach((q) => {
+      const room = q.quotaId;
+      const hotel = room.hotelId;
+
+      if (!hotel) return;
+
+      const hotelId = hotel._id.toString();
+
+      if (!hotelMap[hotelId]) {
+        hotelMap[hotelId] = {
+          hotelId: hotel._id,
+          hotelName: hotel.hotelName,
+          checkinTime: hotel.checkinTime,
+          checkoutTime: hotel.checkoutTime,
+          dates: [],
+        };
+      }
+
+      hotelMap[hotelId].dates.push({
+        quotaId: room._id,
+        checkinDate: room.checkinDate,
+        numberOfQuota: q.numberOfQuota,
+      });
+    });
+
+    // Convert to array
+    const result = Object.values(hotelMap);
+
+    // ===============================
+    // OPTIONAL: SORT DATES
+    // ===============================
+    result.forEach((hotel) => {
+      hotel.dates.sort(
+        (a, b) =>
+          new Date(a.checkinDate) - new Date(b.checkinDate)
+      );
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+
+  } catch (error) {
+    console.error("Get My Quota Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
 
 // =======================
 // Update

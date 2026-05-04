@@ -42,7 +42,12 @@ const AccomodationSchema = new mongoose.Schema(
           ref: "AddRoom",
           required: true,
         },
-      },
+        hotelId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Hotel",
+          required: true,
+        }
+      }
     ],
   },
   { timestamps: true }

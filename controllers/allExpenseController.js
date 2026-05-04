@@ -108,7 +108,14 @@ export const getAllExpensesByEvent = async (req, res) => {
     const { eventId } = req.params;
 
     const expenses = await AllExpense.find({ eventId })
-      .populate("eventId", "eventName startDateTime endDateTime")
+      .populate({
+        path: "eventId",
+        select: "eventName startDateTime endDateTime venueName",
+        populate: {
+          path: "venueName",
+          select: "venueName",
+        },
+      })
       .populate("expenseCategoryId", "expenseCategoryName")
       .sort({ createdAt: -1 })
       .lean();

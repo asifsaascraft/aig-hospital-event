@@ -2,10 +2,13 @@ import express from "express";
 import {
   createSponsorAccomodationQuota,
   getSponsorAccomodationQuotasByEvent,
+  getMyAccomodationQuotas,
   updateSponsorAccomodationQuota,
   deleteSponsorAccomodationQuota,
 } from "../controllers/sponsorAccomodationQuotaController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
+import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
+
 
 const router = express.Router();
 
@@ -25,6 +28,15 @@ router.post(
 router.get(
   "/events/:eventId/accomodation-quotas",
   getSponsorAccomodationQuotasByEvent
+);
+
+// =======================
+// Sponsor: Get Own Accomodation Quota
+// =======================
+router.get(
+  "/sponsor/events/:eventId/accomodation-quotas",
+  protectSponsor,
+  getMyAccomodationQuotas
 );
 
 // =======================

@@ -29,15 +29,16 @@ const getDatesBetween = (start, end) => {
   return dates;
 };
 
+
 // =======================
 // CREATE ACCOMODATION
 // =======================
 export const createAccomodation = async (req, res) => {
   try {
     const { eventId } = req.params;
+    const sponsorId = req.sponsor._id;
 
     const {
-      sponsorId,
       eventRegistrationId,
       checkinDateTime,
       checkoutDateTime,
@@ -46,7 +47,7 @@ export const createAccomodation = async (req, res) => {
     if (!checkinDateTime || !checkoutDateTime) {
       return res.status(400).json({
         success: false,
-        message: "Checkin, checkout date and time are required",
+        message: "Checkin and checkout datetime are required",
       });
     }
 
@@ -56,12 +57,12 @@ export const createAccomodation = async (req, res) => {
     if (checkin >= checkout) {
       return res.status(400).json({
         success: false,
-        message: "Checkout amust be after checkin",
+        message: "Checkout must be after checkin",
       });
     }
 
     // ===============================
-    // GET QUOTA RECORD
+    // GET ALL SPONSOR QUOTAS
     // ===============================
     const quotaRecord = await SponsorAccomodationQuota.findOne({
       eventId,
@@ -71,70 +72,61 @@ export const createAccomodation = async (req, res) => {
     if (!quotaRecord) {
       return res.status(400).json({
         success: false,
-        message: "No accommodation quota assigned to this sponsor",
+        message: "No accommodation quota assigned",
       });
     }
 
     // ===============================
-    // GET HOTEL FROM FIRST QUOTA
+    // LOAD ALL ROOMS IN ONE QUERY
     // ===============================
-    const firstRoom = await AddRoom.findById(
-      quotaRecord.quotas[0].quotaId
-    ).populate("hotelId");
+    const roomIds = quotaRecord.quotas.map(q => q.quotaId);
 
-    const hotel = firstRoom.hotelId;
+    const rooms = await AddRoom.find({
+      _id: { $in: roomIds }
+    }).populate("hotelId");
 
-    const hotelCheckin = parseTime(hotel.checkinTime);
-    const hotelCheckout = parseTime(hotel.checkoutTime);
+    const roomMap = {};
+    rooms.forEach(r => {
+      roomMap[r._id.toString()] = r;
+    });
 
-    const userCheckin = {
-      h: checkin.getHours(),
-      m: checkin.getMinutes(),
+    // ===============================
+    // NORMALIZE DATES
+    // ===============================
+    const normalize = (d) => {
+      const x = new Date(d);
+      x.setHours(0, 0, 0, 0);
+      return x;
     };
 
-    const userCheckout = {
-      h: checkout.getHours(),
-      m: checkout.getMinutes(),
-    };
+    let startDate = normalize(checkin);
+    let endDate = normalize(checkout);
 
     // ===============================
-    // VALIDATE HOTEL TIME
+    // HANDLE EARLY CHECKIN
     // ===============================
-    if (
-      userCheckin.h < hotelCheckin.h ||
-      (userCheckin.h === hotelCheckin.h &&
-        userCheckin.m < hotelCheckin.m)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: `Check-in allowed only after ${hotel.checkinTime}`,
-      });
+    const hotel = rooms[0].hotelId;
+
+    const [checkinHour] = hotel.checkinTime.split(":").map(Number);
+    const [checkoutHour] = hotel.checkoutTime.split(":").map(Number);
+
+    if (checkin.getHours() < checkinHour) {
+      startDate.setDate(startDate.getDate() - 1);
     }
 
-    if (
-      userCheckout.h > hotelCheckout.h ||
-      (userCheckout.h === hotelCheckout.h &&
-        userCheckout.m > hotelCheckout.m)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: `Checkout must be before ${hotel.checkoutTime}`,
-      });
+    if (checkout.getHours() > checkoutHour) {
+      endDate.setDate(endDate.getDate() + 1);
     }
 
     // ===============================
-    // GENERATE DATES (NIGHTS)
+    // GENERATE DATES
     // ===============================
-    const startDate = normalizeDate(checkin);
-    const endDate = normalizeDate(checkout);
+    const dates = [];
+    let current = new Date(startDate);
 
-    const dates = getDatesBetween(startDate, endDate);
-
-    if (dates.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "At least one night booking required",
-      });
+    while (current < endDate) {
+      dates.push(new Date(current));
+      current.setDate(current.getDate() + 1);
     }
 
     const accomodationDays = [];
@@ -143,26 +135,27 @@ export const createAccomodation = async (req, res) => {
     // VALIDATE EACH DATE
     // ===============================
     for (let date of dates) {
-      const room = await AddRoom.findOne({
-        eventId,
-        checkinDate: date,
-      });
+
+      // find room for this date
+      const room = rooms.find(r =>
+        r.checkinDate.toISOString() === date.toISOString()
+      );
 
       if (!room) {
         return res.status(400).json({
           success: false,
-          message: `No accommodation available for ${date.toDateString()}`,
+          message: `No room available for ${date.toDateString()}`,
         });
       }
 
       const quotaItem = quotaRecord.quotas.find(
-        (q) => q.quotaId.toString() === room._id.toString()
+        q => q.quotaId.toString() === room._id.toString()
       );
 
       if (!quotaItem) {
         return res.status(400).json({
           success: false,
-          message: `No quota assigned for ${date.toDateString()}`,
+          message: `No quota for ${date.toDateString()}`,
         });
       }
 
@@ -170,8 +163,8 @@ export const createAccomodation = async (req, res) => {
         eventId,
         sponsorId,
         accomodationDays: {
-          $elemMatch: { date },
-        },
+          $elemMatch: { date }
+        }
       });
 
       if (used >= quotaItem.numberOfQuota) {
@@ -184,11 +177,12 @@ export const createAccomodation = async (req, res) => {
       accomodationDays.push({
         date,
         quotaId: room._id,
+        hotelId: room.hotelId._id
       });
     }
 
     // ===============================
-    // CREATE RECORD
+    // CREATE
     // ===============================
     const booking = await Accomodation.create({
       eventId,
@@ -196,7 +190,7 @@ export const createAccomodation = async (req, res) => {
       eventRegistrationId,
       checkinDateTime: checkin,
       checkoutDateTime: checkout,
-      accomodationDays,
+      accomodationDays
     });
 
     return res.status(201).json({
@@ -209,8 +203,7 @@ export const createAccomodation = async (req, res) => {
     console.error(error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
-      error: error.message,
+      message: "Server error",
     });
   }
 };
