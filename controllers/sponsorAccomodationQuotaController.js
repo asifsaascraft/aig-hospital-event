@@ -182,7 +182,7 @@ export const getMyAccomodationQuotas = async (req, res) => {
         select: "checkinDate hotelId",
         populate: {
           path: "hotelId",
-          select: "hotelName checkinTime checkoutTime",
+          select: "hotelName hotelImage checkinTime checkoutTime",
         },
       });
 
@@ -210,6 +210,7 @@ export const getMyAccomodationQuotas = async (req, res) => {
         hotelMap[hotelId] = {
           hotelId: hotel._id,
           hotelName: hotel.hotelName,
+          hotelImage: hotel.hotelImage,
           checkinTime: hotel.checkinTime,
           checkoutTime: hotel.checkoutTime,
           dates: [],

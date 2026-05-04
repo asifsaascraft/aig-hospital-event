@@ -535,7 +535,8 @@ export const getAccomodationSummary = async (req, res) => {
       });
     }
 
-    const summary = [];
+    const dateWise = [];
+    const hotelSummaryMap = {};
 
     for (let q of quotaRecord.quotas) {
       const room = q.quotaId;
@@ -551,23 +552,51 @@ export const getAccomodationSummary = async (req, res) => {
         },
       });
 
-      summary.push({
-        hotelName: room.hotelId.hotelName,
+      const remaining = Math.max(q.numberOfQuota - used, 0);
+      const hotelName = room.hotelId.hotelName;
+
+      // =========================
+      // DATE WISE
+      // =========================
+      dateWise.push({
+        hotelName,
         date: room.checkinDate,
         totalQuota: q.numberOfQuota,
         used,
-        remaining: Math.max(q.numberOfQuota - used, 0),
+        remaining,
       });
+
+      // =========================
+      // HOTEL WISE (AGGREGATION)
+      // =========================
+      if (!hotelSummaryMap[hotelName]) {
+        hotelSummaryMap[hotelName] = {
+          hotelName,
+          totalQuota: 0,
+          used: 0,
+          remaining: 0,
+        };
+      }
+
+      hotelSummaryMap[hotelName].totalQuota += q.numberOfQuota;
+      hotelSummaryMap[hotelName].used += used;
+      hotelSummaryMap[hotelName].remaining += remaining;
     }
+
+    // Convert map → array
+    const hotelWise = Object.values(hotelSummaryMap);
 
     return res.status(200).json({
       success: true,
       message: "Accomodation summary fetched",
-      data: summary,
+      data: {
+        dateWise,
+        hotelWise,
+      },
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Summary Error:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
