@@ -59,17 +59,6 @@ export const createAllExpense = async (req, res) => {
       });
     }
 
-    const duplicate = await AllExpense.findOne({
-      eventId,
-      expenseCategoryId,
-      name: { $regex: new RegExp(`^${name}$`, "i") },
-    });
-
-    if (duplicate) {
-      return res.status(400).json({
-        message: "Expense already exists for this event and category",
-      });
-    }
     //  Calculations
     const totalAmountWithoutGst = baseAmount * unit;
     const gstAmount = (totalAmountWithoutGst * gstTax) / 100;

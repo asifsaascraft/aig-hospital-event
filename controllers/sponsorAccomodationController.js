@@ -6,6 +6,19 @@ import SponsorAccomodationQuota from "../models/SponsorAccomodationQuota.js";
 // Helper Functions
 // =======================
 
+const convertUTCToIST = (date) => {
+  return new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+};
+
+const formatDateIST = (date) => {
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+};
+
 const parseTime = (timeStr) => {
   const [h, m] = timeStr.split(":").map(Number);
   return { h, m };
@@ -42,7 +55,81 @@ export const createAccomodation = async (req, res) => {
       eventRegistrationId,
       checkinDateTime,
       checkoutDateTime,
+      hotelId,
+      roomType,
+      guestName,
+      otherEventRegistrationId,
     } = req.body;
+
+    // ===============================
+    // BASIC VALIDATION
+    // ===============================
+    if (!hotelId) {
+      return res.status(400).json({
+        success: false,
+        message: "Hotel selection is required",
+      });
+    }
+
+    // ===============================
+    // ROOM TYPE VALIDATION
+    // ===============================
+    if (!roomType) {
+      return res.status(400).json({
+        success: false,
+        message: "Room type is required",
+      });
+    }
+
+    if (roomType === "Double Occupancy" && !guestName) {
+      return res.status(400).json({
+        success: false,
+        message: "Guest name is required for Double Occupancy",
+      });
+    }
+
+    if (roomType === "Twin Sharing" && !otherEventRegistrationId) {
+      return res.status(400).json({
+        success: false,
+        message: "Other delegate is required for Twin Sharing",
+      });
+    }
+
+    if (
+      roomType === "Twin Sharing" &&
+      eventRegistrationId === otherEventRegistrationId
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot select the same delegate for Twin Sharing",
+      });
+    }
+
+    // ===============================
+    // PREVENT DUPLICATE BOOKING (FULL CHECK)
+    // ===============================
+    const existingBooking = await Accomodation.findOne({
+      eventId,
+      ...(req._skipBookingId && { _id: { $ne: req._skipBookingId } }),
+      $or: [
+        { eventRegistrationId },
+        { otherEventRegistrationId: eventRegistrationId },
+        ...(otherEventRegistrationId
+          ? [
+            { eventRegistrationId: otherEventRegistrationId },
+            { otherEventRegistrationId },
+          ]
+          : []),
+      ],
+    });
+
+    if (existingBooking) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "One of the selected delegates already has an accommodation booking",
+      });
+    }
 
     if (!checkinDateTime || !checkoutDateTime) {
       return res.status(400).json({
@@ -51,18 +138,21 @@ export const createAccomodation = async (req, res) => {
       });
     }
 
-    const checkin = new Date(checkinDateTime);
-    const checkout = new Date(checkoutDateTime);
+    const checkinUTC = new Date(checkinDateTime);
+    const checkoutUTC = new Date(checkoutDateTime);
+
+    const checkin = convertUTCToIST(checkinUTC);
+    const checkout = convertUTCToIST(checkoutUTC);
 
     if (checkin >= checkout) {
       return res.status(400).json({
         success: false,
-        message: "Checkout must be after checkin",
+        message: "Checkout date must be after checkin date",
       });
     }
 
     // ===============================
-    // GET ALL SPONSOR QUOTAS
+    // GET SPONSOR QUOTAS
     // ===============================
     const quotaRecord = await SponsorAccomodationQuota.findOne({
       eventId,
@@ -77,56 +167,70 @@ export const createAccomodation = async (req, res) => {
     }
 
     // ===============================
-    // LOAD ALL ROOMS IN ONE QUERY
+    // LOAD ROOMS OF THIS HOTEL ONLY
     // ===============================
     const roomIds = quotaRecord.quotas.map(q => q.quotaId);
 
     const rooms = await AddRoom.find({
-      _id: { $in: roomIds }
+      _id: { $in: roomIds },
+      hotelId: hotelId
     }).populate("hotelId");
 
-    const roomMap = {};
-    rooms.forEach(r => {
-      roomMap[r._id.toString()] = r;
-    });
+    if (rooms.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No quota available for selected hotel",
+      });
+    }
 
-    // ===============================
-    // NORMALIZE DATES
-    // ===============================
-    const normalize = (d) => {
-      const x = new Date(d);
-      x.setHours(0, 0, 0, 0);
-      return x;
-    };
-
-    let startDate = normalize(checkin);
-    let endDate = normalize(checkout);
-
-    // ===============================
-    // HANDLE EARLY CHECKIN
-    // ===============================
     const hotel = rooms[0].hotelId;
 
-    const [checkinHour] = hotel.checkinTime.split(":").map(Number);
-    const [checkoutHour] = hotel.checkoutTime.split(":").map(Number);
+    // ===============================
+    // TIME VALIDATION
+    // ===============================
+    const [checkinHour, checkinMin] = hotel.checkinTime.split(":").map(Number);
+    const [checkoutHour, checkoutMin] = hotel.checkoutTime.split(":").map(Number);
 
-    if (checkin.getHours() < checkinHour) {
-      startDate.setDate(startDate.getDate() - 1);
+    //  EARLY CHECKIN
+    if (
+      checkin.getHours() < checkinHour ||
+      (checkin.getHours() === checkinHour &&
+        checkin.getMinutes() < checkinMin)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: `Check-in allowed only after ${hotel.checkinTime}. Please book from previous date.`,
+      });
     }
 
-    if (checkout.getHours() > checkoutHour) {
-      endDate.setDate(endDate.getDate() + 1);
+    //  LATE CHECKOUT
+    if (
+      checkout.getHours() > checkoutHour ||
+      (checkout.getHours() === checkoutHour &&
+        checkout.getMinutes() > checkoutMin)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: `Checkout exceeds ${hotel.checkoutTime}. Please include next date.`,
+      });
     }
 
-    // ===============================
-    // GENERATE DATES
-    // ===============================
+    const startDate = normalizeDate(checkin);
+    const endDate = normalizeDate(checkout);
+
     const dates = [];
     let current = new Date(startDate);
 
     while (current < endDate) {
       dates.push(new Date(current));
       current.setDate(current.getDate() + 1);
+    }
+
+    if (dates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one day booking required",
+      });
     }
 
     const accomodationDays = [];
@@ -136,15 +240,14 @@ export const createAccomodation = async (req, res) => {
     // ===============================
     for (let date of dates) {
 
-      // find room for this date
-      const room = rooms.find(r =>
-        r.checkinDate.toISOString() === date.toISOString()
+      const room = rooms.find(
+        r => normalizeDate(r.checkinDate).getTime() === normalizeDate(date).getTime()
       );
 
       if (!room) {
         return res.status(400).json({
           success: false,
-          message: `No room available for ${date.toDateString()}`,
+          message: `No quota available for ${formatDateIST(date)} in selected hotel`,
         });
       }
 
@@ -155,7 +258,37 @@ export const createAccomodation = async (req, res) => {
       if (!quotaItem) {
         return res.status(400).json({
           success: false,
-          message: `No quota for ${date.toDateString()}`,
+          message: `Quota not assigned for ${formatDateIST(date)}`,
+        });
+      }
+
+      // ===============================
+      // PREVENT SAME DELEGATE OVERLAP (PER DAY)
+      // ===============================
+      const alreadyBooked = await Accomodation.findOne({
+        eventId,
+        ...(req._skipBookingId && { _id: { $ne: req._skipBookingId } }),
+        accomodationDays: {
+          $elemMatch: {
+            date: normalizeDate(date),
+          },
+        },
+        $or: [
+          { eventRegistrationId },
+          { otherEventRegistrationId: eventRegistrationId },
+          ...(otherEventRegistrationId
+            ? [
+              { eventRegistrationId: otherEventRegistrationId },
+              { otherEventRegistrationId },
+            ]
+            : []),
+        ],
+      });
+
+      if (alreadyBooked) {
+        return res.status(400).json({
+          success: false,
+          message: `Delegate already booked for ${formatDateIST(date)}`,
         });
       }
 
@@ -163,33 +296,41 @@ export const createAccomodation = async (req, res) => {
         eventId,
         sponsorId,
         accomodationDays: {
-          $elemMatch: { date }
-        }
+          $elemMatch: {
+            date: normalizeDate(date),
+            quotaId: room._id,
+          },
+        },
       });
 
       if (used >= quotaItem.numberOfQuota) {
         return res.status(400).json({
           success: false,
-          message: `Quota exceeded for ${date.toDateString()}`,
+          message: `Quota full for ${formatDateIST(date)}`,
         });
       }
 
       accomodationDays.push({
-        date,
+        date: normalizeDate(date),
         quotaId: room._id,
         hotelId: room.hotelId._id
       });
     }
 
     // ===============================
-    // CREATE
+    // CREATE BOOKING
     // ===============================
     const booking = await Accomodation.create({
       eventId,
       sponsorId,
       eventRegistrationId,
-      checkinDateTime: checkin,
-      checkoutDateTime: checkout,
+      hotelId,
+      roomType,
+      guestName: roomType === "Double Occupancy" ? guestName : null,
+      otherEventRegistrationId:
+        roomType === "Twin Sharing" ? otherEventRegistrationId : null,
+      checkinDateTime: checkinUTC,
+      checkoutDateTime: checkoutUTC,
       accomodationDays
     });
 
@@ -197,6 +338,232 @@ export const createAccomodation = async (req, res) => {
       success: true,
       message: "Accommodation booked successfully",
       data: booking,
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+// =======================
+// Get Accomodation by Sponsor
+// =======================
+export const getAccomodationBySponsor = async (req, res) => {
+  try {
+    const sponsorId = req.sponsor._id;
+    const { eventId } = req.params;
+
+    const data = await Accomodation.find({
+      eventId,
+      sponsorId,
+    })
+      .populate("hotelId", "hotelName checkinTime checkoutTime")
+      .populate("eventRegistrationId", "prefix name email mobile regNum")
+      .populate("otherEventRegistrationId", "prefix name email mobile regNum")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "Accomodation fetched successfully",
+      data,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
+// =======================
+// Update Accomodation
+// =======================
+export const updateAccomodation = async (req, res) => {
+  try {
+    const sponsorId = req.sponsor._id;
+    const { id } = req.params;
+    const { eventId } = req.params;
+
+    const {
+      eventRegistrationId,
+      checkinDateTime,
+      checkoutDateTime,
+      hotelId,
+      roomType,
+      guestName,
+      otherEventRegistrationId,
+    } = req.body;
+
+    const booking = await Accomodation.findOne({
+      _id: id,
+      sponsorId,
+    });
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Accomodation not found",
+      });
+    }
+
+    // ===============================
+    // DUPLICATE CHECK (IGNORE CURRENT)
+    // ===============================
+    const existingBooking = await Accomodation.findOne({
+      _id: { $ne: id },
+      eventId,
+      $or: [
+        { eventRegistrationId },
+        { otherEventRegistrationId: eventRegistrationId },
+        ...(otherEventRegistrationId
+          ? [
+            { eventRegistrationId: otherEventRegistrationId },
+            { otherEventRegistrationId },
+          ]
+          : []),
+      ],
+    });
+
+    if (existingBooking) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "One of the selected delegates already has an accommodation booking",
+      });
+    }
+
+    // ===============================
+    // TEMPORARILY REMOVE CURRENT BOOKING FROM CHECK
+    // ===============================
+    req._skipBookingId = id;
+
+    // Try creating new booking FIRST
+    const result = await createAccomodation(req, {
+      status: () => ({
+        json: (data) => data,
+      }),
+    });
+
+    // If failed → DO NOT delete old
+    if (!result || result.success === false) {
+      return res.status(400).json(result);
+    }
+
+    // Now delete old booking
+    await booking.deleteOne();
+
+    return res.status(200).json({
+      success: true,
+      message: "Accommodation updated successfully",
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Update failed",
+    });
+  }
+};
+
+// =======================
+// Delete Accomodation
+// =======================
+export const deleteAccomodation = async (req, res) => {
+  try {
+    const sponsorId = req.sponsor._id;
+    const { id } = req.params;
+
+    const booking = await Accomodation.findOne({
+      _id: id,
+      sponsorId,
+    });
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Accomodation not found",
+      });
+    }
+
+    await booking.deleteOne();
+
+    return res.status(200).json({
+      success: true,
+      message: "Accomodation deleted successfully",
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Delete failed",
+    });
+  }
+};
+
+
+// =======================
+// Accomodation Summary
+// =======================
+export const getAccomodationSummary = async (req, res) => {
+  try {
+    const sponsorId = req.sponsor._id;
+    const { eventId } = req.params;
+
+    const quotaRecord = await SponsorAccomodationQuota.findOne({
+      eventId,
+      sponsorId,
+    }).populate({
+      path: "quotas.quotaId",
+      populate: {
+        path: "hotelId",
+        select: "hotelName",
+      },
+    });
+
+    if (!quotaRecord) {
+      return res.status(404).json({
+        success: false,
+        message: "No quota assigned",
+      });
+    }
+
+    const summary = [];
+
+    for (let q of quotaRecord.quotas) {
+      const room = q.quotaId;
+
+      const used = await Accomodation.countDocuments({
+        eventId,
+        sponsorId,
+        accomodationDays: {
+          $elemMatch: {
+            quotaId: room._id,
+            date: normalizeDate(room.checkinDate),
+          },
+        },
+      });
+
+      summary.push({
+        hotelName: room.hotelId.hotelName,
+        date: room.checkinDate,
+        totalQuota: q.numberOfQuota,
+        used,
+        remaining: Math.max(q.numberOfQuota - used, 0),
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Accomodation summary fetched",
+      data: summary,
     });
 
   } catch (error) {
