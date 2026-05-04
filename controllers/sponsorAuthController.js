@@ -202,6 +202,7 @@ export const getMyEvent = async (req, res) => {
         { path: "organizer" },
         { path: "department" },
         { path: "venueName" },
+        { path: "groupName" },
       ],
       options: { sort: { createdAt: -1 } },
     });

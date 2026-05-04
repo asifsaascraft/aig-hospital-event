@@ -189,7 +189,7 @@ export const myEvents = async (req, res) => {
       .populate({
         path: "assignedEvents.eventId",
         select: `
-          eventName eventImage startDateTime endDateTime country state city eventType eventCategory createdAt updatedAt
+          eventName eventImage brochureUpload startDateTime endDateTime country state city eventType eventCategory createdAt updatedAt
         `,
         populate: [
           {
@@ -203,6 +203,10 @@ export const myEvents = async (req, res) => {
           {
             path: "venueName",
             select: "venueName",
+          },
+          {
+            path: "groupName",
+            select: "groupName",
           },
         ],
       });
@@ -235,6 +239,10 @@ export const myEvents = async (req, res) => {
           venueName: {
             venueName: event.venueName?.venueName,
           },
+          groupName: {
+            groupName: event.groupName?.groupName,
+          },
+          brochureUpload: event.brochureUpload,
           startDateTime: event.startDateTime,
           endDateTime: event.endDateTime,
           country: event.country,
