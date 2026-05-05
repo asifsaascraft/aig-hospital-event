@@ -365,8 +365,8 @@ export const getSponsorTravelQuotaSummary = async (req, res) => {
         totalQuota: quotaRecord.quota,
         usedTravel,
         remainingQuota: remaining,
-        startDate: quotaRecord.startDate,
-        endDate: quotaRecord.endDate,
+        startDateTime: quotaRecord.startDateTime,
+        endDateTime: quotaRecord.endDateTime,
         status: quotaRecord.status,
       },
     });
