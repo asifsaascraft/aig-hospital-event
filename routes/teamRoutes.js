@@ -13,7 +13,7 @@ const router = express.Router();
 // =======================
 // Public: Get all teams (eventAdmins)
 // =======================
-router.get("/admin/teams", getTeams);
+router.get("/teams", getTeams);
 
 // =======================
 // Admin-only: Create a new team (eventAdmin user)
