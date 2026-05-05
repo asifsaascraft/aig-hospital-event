@@ -57,7 +57,7 @@ const AccomodationSchema = new mongoose.Schema(
     accomodationDays: [
       {
         date: {
-          type: Date,
+          type: String, // YYYY-MM-DD
           required: true,
         },
         quotaId: {

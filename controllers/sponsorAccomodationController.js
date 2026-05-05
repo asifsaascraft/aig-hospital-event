@@ -6,9 +6,13 @@ import SponsorAccomodationQuota from "../models/SponsorAccomodationQuota.js";
 // Helper Functions
 // =======================
 
-const convertUTCToIST = (date) => {
-  return new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+const getDateKey = (date) => {
+  return new Date(date).toISOString().split("T")[0]; // YYYY-MM-DD
 };
+
+// const convertUTCToIST = (date) => {
+//   return new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+// };
 
 const formatDateIST = (date) => {
   return new Intl.DateTimeFormat("en-IN", {
@@ -24,11 +28,11 @@ const parseTime = (timeStr) => {
   return { h, m };
 };
 
-const normalizeDate = (date) => {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-};
+// const normalizeDate = (date) => {
+//   const d = new Date(date);
+//   d.setHours(0, 0, 0, 0);
+//   return d;
+// };
 
 const getDatesBetween = (start, end) => {
   const dates = [];
@@ -138,11 +142,8 @@ export const createAccomodation = async (req, res) => {
       });
     }
 
-    const checkinUTC = new Date(checkinDateTime);
-    const checkoutUTC = new Date(checkoutDateTime);
-
-    const checkin = convertUTCToIST(checkinUTC);
-    const checkout = convertUTCToIST(checkoutUTC);
+    const checkin = new Date(checkinDateTime);
+    const checkout = new Date(checkoutDateTime);
 
     if (checkin >= checkout) {
       return res.status(400).json({
@@ -215,8 +216,11 @@ export const createAccomodation = async (req, res) => {
       });
     }
 
-    const startDate = normalizeDate(checkin);
-    const endDate = normalizeDate(checkout);
+    const startDate = new Date(checkin);
+    startDate.setUTCHours(0, 0, 0, 0);
+
+    const endDate = new Date(checkout);
+    endDate.setUTCHours(0, 0, 0, 0);
 
     const dates = [];
     let current = new Date(startDate);
@@ -241,7 +245,7 @@ export const createAccomodation = async (req, res) => {
     for (let date of dates) {
 
       const room = rooms.find(
-        r => normalizeDate(r.checkinDate).getTime() === normalizeDate(date).getTime()
+        r => getDateKey(r.checkinDate) === getDateKey(date)
       );
 
       if (!room) {
@@ -270,7 +274,7 @@ export const createAccomodation = async (req, res) => {
         ...(req._skipBookingId && { _id: { $ne: req._skipBookingId } }),
         accomodationDays: {
           $elemMatch: {
-            date: normalizeDate(date),
+            date: getDateKey(date),
           },
         },
         $or: [
@@ -297,7 +301,7 @@ export const createAccomodation = async (req, res) => {
         sponsorId,
         accomodationDays: {
           $elemMatch: {
-            date: normalizeDate(date),
+            date: getDateKey(date),
             quotaId: room._id,
           },
         },
@@ -311,7 +315,7 @@ export const createAccomodation = async (req, res) => {
       }
 
       accomodationDays.push({
-        date: normalizeDate(date),
+        date: getDateKey(date),
         quotaId: room._id,
         hotelId: room.hotelId._id
       });
@@ -329,8 +333,8 @@ export const createAccomodation = async (req, res) => {
       guestName: roomType === "Double Occupancy" ? guestName : null,
       otherEventRegistrationId:
         roomType === "Twin Sharing" ? otherEventRegistrationId : null,
-      checkinDateTime: checkinUTC,
-      checkoutDateTime: checkoutUTC,
+      checkinDateTime: checkin,
+      checkoutDateTime: checkout,
       accomodationDays
     });
 
@@ -547,7 +551,7 @@ export const getAccomodationSummary = async (req, res) => {
         accomodationDays: {
           $elemMatch: {
             quotaId: room._id,
-            date: normalizeDate(room.checkinDate),
+            date: getDateKey(room.checkinDate),
           },
         },
       });
@@ -560,7 +564,7 @@ export const getAccomodationSummary = async (req, res) => {
       // =========================
       dateWise.push({
         hotelName,
-        date: room.checkinDate,
+        date: getDateKey(room.checkinDate),
         totalQuota: q.numberOfQuota,
         used,
         remaining,

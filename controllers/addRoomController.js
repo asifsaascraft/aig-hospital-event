@@ -2,6 +2,11 @@ import AddRoom from "../models/AddRoom.js";
 import Event from "../models/Event.js";
 import Hotel from "../models/Hotel.js";
 
+
+const getDateKey = (date) => {
+  return new Date(date).toISOString().split("T")[0]; // YYYY-MM-DD
+};
+
 // =======================
 // Create AddRoom (EventAdmin only)
 // =======================
@@ -38,6 +43,7 @@ export const createAddRoom = async (req, res) => {
     // Convert
     // ===============================
     const parsedCheckinDate = new Date(checkinDate);
+    parsedCheckinDate.setUTCHours(0, 0, 0, 0);
 
     // ===============================
     // Validate Event
@@ -61,7 +67,10 @@ export const createAddRoom = async (req, res) => {
     const existingRoom = await AddRoom.findOne({
       eventId,
       hotelId,
-      checkinDate: parsedCheckinDate,
+      checkinDate: {
+        $gte: parsedCheckinDate,
+        $lt: new Date(parsedCheckinDate.getTime() + 24 * 60 * 60 * 1000),
+      },
     });
 
     if (existingRoom) {
@@ -183,7 +192,7 @@ export const updateAddRoom = async (req, res) => {
     // Prepare final values
     // ===============================
     const finalCheckinDate = checkinDate
-      ? new Date(checkinDate)
+      ? new Date(new Date(checkinDate).setUTCHours(0, 0, 0, 0))
       : existingRoom.checkinDate;
 
     const finalHotelId = hotelId || existingRoom.hotelId;
