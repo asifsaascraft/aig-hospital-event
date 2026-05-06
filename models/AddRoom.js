@@ -20,9 +20,20 @@ const AddRoomSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    checkinDate: {
+    checkinDateTime: {
       type: Date,
-      required: [true, "Checkin Date is required"],
+      required: [true, "Check-in date time is required"],
+    },
+    checkoutDateTime: {
+      type: Date,
+      validate: {
+        validator: function (value) {
+          if (!this.checkinDateTime || !value) return true;
+          return value > this.checkinDateTime;
+        },
+        message: "check-out date time must be greater than to check-in date time",
+      },
+      required: [true, "Check-out date time is required"],
     },
   },
   { timestamps: true },
@@ -30,7 +41,7 @@ const AddRoomSchema = new mongoose.Schema(
 
 //  Prevent duplicate (eventId + hotel + checkinDate)
 AddRoomSchema.index(
-  { eventId: 1, hotelId: 1, checkinDate: 1 },
+  { eventId: 1, hotelId: 1, checkinDateTime: 1 },
   { unique: true }
 );
 

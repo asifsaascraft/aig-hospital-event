@@ -2,19 +2,23 @@ import AddRoom from "../models/AddRoom.js";
 import Event from "../models/Event.js";
 import Hotel from "../models/Hotel.js";
 
-
-const getDateKey = (date) => {
-  return new Date(date).toISOString().split("T")[0]; // YYYY-MM-DD
-};
-
 // =======================
 // Create AddRoom (EventAdmin only)
 // =======================
 export const createAddRoom = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { hotelId, numberOfRooms, checkinDate } = req.body;
 
+    const {
+      hotelId,
+      numberOfRooms,
+      checkinDateTime,
+      checkoutDateTime,
+    } = req.body;
+
+    // ===============================
+    // Validate numberOfRooms
+    // ===============================
     if (numberOfRooms === undefined || numberOfRooms < 1) {
       return res.status(400).json({
         message: "Number of rooms must be at least 1",
@@ -24,59 +28,76 @@ export const createAddRoom = async (req, res) => {
     // ===============================
     // Required check
     // ===============================
-    if (!checkinDate) {
+    if (!checkinDateTime || !checkoutDateTime) {
       return res.status(400).json({
-        message: "Checkin date is required",
+        message: "Check-in and check-out date time are required",
       });
     }
 
     // ===============================
-    // Validate format
+    // Validate datetime format
     // ===============================
-    if (isNaN(new Date(checkinDate))) {
+    if (
+      isNaN(new Date(checkinDateTime)) ||
+      isNaN(new Date(checkoutDateTime))
+    ) {
       return res.status(400).json({
-        message: "Invalid checkinDate format",
+        message: "Invalid date time format",
       });
     }
 
     // ===============================
-    // Convert
+    // Convert datetime
     // ===============================
-    const parsedCheckinDate = new Date(checkinDate);
-    parsedCheckinDate.setUTCHours(0, 0, 0, 0);
+    const parsedCheckinDateTime = new Date(checkinDateTime);
+    const parsedCheckoutDateTime = new Date(checkoutDateTime);
+
+    // ===============================
+    // Validate checkout > checkin
+    // ===============================
+    if (parsedCheckoutDateTime <= parsedCheckinDateTime) {
+      return res.status(400).json({
+        message:
+          "Checkout date time must be greater than checkin date time",
+      });
+    }
 
     // ===============================
     // Validate Event
     // ===============================
     const event = await Event.findById(eventId);
+
     if (!event) {
-      return res.status(404).json({ message: "Event not found" });
+      return res.status(404).json({
+        message: "Event not found",
+      });
     }
 
     // ===============================
     // Validate Hotel
     // ===============================
     const hotel = await Hotel.findById(hotelId);
+
     if (!hotel) {
-      return res.status(404).json({ message: "Hotel not found" });
+      return res.status(404).json({
+        message: "Hotel not found",
+      });
     }
 
     // ===============================
-    // Check duplicate (IMPORTANT)
+    // Prevent duplicate
     // ===============================
     const existingRoom = await AddRoom.findOne({
       eventId,
       hotelId,
-      checkinDate: {
-        $gte: parsedCheckinDate,
-        $lt: new Date(parsedCheckinDate.getTime() + 24 * 60 * 60 * 1000),
-      },
+      checkinDateTime: parsedCheckinDateTime,
     });
 
     if (existingRoom) {
       return res.status(400).json({
         success: false,
-        message: "Room already exists for this hotel on selected date",
+        message:
+          "Room already exists for this hotel on selected check-in date time",
       });
     }
 
@@ -88,7 +109,8 @@ export const createAddRoom = async (req, res) => {
       hotelId,
       numberOfRooms,
       availableRooms: numberOfRooms,
-      checkinDate: parsedCheckinDate,
+      checkinDateTime: parsedCheckinDateTime,
+      checkoutDateTime: parsedCheckoutDateTime,
     });
 
     res.status(201).json({
@@ -99,10 +121,19 @@ export const createAddRoom = async (req, res) => {
 
   } catch (error) {
     console.error("Create AddRoom error:", error);
-    res.status(500).json({ message: "Server Error" });
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "Duplicate room entry not allowed",
+      });
+    }
+
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
-
 
 // =======================
 // Get all rooms by event
@@ -112,7 +143,10 @@ export const getAddRoomsByEvent = async (req, res) => {
     const { eventId } = req.params;
 
     const rooms = await AddRoom.find({ eventId })
-      .populate("hotelId", "hotelName checkinTime checkoutTime")
+      .populate(
+        "hotelId",
+        "hotelName checkinTime checkoutTime"
+      )
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -123,10 +157,12 @@ export const getAddRoomsByEvent = async (req, res) => {
 
   } catch (error) {
     console.error("Get AddRooms error:", error);
-    res.status(500).json({ message: "Server Error" });
+
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
-
 
 // =======================
 // Get single room by ID
@@ -136,10 +172,15 @@ export const getAddRoomById = async (req, res) => {
     const { id } = req.params;
 
     const room = await AddRoom.findById(id)
-      .populate("hotelId", "hotelName checkinTime checkoutTime");
+      .populate(
+        "hotelId",
+        "hotelName checkinTime checkoutTime"
+      );
 
     if (!room) {
-      return res.status(404).json({ message: "Room not found" });
+      return res.status(404).json({
+        message: "Room not found",
+      });
     }
 
     res.status(200).json({
@@ -149,10 +190,12 @@ export const getAddRoomById = async (req, res) => {
 
   } catch (error) {
     console.error("Get AddRoom By ID error:", error);
-    res.status(500).json({ message: "Server Error" });
+
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
-
 
 // =======================
 // Update AddRoom (EventAdmin only)
@@ -160,7 +203,13 @@ export const getAddRoomById = async (req, res) => {
 export const updateAddRoom = async (req, res) => {
   try {
     const { id } = req.params;
-    const { hotelId, numberOfRooms, checkinDate } = req.body;
+
+    const {
+      hotelId,
+      numberOfRooms,
+      checkinDateTime,
+      checkoutDateTime,
+    } = req.body;
 
     // ===============================
     // Validate numberOfRooms
@@ -175,50 +224,77 @@ export const updateAddRoom = async (req, res) => {
     // Find existing room
     // ===============================
     const existingRoom = await AddRoom.findById(id);
+
     if (!existingRoom) {
-      return res.status(404).json({ message: "Room not found" });
+      return res.status(404).json({
+        message: "Room not found",
+      });
     }
 
     // ===============================
-    // Validate checkinDate format
+    // Validate datetime format
     // ===============================
-    if (checkinDate && isNaN(new Date(checkinDate))) {
+    if (
+      (checkinDateTime &&
+        isNaN(new Date(checkinDateTime))) ||
+      (checkoutDateTime &&
+        isNaN(new Date(checkoutDateTime)))
+    ) {
       return res.status(400).json({
-        message: "Invalid checkinDate format",
+        message: "Invalid date time format",
       });
     }
 
     // ===============================
     // Prepare final values
     // ===============================
-    const finalCheckinDate = checkinDate
-      ? new Date(new Date(checkinDate).setUTCHours(0, 0, 0, 0))
-      : existingRoom.checkinDate;
+    const finalCheckinDateTime = checkinDateTime
+      ? new Date(checkinDateTime)
+      : existingRoom.checkinDateTime;
 
-    const finalHotelId = hotelId || existingRoom.hotelId;
+    const finalCheckoutDateTime = checkoutDateTime
+      ? new Date(checkoutDateTime)
+      : existingRoom.checkoutDateTime;
+
+    // ===============================
+    // Validate checkout > checkin
+    // ===============================
+    if (finalCheckoutDateTime <= finalCheckinDateTime) {
+      return res.status(400).json({
+        message:
+          "Checkout date time must be greater than checkin date time",
+      });
+    }
+
+    const finalHotelId =
+      hotelId || existingRoom.hotelId;
 
     // ===============================
     // Validate Hotel
     // ===============================
     const hotel = await Hotel.findById(finalHotelId);
+
     if (!hotel) {
-      return res.status(404).json({ message: "Hotel not found" });
+      return res.status(404).json({
+        message: "Hotel not found",
+      });
     }
 
     // ===============================
-    // Prevent duplicate (IMPORTANT)
+    // Prevent duplicate
     // ===============================
     const duplicate = await AddRoom.findOne({
-      _id: { $ne: id }, // exclude current record
+      _id: { $ne: id },
       eventId: existingRoom.eventId,
       hotelId: finalHotelId,
-      checkinDate: finalCheckinDate,
+      checkinDateTime: finalCheckinDateTime,
     });
 
     if (duplicate) {
       return res.status(400).json({
         success: false,
-        message: "Room already exists for this hotel on selected date",
+        message:
+          "Room already exists for this hotel on selected check-in date time",
       });
     }
 
@@ -229,23 +305,31 @@ export const updateAddRoom = async (req, res) => {
 
     if (numberOfRooms !== undefined) {
       const allocated =
-        existingRoom.numberOfRooms - existingRoom.availableRooms;
+        existingRoom.numberOfRooms -
+        existingRoom.availableRooms;
 
-      // Prevent reducing below already allocated
+      // Prevent reducing below allocated
       if (numberOfRooms < allocated) {
         return res.status(400).json({
           message: `Cannot reduce rooms below allocated (${allocated})`,
         });
       }
 
-      const diff = numberOfRooms - existingRoom.numberOfRooms;
+      const diff =
+        numberOfRooms -
+        existingRoom.numberOfRooms;
 
       existingRoom.numberOfRooms = numberOfRooms;
+
       existingRoom.availableRooms =
         (existingRoom.availableRooms || 0) + diff;
     }
 
-    existingRoom.checkinDate = finalCheckinDate;
+    existingRoom.checkinDateTime =
+      finalCheckinDateTime;
+
+    existingRoom.checkoutDateTime =
+      finalCheckoutDateTime;
 
     // ===============================
     // Save
@@ -261,9 +345,6 @@ export const updateAddRoom = async (req, res) => {
   } catch (error) {
     console.error("Update AddRoom error:", error);
 
-    // ===============================
-    // Handle duplicate index error
-    // ===============================
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
@@ -271,10 +352,11 @@ export const updateAddRoom = async (req, res) => {
       });
     }
 
-    res.status(500).json({ message: "Server Error" });
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
-
 
 // =======================
 // Delete AddRoom (EventAdmin only)
@@ -284,8 +366,11 @@ export const deleteAddRoom = async (req, res) => {
     const { id } = req.params;
 
     const room = await AddRoom.findById(id);
+
     if (!room) {
-      return res.status(404).json({ message: "Room not found" });
+      return res.status(404).json({
+        message: "Room not found",
+      });
     }
 
     await room.deleteOne();
@@ -297,6 +382,9 @@ export const deleteAddRoom = async (req, res) => {
 
   } catch (error) {
     console.error("Delete AddRoom error:", error);
-    res.status(500).json({ message: "Server Error" });
+
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
