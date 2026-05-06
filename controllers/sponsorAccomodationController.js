@@ -14,10 +14,13 @@ const getDateKey = (date) => {
 const formatDateIST = (date) => {
   return new Intl.DateTimeFormat("en-IN", {
     timeZone: "Asia/Kolkata",
-    day: "numeric",
+    day: "2-digit",
     month: "long",
     year: "numeric",
-  }).format(date);
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(date));
 };
 
 
@@ -184,6 +187,29 @@ export const createAccomodation = async (req, res) => {
     const endDate = new Date(checkout);
     endDate.setUTCHours(0, 0, 0, 0);
 
+    // =======================================
+    // IF CHECKOUT EXCEEDS ROOM CHECKOUT TIME
+    // THEN USE NEXT DAY QUOTA
+    // =======================================
+
+    // Find checkout day room
+    const checkoutRoom = rooms.find(
+      r =>
+        getDateKey(r.checkinDateTime) ===
+        getDateKey(endDate)
+    );
+
+    if (checkoutRoom) {
+      const roomCheckout = new Date(
+        checkoutRoom.checkoutDateTime
+      );
+
+      // Exceeded allowed checkout time
+      if (checkout > roomCheckout) {
+        endDate.setUTCDate(endDate.getUTCDate() + 1);
+      }
+    }
+
     const dates = getDatesBetween(startDate, endDate);
 
     if (dates.length === 0) {
@@ -207,7 +233,9 @@ export const createAccomodation = async (req, res) => {
       if (!room) {
         return res.status(400).json({
           success: false,
-          message: `No quota available for ${formatDateIST(date)} in selected hotel`,
+          message: `No quota available for ${formatDateIST(
+            date
+          )} in selected hotel. Please select another date or reduce stay duration.`,
         });
       }
 
@@ -222,30 +250,9 @@ export const createAccomodation = async (req, res) => {
         if (checkin < new Date(room.checkinDateTime)) {
           return res.status(400).json({
             success: false,
-            message: `Check-in allowed only after ${new Date(
+            message: `Check-in allowed only after ${formatDateIST(
               room.checkinDateTime
-            ).toLocaleString("en-IN", {
-              timeZone: "Asia/Kolkata",
-            })}`,
-          });
-        }
-      }
-
-      // Checkout validation
-      const lastBookingDate = new Date(checkout);
-      lastBookingDate.setUTCDate(lastBookingDate.getUTCDate() - 1);
-
-      if (
-        getDateKey(date) === getDateKey(lastBookingDate)
-      ) {
-        if (checkout > new Date(room.checkoutDateTime)) {
-          return res.status(400).json({
-            success: false,
-            message: `Checkout allowed only before ${new Date(
-              room.checkoutDateTime
-            ).toLocaleString("en-IN", {
-              timeZone: "Asia/Kolkata",
-            })}`,
+            )}`,
           });
         }
       }
