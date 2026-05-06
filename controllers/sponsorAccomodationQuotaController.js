@@ -147,10 +147,10 @@ export const getSponsorAccomodationQuotasByEvent = async (req, res) => {
       .populate("sponsorId")
       .populate({
         path: "quotas.quotaId",
-        select: "checkinDate hotelId",
+        select: "checkinDateTime checkoutDateTime hotelId",
         populate: {
           path: "hotelId",
-          select: "hotelName checkinTime checkoutTime",
+          select: "hotelName",
         },
       })
       .sort({ createdAt: -1 });
