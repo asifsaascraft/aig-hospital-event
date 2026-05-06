@@ -179,7 +179,7 @@ export const getMyAccomodationQuotas = async (req, res) => {
     })
       .populate({
         path: "quotas.quotaId",
-        select: "checkinDate hotelId",
+        select: "checkinDateTime checkoutDateTime hotelId",
         populate: {
           path: "hotelId",
           select: "hotelName hotelImage checkinTime checkoutTime",
@@ -219,7 +219,8 @@ export const getMyAccomodationQuotas = async (req, res) => {
 
       hotelMap[hotelId].dates.push({
         quotaId: room._id,
-        checkinDate: room.checkinDate,
+        checkinDateTime: room.checkinDateTime,
+        checkoutDateTime: room.checkoutDateTime,
         numberOfQuota: q.numberOfQuota,
       });
     });
