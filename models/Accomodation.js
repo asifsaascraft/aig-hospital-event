@@ -98,6 +98,28 @@ AccomodationSchema.pre("validate", function (next) {
   next();
 });
 
+
+AccomodationSchema.index({
+  eventId: 1,
+  sponsorId: 1,
+});
+
+AccomodationSchema.index({
+  "accomodationDays.date": 1,
+  "accomodationDays.quotaId": 1,
+});
+
+AccomodationSchema.index({
+  eventId: 1,
+  eventRegistrationId: 1,
+});
+
+AccomodationSchema.index({
+  eventId: 1,
+  otherEventRegistrationId: 1,
+});
+
+
 export default mongoose.models.Accomodation ||
   mongoose.model("Accomodation", AccomodationSchema);
 

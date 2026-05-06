@@ -10,9 +10,6 @@ const getDateKey = (date) => {
   return new Date(date).toISOString().split("T")[0]; // YYYY-MM-DD
 };
 
-// const convertUTCToIST = (date) => {
-//   return new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-// };
 
 const formatDateIST = (date) => {
   return new Intl.DateTimeFormat("en-IN", {
@@ -23,16 +20,6 @@ const formatDateIST = (date) => {
   }).format(date);
 };
 
-const parseTime = (timeStr) => {
-  const [h, m] = timeStr.split(":").map(Number);
-  return { h, m };
-};
-
-// const normalizeDate = (date) => {
-//   const d = new Date(date);
-//   d.setHours(0, 0, 0, 0);
-//   return d;
-// };
 
 const getDatesBetween = (start, end) => {
   const dates = [];
@@ -40,7 +27,7 @@ const getDatesBetween = (start, end) => {
 
   while (current < end) {
     dates.push(new Date(current));
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
   }
 
   return dates;
@@ -145,6 +132,13 @@ export const createAccomodation = async (req, res) => {
     const checkin = new Date(checkinDateTime);
     const checkout = new Date(checkoutDateTime);
 
+    if (isNaN(checkin) || isNaN(checkout)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid checkin or checkout datetime",
+      });
+    }
+
     if (checkin >= checkout) {
       return res.status(400).json({
         success: false,
@@ -222,13 +216,7 @@ export const createAccomodation = async (req, res) => {
     const endDate = new Date(checkout);
     endDate.setUTCHours(0, 0, 0, 0);
 
-    const dates = [];
-    let current = new Date(startDate);
-
-    while (current < endDate) {
-      dates.push(new Date(current));
-      current.setDate(current.getDate() + 1);
-    }
+    const dates = getDatesBetween(startDate, endDate);
 
     if (dates.length === 0) {
       return res.status(400).json({
@@ -245,7 +233,7 @@ export const createAccomodation = async (req, res) => {
     for (let date of dates) {
 
       const room = rooms.find(
-        r => getDateKey(r.checkinDate) === getDateKey(date)
+        r => getDateKey(r.checkinDateTime) === getDateKey(date)
       );
 
       if (!room) {
@@ -442,29 +430,50 @@ export const updateAccomodation = async (req, res) => {
       });
     }
 
-    // ===============================
-    // TEMPORARILY REMOVE CURRENT BOOKING FROM CHECK
-    // ===============================
     req._skipBookingId = id;
 
-    // Try creating new booking FIRST
-    const result = await createAccomodation(req, {
-      status: () => ({
-        json: (data) => data,
-      }),
-    });
+    // ===============================
+    // REUSE CREATE VALIDATION LOGIC
+    // ===============================
+    const response = {
+      statusCode: 200,
+      body: null,
+    };
 
-    // If failed → DO NOT delete old
-    if (!result || result.success === false) {
-      return res.status(400).json(result);
+    const mockRes = {
+      status(code) {
+        response.statusCode = code;
+        return this;
+      },
+
+      json(data) {
+        response.body = data;
+        return data;
+      },
+    };
+
+    await createAccomodation(req, mockRes);
+
+    // Validation failed
+    if (response.statusCode !== 201) {
+      return res.status(response.statusCode).json(response.body);
     }
 
-    // Now delete old booking
+    // Get newly created booking
+    const newBooking = await Accomodation.findOne({
+      sponsorId,
+      eventId,
+      eventRegistrationId,
+      checkinDateTime: new Date(checkinDateTime),
+    })
+      .sort({ createdAt: -1 });
+    // Delete old booking
     await booking.deleteOne();
 
     return res.status(200).json({
       success: true,
       message: "Accommodation updated successfully",
+      data: newBooking,
     });
 
   } catch (error) {
@@ -551,7 +560,7 @@ export const getAccomodationSummary = async (req, res) => {
         accomodationDays: {
           $elemMatch: {
             quotaId: room._id,
-            date: getDateKey(room.checkinDate),
+            date: getDateKey(room.checkinDateTime),
           },
         },
       });
@@ -564,7 +573,7 @@ export const getAccomodationSummary = async (req, res) => {
       // =========================
       dateWise.push({
         hotelName,
-        date: getDateKey(room.checkinDate),
+        date: getDateKey(room.checkinDateTime),
         totalQuota: q.numberOfQuota,
         used,
         remaining,

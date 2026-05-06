@@ -34,7 +34,7 @@ router.get(
 
 // Update
 router.put(
-  "/sponsor/accomodation/:id",
+  "/sponsor/events/:eventId/accomodation/:id",
   protectSponsor,
   updateAccomodation
 );
