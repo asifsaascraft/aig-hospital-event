@@ -274,7 +274,7 @@ export const createAccomodation = async (req, res) => {
     }
 
     // Standard checkout cutoff
-    const standardCheckout = new Date(checkout);
+    const standardCheckout = new Date(endDate);
 
     standardCheckout.setUTCHours(
       new Date(checkoutDayRoom.checkoutDateTime).getUTCHours(),
@@ -289,30 +289,25 @@ export const createAccomodation = async (req, res) => {
     // =======================================
     if (checkout > standardCheckout) {
 
-      // Next day
-      const nextDate = new Date(endDate);
-      nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+      // Add next day quota
+      endDate.setUTCDate(endDate.getUTCDate() + 1);
 
-      // Check next day room availability
-      const nextDayRoom = rooms.find(
+      // Validate next day room exists
+      const extraCheckoutRoom = rooms.find(
         r =>
           getDateKey(r.checkinDateTime) ===
-          getDateKey(nextDate) &&
+          getDateKey(endDate) &&
           r.hotelId._id.toString() === hotelId.toString()
       );
 
-      // No next day quota
-      if (!nextDayRoom) {
+      if (!extraCheckoutRoom) {
         return res.status(400).json({
           success: false,
-          message: `Late checkout requires next day's quota. No quota available for ${formatDateIST(
-            nextDate
+          message: `Late checkout requires additional quota for ${formatDateIST(
+            endDate
           )}`,
         });
       }
-
-      // Use next day quota
-      endDate.setUTCDate(endDate.getUTCDate() + 1);
     }
 
     const dates = getDatesBetween(startDate, endDate);
