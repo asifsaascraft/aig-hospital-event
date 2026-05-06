@@ -17,6 +17,7 @@ export const createAllExpense = async (req, res) => {
       unitType,
       gstTax,
       date,
+      description,
     } = req.body;
 
     // Check Event Exists
@@ -73,6 +74,7 @@ export const createAllExpense = async (req, res) => {
       unitType,
       gstTax,
       date: new Date(date),
+      description,
       totalAmountWithoutGst,
       gstAmount,
       totalAmountWithGst,
@@ -160,6 +162,7 @@ export const getAllExpensesByEvent = async (req, res) => {
         unitType: item.unitType,
         gstTax: item.gstTax,
         date: item.date,
+        description: item.description,
         totalAmountWithoutGst: item.totalAmountWithoutGst,
         gstAmount: item.gstAmount,
         totalAmountWithGst: item.totalAmountWithGst,
@@ -219,6 +222,7 @@ export const updateAllExpense = async (req, res) => {
       unitType,
       gstTax,
       date,
+      description,
     } = req.body;
 
     //  Prevent empty update
@@ -227,7 +231,8 @@ export const updateAllExpense = async (req, res) => {
       unit == null &&
       unitType === undefined &&
       gstTax == null &&
-      !date
+      !date &&
+      description === undefined
     ) {
       return res.status(400).json({
         message: "No valid fields provided for update",
@@ -257,6 +262,8 @@ export const updateAllExpense = async (req, res) => {
     if (unitType !== undefined) expense.unitType = unitType;
     if (gstTax != null) expense.gstTax = gstTax;
     if (date) expense.date = new Date(date);
+    if (description !== undefined)
+      expense.description = description;
 
     //  Recalculate using updated values
     const finalBaseAmount = expense.baseAmount;

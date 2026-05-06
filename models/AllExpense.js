@@ -39,6 +39,9 @@ const AllExpenseSchema = new mongoose.Schema(
       type: Date,
       required: [true, "Date is required"],
     },
+    description: {
+      type: String,
+    },
     totalAmountWithoutGst: {
       type: Number,
     },
