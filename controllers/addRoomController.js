@@ -122,13 +122,6 @@ export const createAddRoom = async (req, res) => {
   } catch (error) {
     console.error("Create AddRoom error:", error);
 
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: "Duplicate room entry not allowed",
-      });
-    }
-
     res.status(500).json({
       message: "Server Error",
     });
@@ -344,13 +337,6 @@ export const updateAddRoom = async (req, res) => {
 
   } catch (error) {
     console.error("Update AddRoom error:", error);
-
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: "Duplicate room entry not allowed",
-      });
-    }
 
     res.status(500).json({
       message: "Server Error",
