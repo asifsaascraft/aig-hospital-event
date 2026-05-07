@@ -139,21 +139,35 @@ export const createTravelBySponsor = async (req, res) => {
     }
 
     // =======================
-    //  DATE VALIDATION
+    // DATE VALIDATION
     // =======================
-    const today = new Date();
 
-    //  Start Date Check
-    if (quotaData.startDateTime && today < quotaData.startDateTime) {
+    // Current server date/time
+    const currentDateTime = new Date();
+
+    // Start Date Check
+    if (
+      quotaData.startDateTime &&
+      currentDateTime < quotaData.startDateTime
+    ) {
       return res.status(400).json({
-        message: `Travel cannot be booked before` + quotaData.formatDateIST(startDateTime),
+        success: false,
+        message: `Travel booking will start from ${formatDateIST(
+          quotaData.startDateTime
+        )}`,
       });
     }
 
-    //  End Date Check
-    if (quotaData.endDateTime && today > quotaData.endDateTime) {
+    // End Date Check
+    if (
+      quotaData.endDateTime &&
+      currentDateTime > quotaData.endDateTime
+    ) {
       return res.status(400).json({
-        message: `Travel cannot be booked after` + quotaData.formatDateIST(endDateTime),
+        success: false,
+        message: `Travel booking closed on ${formatDateIST(
+          quotaData.endDateTime
+        )}`,
       });
     }
 
