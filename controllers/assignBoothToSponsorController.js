@@ -141,8 +141,18 @@ export const getAssignedBooths = async (req, res) => {
     const { eventId } = req.params;
 
     const data = await AssignBoothToSponsor.find({ eventId })
-      .populate("sponsorBoothId")
-      .populate("sponsorId", "sponsorName contactPersonName email mobile");
+      .populate({
+        path: "sponsorBoothId",
+        populate: {
+          path: "hallId",
+          select: "hallName status",
+        },
+      })
+      .populate(
+        "sponsorId",
+        "sponsorName contactPersonName email mobile"
+      );
+
 
     res.status(200).json({
       success: true,
@@ -180,6 +190,52 @@ export const getSponsorsByBooth = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
+// =======================
+// GET LOGGED-IN SPONSOR ASSIGNED BOOTH
+// =======================
+export const getMyAssignedBooth = async (req, res) => {
+  try {
+    const sponsorId = req.sponsor._id;
+    const { eventId } = req.params;
+
+    const data = await AssignBoothToSponsor.findOne({
+      eventId,
+      sponsorId: sponsorId,
+    })
+      .populate({
+        path: "sponsorBoothId",
+        populate: {
+          path: "hallId",
+          select: "hallName status",
+        },
+      })
+      .populate(
+        "sponsorId",
+        "sponsorName contactPersonName email mobile"
+      );
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: "No booth assigned",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Assigned booth fetched successfully",
+      data,
+    });
+  } catch (error) {
+    console.error("Get my booth error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
 
 // =======================
 // Remove sponsor from booth

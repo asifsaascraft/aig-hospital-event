@@ -1,5 +1,6 @@
 import SponsorBooth from "../models/SponsorBooth.js";
 import Event from "../models/Event.js";
+import SponsorHall from "../models/SponsorHall.js";
 
 // =======================
 // Create Sponsor Booth (EventAdmin Only)
@@ -7,7 +8,7 @@ import Event from "../models/Event.js";
 export const createSponsorBooth = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { booth, hall, stallType, status } = req.body;
+    const { booth, hallId, stallType, status } = req.body;
 
     // Validate event existence
     const event = await Event.findById(eventId);
@@ -15,17 +16,26 @@ export const createSponsorBooth = async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
+    // Validate hall existence
+    const hall = await SponsorHall.findById(hallId);
+
+    if (!hall) {
+      return res.status(404).json({
+        message: "Sponsor hall not found",
+      });
+    }
+
     // Support both local & S3 uploads
     const boothFilePath = req.file?.location || req.file?.path;
     if (!boothFilePath) {
-      return res.status(400).json({ message: "Booth PDF file is required" });
+      return res.status(400).json({ message: "Booth PDF is required" });
     }
 
     // Create new sponsor booth
     const newBooth = await SponsorBooth.create({
       eventId,
       booth,
-      hall,
+      hallId,
       stallType,
       status,
       boothImageUpload: boothFilePath,
@@ -49,7 +59,9 @@ export const getSponsorBoothsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
 
-    const booths = await SponsorBooth.find({ eventId }).sort({ createdAt: -1 });
+    const booths = await SponsorBooth.find({ eventId })
+      .populate("hallId")
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -72,7 +84,9 @@ export const getActiveSponsorBoothsByEvent = async (req, res) => {
     const booths = await SponsorBooth.find({
       eventId,
       status: "Active",
-    }).sort({ createdAt: -1 });
+    })
+      .populate("hallId")
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -91,16 +105,27 @@ export const getActiveSponsorBoothsByEvent = async (req, res) => {
 export const updateSponsorBooth = async (req, res) => {
   try {
     const { id } = req.params;
-    const { booth, hall, stallType, status } = req.body;
+    const { booth, hallId, stallType, status } = req.body;
 
     const existingBooth = await SponsorBooth.findById(id);
     if (!existingBooth) {
       return res.status(404).json({ message: "Sponsor Booth not found" });
     }
 
+    // Validate hall if provided
+    if (hallId) {
+      const hallExists = await SponsorHall.findById(hallId);
+
+      if (!hallExists) {
+        return res.status(404).json({
+          message: "Sponsor hall not found",
+        });
+      }
+    }
+
     // Update provided fields
     if (booth) existingBooth.booth = booth;
-    if (hall) existingBooth.hall = hall;
+    if (hallId) existingBooth.hallId = hallId;
     if (stallType) existingBooth.stallType = stallType;
     if (status) existingBooth.status = status;
 

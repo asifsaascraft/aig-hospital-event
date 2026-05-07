@@ -3,10 +3,13 @@ import {
   assignSponsorsToBooth,
   getAssignedBooths,
   getSponsorsByBooth,
+  getMyAssignedBooth,
   removeSponsorFromBooth,
   deleteBoothAssignment,
 } from "../controllers/assignBoothToSponsorController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
+import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
+
 
 const router = express.Router();
 
@@ -23,6 +26,13 @@ router.get("/events/:eventId/assign-booth", getAssignedBooths);
 
 // Get single booth
 router.get("/assign-booth/:sponsorBoothId", getSponsorsByBooth);
+
+// Logged-in sponsor can see own booth
+router.get(
+  "/sponsor/events/:eventId/my-booth",
+  protectSponsor,
+  getMyAssignedBooth
+);
 
 // Remove sponsor from booth
 router.delete(

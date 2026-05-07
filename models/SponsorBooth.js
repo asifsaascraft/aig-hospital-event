@@ -16,10 +16,10 @@ const SponsorBoothSchema = new mongoose.Schema(
       type: String,  // store file path or URL
       required: [true, "Only PDF Image is required"],
     },
-    hall: {
-      type: String,
+    hallId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "SponsorHall",
       required: [true, "Hall Name is required"],
-      trim: true,
     },
     stallType: {
       type: String,
