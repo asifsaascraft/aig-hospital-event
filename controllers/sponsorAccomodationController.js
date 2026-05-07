@@ -30,7 +30,7 @@ const getDatesBetween = (start, end) => {
   let current = new Date(start);
 
   // HOTEL NIGHT LOGIC
-  while (current < end) {
+  while (current <= end) {
     dates.push(new Date(current));
 
     current.setUTCDate(
@@ -193,6 +193,10 @@ export const createAccomodation = async (req, res) => {
     const endDate = new Date(checkout);
     endDate.setUTCHours(0, 0, 0, 0);
 
+    // HOTEL NIGHT LOGIC
+    // checkout belongs to previous night's quota
+    endDate.setUTCDate(endDate.getUTCDate() - 1);
+
     // =======================================
     // EARLY CHECKIN LOGIC
     // =======================================
@@ -208,7 +212,7 @@ export const createAccomodation = async (req, res) => {
     if (!checkinDayRoom) {
       return res.status(400).json({
         success: false,
-        message: `No quota available for ${formatDateIST(
+        message: `No quota available for ${getDateKey(
           startDate
         )}`,
       });
@@ -246,7 +250,7 @@ export const createAccomodation = async (req, res) => {
       if (!previousDayRoom) {
         return res.status(400).json({
           success: false,
-          message: `Early check-in requires previous day's quota. No quota available for ${formatDateIST(
+          message: `Early check-in requires previous day's quota. No quota available for ${getDateKey(
             previousDate
           )}`,
         });
@@ -271,14 +275,14 @@ export const createAccomodation = async (req, res) => {
     if (!checkoutDayRoom) {
       return res.status(400).json({
         success: false,
-        message: `No quota available for ${formatDateIST(
+        message: `No quota available for ${getDateKey(
           endDate
         )}`,
       });
     }
 
     // Standard checkout cutoff
-    const standardCheckout = new Date(endDate);
+    const standardCheckout = new Date(checkout);
 
     standardCheckout.setUTCHours(
       new Date(checkoutDayRoom.checkoutDateTime).getUTCHours(),
@@ -307,7 +311,7 @@ export const createAccomodation = async (req, res) => {
       if (!extraCheckoutRoom) {
         return res.status(400).json({
           success: false,
-          message: `Late checkout requires additional quota for ${formatDateIST(
+          message: `Late checkout requires additional quota for ${getDateKey(
             endDate
           )}`,
         });
@@ -340,7 +344,7 @@ export const createAccomodation = async (req, res) => {
       if (!room) {
         return res.status(400).json({
           success: false,
-          message: `No quota available for ${formatDateIST(
+          message: `No quota available for ${getDateKey(
             date
           )} in selected hotel. Please select another date or reduce stay duration.`,
         });
@@ -371,7 +375,7 @@ export const createAccomodation = async (req, res) => {
       if (!quotaItem) {
         return res.status(400).json({
           success: false,
-          message: `Quota not assigned for ${formatDateIST(date)}`,
+          message: `Quota not assigned for ${getDateKey(date)}`,
         });
       }
 
@@ -401,7 +405,7 @@ export const createAccomodation = async (req, res) => {
       if (alreadyBooked) {
         return res.status(400).json({
           success: false,
-          message: `Delegate already booked for ${formatDateIST(date)}`,
+          message: `Delegate already booked for ${getDateKey(date)}`,
         });
       }
 
@@ -419,7 +423,7 @@ export const createAccomodation = async (req, res) => {
       if (used >= quotaItem.numberOfQuota) {
         return res.status(400).json({
           success: false,
-          message: `Quota full for ${formatDateIST(date)}`,
+          message: `Quota full for ${getDateKey(date)}`,
         });
       }
 
@@ -502,6 +506,61 @@ export const getAccomodationBySponsor = async (req, res) => {
   }
 };
 
+
+// =======================
+// Get All Accomodation By Event (Event Admin)
+// =======================
+export const getAllAccomodationByEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    const bookings = await Accomodation.find({
+      eventId,
+    })
+      .populate(
+        "hotelId",
+        "hotelName checkinTime checkoutTime"
+      )
+      .populate(
+        "sponsorId",
+        "sponsorName contactPersonName email mobile"
+      )
+      .populate(
+        "eventRegistrationId",
+        "prefix name email mobile regNum"
+      )
+      .populate(
+        "otherEventRegistrationId",
+        "prefix name email mobile regNum"
+      )
+      .sort({ createdAt: -1 });
+
+    const data = bookings.map((item) => ({
+      ...item.toObject(),
+
+      // =========================
+      // UI FIELD
+      // =========================
+      usedQuota: item.accomodationDays.length,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "All accomodation fetched successfully",
+      total: data.length,
+      data,
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
 
 // =======================
 // Update Accomodation
@@ -597,13 +656,28 @@ export const updateAccomodation = async (req, res) => {
       checkinDateTime: new Date(checkinDateTime),
     })
       .sort({ createdAt: -1 });
-    // Delete old booking
-    await booking.deleteOne();
+
+    // Copy new data into old booking
+    booking.eventRegistrationId = newBooking.eventRegistrationId;
+    booking.hotelId = newBooking.hotelId;
+    booking.roomType = newBooking.roomType;
+    booking.guestName = newBooking.guestName;
+    booking.otherEventRegistrationId =
+      newBooking.otherEventRegistrationId;
+
+    booking.checkinDateTime = newBooking.checkinDateTime;
+    booking.checkoutDateTime = newBooking.checkoutDateTime;
+    booking.accomodationDays = newBooking.accomodationDays;
+
+    await booking.save();
+
+    // Delete temporary booking
+    await newBooking.deleteOne();
 
     return res.status(200).json({
       success: true,
       message: "Accommodation updated successfully",
-      data: newBooking,
+      data: booking,
     });
 
   } catch (error) {

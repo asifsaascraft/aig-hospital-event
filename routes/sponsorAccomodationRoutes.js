@@ -1,9 +1,10 @@
 import express from "express";
 import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
-
+import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 import {
   createAccomodation,
   getAccomodationBySponsor,
+  getAllAccomodationByEvent,
   updateAccomodation,
   deleteAccomodation,
   getAccomodationSummary,
@@ -23,6 +24,16 @@ router.get(
   "/sponsor/events/:eventId/accomodation",
   protectSponsor,
   getAccomodationBySponsor
+);
+
+// =======================
+// Event Admin: Get All Accomodation By Event
+// =======================
+router.get(
+  "/event-admin/events/:eventId/accomodation",
+  protect,
+  authorizeRoles("eventAdmin"),
+  getAllAccomodationByEvent
 );
 
 // Summary
