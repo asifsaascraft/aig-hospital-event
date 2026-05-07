@@ -17,6 +17,45 @@ export const createRegistrationSetting = async (req, res) => {
       regClosedMessage,
     } = req.body;
 
+    // ===============================
+    // Required check
+    // ===============================
+    if (!eventRegistrationStartDate || !eventRegistrationEndDate) {
+      return res.status(400).json({
+        message: "Start and End registration date are required",
+      });
+    }
+
+    // ===============================
+    // Validate format
+    // ===============================
+    if (isNaN(new Date(eventRegistrationStartDate))) {
+      return res.status(400).json({
+        message: "Invalid eventRegistrationStartDate format",
+      });
+    }
+
+    if (isNaN(new Date(eventRegistrationEndDate))) {
+      return res.status(400).json({
+        message: "Invalid eventRegistrationEndDate format",
+      });
+    }
+
+    // ===============================
+    // Convert
+    // ===============================
+    const parsedStart = new Date(eventRegistrationStartDate);
+    const parsedEnd = new Date(eventRegistrationEndDate);
+
+    // ===============================
+    // Compare
+    // ===============================
+    if (parsedEnd < parsedStart) {
+      return res.status(400).json({
+        message: "End date must be greater than or equal to start date",
+      });
+    }
+
     // Validate event existence
     const event = await Event.findById(eventId);
     if (!event) {
@@ -38,8 +77,8 @@ export const createRegistrationSetting = async (req, res) => {
       accompanyRegistration,
       workshopRegistration,
       banquetRegistration,
-      eventRegistrationStartDate,
-      eventRegistrationEndDate,
+      eventRegistrationStartDate: parsedStart,
+      eventRegistrationEndDate: parsedEnd,
       regClosedMessage,
     });
 
@@ -98,6 +137,27 @@ export const updateRegistrationSetting = async (req, res) => {
       return res.status(404).json({ message: "Registration setting not found" });
     }
 
+    // ===============================
+    // Validate format
+    // ===============================
+    if (
+      eventRegistrationStartDate &&
+      isNaN(new Date(eventRegistrationStartDate))
+    ) {
+      return res.status(400).json({
+        message: "Invalid eventRegistrationStartDate format",
+      });
+    }
+
+    if (
+      eventRegistrationEndDate &&
+      isNaN(new Date(eventRegistrationEndDate))
+    ) {
+      return res.status(400).json({
+        message: "Invalid eventRegistrationEndDate format",
+      });
+    }
+
     // Update only provided fields
     if (attendeeRegistration !== undefined)
       setting.attendeeRegistration = attendeeRegistration;
@@ -107,10 +167,28 @@ export const updateRegistrationSetting = async (req, res) => {
       setting.workshopRegistration = workshopRegistration;
     if (banquetRegistration !== undefined)
       setting.banquetRegistration = banquetRegistration;
-    if (eventRegistrationStartDate)
-      setting.eventRegistrationStartDate = eventRegistrationStartDate;
-    if (eventRegistrationEndDate)
-      setting.eventRegistrationEndDate = eventRegistrationEndDate;
+    // ===============================
+    // Final values + conversion
+    // ===============================
+    const finalStart = eventRegistrationStartDate
+      ? new Date(eventRegistrationStartDate)
+      : setting.eventRegistrationStartDate;
+
+    const finalEnd = eventRegistrationEndDate
+      ? new Date(eventRegistrationEndDate)
+      : setting.eventRegistrationEndDate;
+
+    // ===============================
+    // Compare
+    // ===============================
+    if (finalEnd < finalStart) {
+      return res.status(400).json({
+        message: "End date must be greater than or equal to start date",
+      });
+    }
+
+    setting.eventRegistrationStartDate = finalStart;
+    setting.eventRegistrationEndDate = finalEnd;
     if (regClosedMessage !== undefined)
       setting.regClosedMessage = regClosedMessage;
 
