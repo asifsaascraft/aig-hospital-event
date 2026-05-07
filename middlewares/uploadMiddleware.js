@@ -99,7 +99,7 @@ export const uploadIdForTravel = multer({
 });
 
 
-// Sponsor Booth Upload (PDF only, 5MB)
+// Sponsor Booth Upload (PDF only, 2MB)
 export const uploadBoothPDF = multer({
   storage: multerS3({
     s3,
@@ -112,7 +112,7 @@ export const uploadBoothPDF = multer({
       cb(null, fileName);
     },
   }),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
   fileFilter: (req, file, cb) => {
     if (file.mimetype === "application/pdf") {
       cb(null, true);
