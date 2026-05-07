@@ -177,23 +177,19 @@ export const sponsorRegisterForEvent = async (req, res) => {
       });
     }
 
-    if (quotaRecord.status !== "Active") {
-      return res.status(403).json({
-        success: false,
-        message: "Your registration Quota is not active",
-      });
-    }
 
     const today = new Date();
 
-    if (quotaRecord.startDate && today < quotaRecord.startDate) {
+    if (quotaRecord.startDateTime && today < quotaRecord.startDateTime) {
       return res.status(400).json({
+        success: false,
         message: "Registration has not started yet",
       });
     }
 
-    if (quotaRecord.endDate && today > quotaRecord.endDate) {
+    if (quotaRecord.endDateTime && today > quotaRecord.endDateTime) {
       return res.status(400).json({
+        success: false,
         message: "Registration has ended",
       });
     }
@@ -259,46 +255,46 @@ export const sponsorRegisterForEvent = async (req, res) => {
     });
 
     // -----------------------------
-        // SAFE FALLBACKS (IMPORTANT)
-        // -----------------------------
-        const finalEmail = email || targetUser.email;
-        const finalName = name || targetUser.name;
-    
-        // ----------------------------------------------------
-        //  Send Email Notification to User
-        // ----------------------------------------------------
-        try {
-          await sendEmailWithTemplate({
-            to: finalEmail,
-            name: finalName,
-            templateKey: "2518b.554b0da719bc314.k1.84e00a60-c384-11f0-807d-8e9a6c33ddc2.19a90a6be06",
-            mergeInfo: {
-              eventName: event.eventName,
-              registrationNumber: generatedRegNum,
-              startDate: event.startDateTime
-                ? moment(event.startDateTime).format("DD MMM YYYY, hh:mm A")
-                : "N/A",
-    
-              endDate: event.endDateTime
-                ? moment(event.endDateTime).format("DD MMM YYYY, hh:mm A")
-                : "N/A",
-              prefix,
-              name,
-              email,
-              mobile,
-              designation,
-              affiliation,
-              country,
-              state,
-              city,
-              address,
-              pincode,
-            },
-          });
-        } catch (emailError) {
-          console.error("Email sending failed:", emailError);
-        }
-    
+    // SAFE FALLBACKS (IMPORTANT)
+    // -----------------------------
+    const finalEmail = email || targetUser.email;
+    const finalName = name || targetUser.name;
+
+    // ----------------------------------------------------
+    //  Send Email Notification to User
+    // ----------------------------------------------------
+    try {
+      await sendEmailWithTemplate({
+        to: finalEmail,
+        name: finalName,
+        templateKey: "2518b.554b0da719bc314.k1.84e00a60-c384-11f0-807d-8e9a6c33ddc2.19a90a6be06",
+        mergeInfo: {
+          eventName: event.eventName,
+          registrationNumber: generatedRegNum,
+          startDate: event.startDateTime
+            ? moment(event.startDateTime).format("DD MMM YYYY, hh:mm A")
+            : "N/A",
+
+          endDate: event.endDateTime
+            ? moment(event.endDateTime).format("DD MMM YYYY, hh:mm A")
+            : "N/A",
+          prefix,
+          name,
+          email,
+          mobile,
+          designation,
+          affiliation,
+          country,
+          state,
+          city,
+          address,
+          pincode,
+        },
+      });
+    } catch (emailError) {
+      console.error("Email sending failed:", emailError);
+    }
+
 
     return res.status(201).json({
       success: true,

@@ -5,6 +5,19 @@ import EventRegistration from "../models/EventRegistration.js";
 import TravelAgent from "../models/TravelAgent.js";
 import SponsorTravelQuota from "../models/SponsorTravelQuota.js";
 
+
+const formatDateIST = (date) => {
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(date));
+};
+
 // =======================
 // Create Travel (Sponsor Only)
 // =======================
@@ -117,7 +130,6 @@ export const createTravelBySponsor = async (req, res) => {
     const quotaData = await SponsorTravelQuota.findOne({
       eventId,
       sponsorId,
-      status: "Active",
     });
 
     if (!quotaData) {
@@ -129,19 +141,19 @@ export const createTravelBySponsor = async (req, res) => {
     // =======================
     //  DATE VALIDATION
     // =======================
-    const travelDate = new Date(arrivalPickupDateTime);
+    const today = new Date();
 
     //  Start Date Check
-    if (quotaData.startDate && travelDate < quotaData.startDate) {
+    if (quotaData.startDateTime && travelDate < quotaData.startDateTime) {
       return res.status(400).json({
-        message: `Travel cannot be booked before ${quotaData.startDate.toDateString()}`,
+        message: `Travel cannot be booked before` + quotaData.formatDateIST(startDateTime),
       });
     }
 
     //  End Date Check
-    if (quotaData.endDate && travelDate > quotaData.endDate) {
+    if (quotaData.endDateTime && travelDate > quotaData.endDateTime) {
       return res.status(400).json({
-        message: `Travel cannot be booked after ${quotaData.endDate.toDateString()}`,
+        message: `Travel cannot be booked after` + quotaData.formatDateIST(endDateTime),
       });
     }
 
