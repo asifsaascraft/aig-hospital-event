@@ -26,16 +26,20 @@ const formatDateIST = (date) => {
 
 const getDatesBetween = (start, end) => {
   const dates = [];
+
   let current = new Date(start);
 
+  // HOTEL NIGHT LOGIC
   while (current < end) {
     dates.push(new Date(current));
-    current.setUTCDate(current.getUTCDate() + 1);
+
+    current.setUTCDate(
+      current.getUTCDate() + 1
+    );
   }
 
   return dates;
 };
-
 
 // =======================
 // CREATE ACCOMODATION
