@@ -144,14 +144,14 @@ export const createTravelBySponsor = async (req, res) => {
     const today = new Date();
 
     //  Start Date Check
-    if (quotaData.startDateTime && travelDate < quotaData.startDateTime) {
+    if (quotaData.startDateTime && today < quotaData.startDateTime) {
       return res.status(400).json({
         message: `Travel cannot be booked before` + quotaData.formatDateIST(startDateTime),
       });
     }
 
     //  End Date Check
-    if (quotaData.endDateTime && travelDate > quotaData.endDateTime) {
+    if (quotaData.endDateTime && today > quotaData.endDateTime) {
       return res.status(400).json({
         message: `Travel cannot be booked after` + quotaData.formatDateIST(endDateTime),
       });
