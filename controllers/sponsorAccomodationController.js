@@ -470,7 +470,7 @@ export const getAccomodationBySponsor = async (req, res) => {
     const sponsorId = req.sponsor._id;
     const { eventId } = req.params;
 
-    const data = await Accomodation.find({
+    const bookings = await Accomodation.find({
       eventId,
       sponsorId,
     })
@@ -478,6 +478,15 @@ export const getAccomodationBySponsor = async (req, res) => {
       .populate("eventRegistrationId", "prefix name email mobile regNum")
       .populate("otherEventRegistrationId", "prefix name email mobile regNum")
       .sort({ createdAt: -1 });
+
+    const data = bookings.map((item) => ({
+      ...item.toObject(),
+
+      // =========================
+      // UI FIELD
+      // =========================
+      usedQuota: item.accomodationDays.length,
+    }));
 
     return res.status(200).json({
       success: true,
