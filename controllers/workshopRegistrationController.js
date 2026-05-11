@@ -50,7 +50,13 @@ export const registerForWorkshops = async (req, res) => {
       const regCount = await WorkshopRegistration.countDocuments({
         "workshops.workshopIds": ws._id,
         eventId,
-        registrationType,
+        $or: [
+          { registrationType: "Free" },
+          {
+            registrationType: "Paid",
+            paymentStatus: "Completed",
+          },
+        ],
       });
 
       if (regCount >= ws.maxRegAllowed) {
