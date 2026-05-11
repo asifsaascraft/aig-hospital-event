@@ -109,6 +109,46 @@ export const getAssignedAccomodationServicesByEvent = async (req, res) => {
   }
 };
 
+// =======================
+// GET Logged In Sponsor Assigned Accommodation Services
+// =======================
+export const getMyAssignedAccomodationServices = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    // logged in sponsor id
+    const sponsorId = req.sponsor._id;
+
+    const data = await AssignAccomodationService.findOne({
+      eventId,
+      sponsorId,
+    })
+      .populate("sponsorId", "sponsorName contactPersonName email mobile")
+      .populate(
+        "eventRegistrationId",
+        "prefix name email mobile regNum"
+      );
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: "No assigned accommodation services found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
 
 // =======================
 // REMOVE Assigned Registration

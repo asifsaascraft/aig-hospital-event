@@ -111,6 +111,52 @@ export const getAssignedTravelServicesByEvent = async (req, res) => {
 
 
 // =======================
+// GET Logged In Sponsor Assigned Travel Services
+// =======================
+export const getMyAssignedTravelServices = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    // logged in sponsor id
+    const sponsorId = req.sponsor._id;
+
+    const data = await AssignTravelService.findOne({
+      eventId,
+      sponsorId,
+    })
+      .populate(
+        "sponsorId",
+        "sponsorName contactPersonName email mobile"
+      )
+      .populate(
+        "eventRegistrationId",
+        "prefix name email mobile regNum"
+      );
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: "No assigned travel services found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+
+  } catch (error) {
+    console.error("Get My Travel Services Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
+// =======================
 // REMOVE Assigned Registration
 // =======================
 export const removeAssignedTravelRegistration = async (req, res) => {

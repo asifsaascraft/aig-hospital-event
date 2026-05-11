@@ -2,10 +2,11 @@ import express from "express";
 import {
   assignTravelService,
   getAssignedTravelServicesByEvent,
+  getMyAssignedTravelServices,
   removeAssignedTravelRegistration,
   reassignTravelService,
 } from "../controllers/assignTravelServiceController.js";
-
+import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
@@ -26,6 +27,15 @@ router.post(
 router.get(
   "/events/:eventId/assign-travel-services",
   getAssignedTravelServicesByEvent
+);
+
+// =======================
+// Sponsor Get Own Assigned Travel Services
+// =======================
+router.get(
+  "/sponsor/events/:eventId/my-assign-travel-services",
+  protectSponsor,
+  getMyAssignedTravelServices
 );
 
 // =======================
