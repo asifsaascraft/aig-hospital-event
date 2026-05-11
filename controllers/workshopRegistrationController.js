@@ -49,7 +49,7 @@ export const registerForWorkshops = async (req, res) => {
       if (now < ws.startDateTime) {
         return res.status(400).json({
           success: false,
-          message: `Workshop registration has not started yet for: ${ws.workshopName}`,
+          message: "Workshop registration has not started yet",
         });
       }
 
@@ -57,7 +57,7 @@ export const registerForWorkshops = async (req, res) => {
       if (now > ws.endDateTime) {
         return res.status(400).json({
           success: false,
-          message: `Workshop registration closed for: ${ws.workshopName}`,
+          message: "Workshop registration closed",
         });
       }
     }

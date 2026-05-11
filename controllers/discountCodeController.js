@@ -13,10 +13,8 @@ export const createDiscountCode = async (req, res) => {
       discountType,
       discount,
       redemptionLimit,
-      startDate,
-      endDate,
-      startTime,
-      endTime,
+      startDateTime,
+      endDateTime,
     } = req.body;
 
     // Validate event existence
@@ -39,6 +37,40 @@ export const createDiscountCode = async (req, res) => {
       });
     }
 
+    // VALIDATION Dates
+    if (
+      startDateTime &&
+      isNaN(new Date(startDateTime).getTime())
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid startDateTime format",
+      });
+    }
+
+    if (
+      endDateTime &&
+      isNaN(new Date(endDateTime).getTime())
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid endDateTime format",
+      });
+    }
+
+    // Convert dates
+    const parsedStartDateTime = new Date(startDateTime);
+    const parsedEndDateTime = new Date(endDateTime);
+
+    // Final validation
+    if (parsedEndDateTime < parsedStartDateTime) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "End date time must be greater than or equal to start date time",
+      });
+    }
+
     // Create new discount code
     const discountCode = await DiscountCode.create({
       eventId,
@@ -46,10 +78,8 @@ export const createDiscountCode = async (req, res) => {
       discountType,
       discount,
       redemptionLimit,
-      startDate,
-      endDate,
-      startTime,
-      endTime,
+      startDateTime: parsedStartDateTime,
+      endDateTime: parsedEndDateTime,
     });
 
     res.status(201).json({
@@ -91,28 +121,26 @@ export const getDiscountCodesByEvent = async (req, res) => {
 export const getActiveDiscountCodesByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const discountCodes = await DiscountCode.find({ eventId });
 
     const now = new Date();
 
-    const activeDiscountCodes = discountCodes.filter((dc) => {
-      try {
-        const [day, month, year] = dc.endDate.split("/");
-        const endDateTime = new Date(`${year}-${month}-${day} ${dc.endTime}`);
-        return endDateTime > now;
-      } catch {
-        return false;
-      }
-    });
+    const activeDiscountCodes = await DiscountCode.find({
+      eventId,
+      endDateTime: { $gte: now },
+    }).sort({ startDateTime: 1 });
 
     res.status(200).json({
       success: true,
       message: "Active discount codes fetched successfully",
       data: activeDiscountCodes,
     });
+
   } catch (error) {
     console.error("Get active discount codes error:", error);
-    res.status(500).json({ message: "Server Error" });
+
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
 
@@ -127,10 +155,8 @@ export const updateDiscountCode = async (req, res) => {
       discountType,
       discount,
       redemptionLimit,
-      startDate,
-      endDate,
-      startTime,
-      endTime,
+      startDateTime,
+      endDateTime,
     } = req.body;
 
     const discountCode = await DiscountCode.findById(id);
@@ -145,16 +171,55 @@ export const updateDiscountCode = async (req, res) => {
       });
     }
 
+    // VALIDATION Dates
+    if (
+      startDateTime &&
+      isNaN(new Date(startDateTime).getTime())
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid startDateTime format",
+      });
+    }
+
+    if (
+      endDateTime &&
+      isNaN(new Date(endDateTime).getTime())
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid endDateTime format",
+      });
+    }
+
     // Update only provided fields
     if (codeName) discountCode.codeName = codeName;
     if (discountType) discountCode.discountType = discountType;
     if (discount !== undefined) discountCode.discount = discount;
     if (redemptionLimit !== undefined)
       discountCode.redemptionLimit = redemptionLimit;
-    if (startDate) discountCode.startDate = startDate;
-    if (endDate) discountCode.endDate = endDate;
-    if (startTime) discountCode.startTime = startTime;
-    if (endTime) discountCode.endTime = endTime;
+    if (startDateTime) {
+      discountCode.startDateTime =
+        new Date(startDateTime);
+    }
+
+    if (endDateTime) {
+      discountCode.endDateTime =
+        new Date(endDateTime);
+    }
+
+    // Final validation
+    if (
+      discountCode.startDateTime &&
+      discountCode.endDateTime &&
+      discountCode.endDateTime < discountCode.startDateTime
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "End date time must be greater than or equal to start date time",
+      });
+    }
 
     await discountCode.save();
 

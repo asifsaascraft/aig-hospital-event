@@ -2,6 +2,7 @@ import BanquetRegistration from "../models/BanquetRegistration.js";
 import Accompany from "../models/Accompany.js";
 import Event from "../models/Event.js";
 import EventRegistration from "../models/EventRegistration.js";
+import Banquet from "../models/Banquet.js";
 
 /* 
 ========================================================
@@ -24,6 +25,46 @@ export const registerBanquet = async (req, res) => {
     const event = await Event.findById(eventId);
     if (!event)
       return res.status(404).json({ message: "Event not found" });
+
+    // Validate Banquet
+    const banquet = await Banquet.findOne({
+      _id: banquetId,
+      eventId,
+    });
+
+    if (!banquet) {
+      return res.status(404).json({
+        success: false,
+        message: "Banquet not found for this event",
+      });
+    }
+
+    // Validate banquet active date/time
+    const now = new Date();
+
+    // inactive banquet
+    if (banquet.status !== "Active") {
+      return res.status(400).json({
+        success: false,
+        message: "Banquet is inactive",
+      });
+    }
+
+    // upcoming banquet
+    if (now < banquet.startDateTime) {
+      return res.status(400).json({
+        success: false,
+        message: "Banquet registration has not started yet",
+      });
+    }
+
+    // expired banquet
+    if (now > banquet.endDateTime) {
+      return res.status(400).json({
+        success: false,
+        message: "Banquet registration closed",
+      });
+    }
 
     // Validate Event Registration
     const registration = await EventRegistration.findOne({
@@ -113,7 +154,7 @@ export const getAllPaidBanquetsByEvent = async (req, res) => {
       })
       .populate({
         path: "banquetId",
-        select: "banquetslabName amount startDate endDate",
+        select: "banquetslabName amount startDateTime endDateTime",
       })
       .populate({
         path: "banquets.userId",
@@ -270,7 +311,7 @@ export const getAllPaidBanquetsByEvent_Admin = async (req, res) => {
       })
       .populate({
         path: "banquetId",
-        select: "banquetslabName amount startDate endDate",
+        select: "banquetslabName amount startDateTime endDateTime",
       })
       .sort({ createdAt: -1 })
       .lean();

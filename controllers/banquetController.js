@@ -7,7 +7,13 @@ import Event from "../models/Event.js";
 export const createBanquet = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { banquetslabName, amount, startDate, endDate, status } = req.body;
+    const {
+      banquetslabName,
+      amount,
+      startDateTime,
+      endDateTime,
+      status,
+    } = req.body;
 
     // Validate event existence
     const event = await Event.findById(eventId);
@@ -15,14 +21,42 @@ export const createBanquet = async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
+    // VALIDATION Dates
+    if (startDateTime && isNaN(new Date(startDateTime))) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid startDateTime format",
+      });
+    }
+
+    if (endDateTime && isNaN(new Date(endDateTime))) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid endDateTime format",
+      });
+    }
+
+    // Convert dates
+    const parsedStartDateTime = new Date(startDateTime);
+    const parsedEndDateTime = new Date(endDateTime);
+
+    // End validation
+    if (parsedEndDateTime < parsedStartDateTime) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "End date time must be greater than or equal to start date time",
+      });
+    }
+
     // Create new banquet
     const banquet = await Banquet.create({
       eventId,
       banquetslabName,
       amount,
-      startDate,
-      endDate,
-      status: status || "Active", 
+      startDateTime: parsedStartDateTime,
+      endDateTime: parsedEndDateTime,
+      status: status || "Active",
     });
 
     res.status(201).json({
@@ -63,41 +97,26 @@ export const getActiveBanquetsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
 
-    // Today's date (only date compare)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
 
-    // Convert DD/MM/YYYY -> JS Date
-    const parseDate = (dateString) => {
-      if (!dateString) return null;
-      const [day, month, year] = dateString.split("/").map(Number);
-      return new Date(year, month - 1, day);
-    };
-
-    // Fetch only ACTIVE banquets
-    const banquets = await Banquet.find({ eventId, status: "Active" });
-
-    // Filter -> endDate is NOT expired
-    const filtered = banquets.filter((item) => {
-      const endDateObj = parseDate(item.endDate);
-      return endDateObj && endDateObj >= today;
-    });
-
-    // Sort -> earliest startDate first
-    filtered.sort((a, b) => {
-      const dateA = parseDate(a.startDate);
-      const dateB = parseDate(b.startDate);
-      return dateA - dateB;
-    });
+    const banquets = await Banquet.find({
+      eventId,
+      status: "Active",
+      endDateTime: { $gte: now },
+    }).sort({ startDateTime: 1 });
 
     res.status(200).json({
       success: true,
       message: "Active and non-expired banquets fetched successfully",
-      data: filtered,
+      data: banquets,
     });
+
   } catch (error) {
     console.error("Get active banquets error:", error);
-    res.status(500).json({ message: "Server Error" });
+
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
 
@@ -108,7 +127,13 @@ export const getActiveBanquetsByEvent = async (req, res) => {
 export const updateBanquet = async (req, res) => {
   try {
     const { id } = req.params;
-    const { banquetslabName, amount, startDate, endDate, status } = req.body;
+    const {
+      banquetslabName,
+      amount,
+      startDateTime,
+      endDateTime,
+      status,
+    } = req.body;
 
     // Find existing banquet
     const banquet = await Banquet.findById(id);
@@ -116,12 +141,46 @@ export const updateBanquet = async (req, res) => {
       return res.status(404).json({ message: "Banquet not found" });
     }
 
+    // VALIDATION Dates
+    if (startDateTime && isNaN(new Date(startDateTime))) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid startDateTime format",
+      });
+    }
+
+    if (endDateTime && isNaN(new Date(endDateTime))) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid endDateTime format",
+      });
+    }
+
     // Update fields only if provided
     if (banquetslabName) banquet.banquetslabName = banquetslabName;
     if (amount !== undefined) banquet.amount = amount;
-    if (startDate) banquet.startDate = startDate;
-    if (endDate) banquet.endDate = endDate;
-    if (status !== undefined) banquet.status = status;  
+
+    if (startDateTime) {
+      banquet.startDateTime = new Date(startDateTime);
+    }
+
+    if (endDateTime) {
+      banquet.endDateTime = new Date(endDateTime);
+    }
+    if (status !== undefined) banquet.status = status;
+
+    // Final validation
+    if (
+      banquet.startDateTime &&
+      banquet.endDateTime &&
+      banquet.endDateTime < banquet.startDateTime
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "End date time must be greater than or equal to start date time",
+      });
+    }
 
     await banquet.save();
 
