@@ -644,7 +644,7 @@ export const verifyWorkshopPayment = async (req, res) => {
       {
         path: "workshops.workshopIds",
         select:
-          "workshopName hallName startDate startTime endDate endTime workshopRegistrationType workshopCategory",
+          "workshopName hallName startDateTime endDateTime workshopRegistrationType workshopCategory",
       },
     ]);
 
@@ -670,10 +670,29 @@ export const verifyWorkshopPayment = async (req, res) => {
       const workshopList = workshops.map((ws) => ({
         workshopName: ws.workshopName || "",
         hallName: ws.hallName || "",
-        startDate: ws.startDate || "",
-        startTime: ws.startTime || "",
-        endDate: ws.endDate || "",
-        endTime: ws.endTime || "",
+        startDateTime: ws.startDateTime
+          ? new Date(ws.startDateTime).toLocaleString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })
+          : "",
+
+        endDateTime: ws.endDateTime
+          ? new Date(ws.endDateTime).toLocaleString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })
+          : "",
       }));
 
       const ifMultiple = workshopList.length > 1 ? "s" : "";

@@ -2,6 +2,9 @@ import Workshop from "../models/Workshop.js";
 import Event from "../models/Event.js";
 import WorkshopRegistration from "../models/WorkshopRegistration.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
+import moment from "moment";
+
+
 /* 
 ========================================================
   1️ Register for Multiple Workshops under a Single Event  (User)
@@ -27,6 +30,36 @@ export const registerForWorkshops = async (req, res) => {
     const workshops = await Workshop.find({ _id: { $in: workshopIds }, eventId });
     if (workshops.length !== workshopIds.length) {
       return res.status(400).json({ message: "One or more workshops not found for this event" });
+    }
+
+    // Validate workshop active date/time
+    const now = new Date();
+
+    for (const ws of workshops) {
+
+      // inactive workshop
+      if (ws.status !== "Active") {
+        return res.status(400).json({
+          success: false,
+          message: `Workshop is inactive: ${ws.workshopName}`,
+        });
+      }
+
+      // upcoming workshop
+      if (now < ws.startDateTime) {
+        return res.status(400).json({
+          success: false,
+          message: `Workshop registration has not started yet for: ${ws.workshopName}`,
+        });
+      }
+
+      // expired workshop
+      if (now > ws.endDateTime) {
+        return res.status(400).json({
+          success: false,
+          message: `Workshop registration closed for: ${ws.workshopName}`,
+        });
+      }
     }
 
     // Ensure all workshops are of same registration type (Paid or Free)
@@ -87,10 +120,30 @@ export const registerForWorkshops = async (req, res) => {
         const workshopList = workshops.map((ws) => ({
           workshopName: ws.workshopName || "",
           hallName: ws.hallName || "",
-          startDate: ws.startDate || "",
-          startTime: ws.startTime || "",
-          endDate: ws.endDate || "",
-          endTime: ws.endTime || "",
+
+          startDateTime: ws.startDateTime
+            ? new Date(ws.startDateTime).toLocaleString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            })
+            : "",
+
+          endDateTime: ws.endDateTime
+            ? new Date(ws.endDateTime).toLocaleString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            })
+            : "",
         }));
 
         const displayName =
