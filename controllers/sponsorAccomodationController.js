@@ -484,13 +484,39 @@ export const getAccomodationBySponsor = async (req, res) => {
       .populate("otherEventRegistrationId", "prefix name email mobile regNum")
       .sort({ createdAt: -1 });
 
+    // ===============================
+    // GET ASSIGNED REGISTRATION IDS
+    // ===============================
+    const assignedData = await AssignAccomodationService.findOne({
+      eventId,
+      sponsorId,
+    });
+
+    const assignedRegistrationIds = assignedData
+      ? assignedData.eventRegistrationId.map((id) =>
+        id.toString()
+      )
+      : [];
+
+    // ===============================
+    // ADD STATUS FIELD
+    // ===============================
     const data = bookings.map((item) => ({
       ...item.toObject(),
 
-      // =========================
       // UI FIELD
-      // =========================
       usedQuota: item.accomodationDays.length,
+
+      // true = came from AssignAccomodationService
+      // false = normal sponsor booking
+      isAssignedAccomodationService:
+        assignedRegistrationIds.includes(
+          item.eventRegistrationId?._id?.toString()
+        ) ||
+
+        assignedRegistrationIds.includes(
+          item.otherEventRegistrationId?._id?.toString()
+        ),
     }));
 
     return res.status(200).json({

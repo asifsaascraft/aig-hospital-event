@@ -5,6 +5,7 @@ import { uploadIdForTravel } from "../middlewares/uploadMiddleware.js";
 import {
   createTravelBySponsor,
   getTravelBySponsor,
+  getMyBookedAssignedTravels,
   getSponsorTravelAgents,
   getSponsorTravelQuotaSummary,
   updateTravelBySponsor,
@@ -25,6 +26,15 @@ router.get(
   "/sponsor/events/:eventId/travel",
   protectSponsor,
   getTravelBySponsor
+);
+
+// =======================
+// Sponsor: Get Only Booked Assigned Travels
+// =======================
+router.get(
+  "/sponsor/events/:eventId/booked-assigned-travel",
+  protectSponsor,
+  getMyBookedAssignedTravels
 );
 
 // GET USED TRAVEL AGENTS BY SPONSOR

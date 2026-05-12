@@ -4,6 +4,7 @@ import Event from "../models/Event.js";
 import EventRegistration from "../models/EventRegistration.js";
 import TravelAgent from "../models/TravelAgent.js";
 import SponsorTravelQuota from "../models/SponsorTravelQuota.js";
+import AssignTravelService from "../models/AssignTravelService.js";
 
 
 const formatDateIST = (date) => {
@@ -244,14 +245,112 @@ export const getTravelBySponsor = async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
+    // ===============================
+    // GET ASSIGNED REGISTRATION IDS
+    // ===============================
+    const assignedData = await AssignTravelService.findOne({
+      eventId,
+      sponsorId,
+    });
+
+    const assignedRegistrationIds = assignedData
+      ? assignedData.eventRegistrationId.map((id) =>
+        id.toString()
+      )
+      : [];
+
+    // ===============================
+    // ADD STATUS FIELD
+    // ===============================
+    const data = travels.map((item) => ({
+      ...item.toObject(),
+
+      // true = came from AssignTravelService
+      // false = normal sponsor booking
+      isAssignedTravelService:
+        assignedRegistrationIds.includes(
+          item.eventRegistrationId?._id?.toString()
+        ),
+    }));
+
     res.status(200).json({
       success: true,
       message: "Sponsor travel fetched successfully",
-      data: travels,
+      data,
     });
   } catch (error) {
     console.error("Sponsor get travel error:", error);
     res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// =======================
+// Get My Booked Assigned Travels
+// =======================
+export const getMyBookedAssignedTravels = async (req, res) => {
+  try {
+    const sponsorId = req.sponsor._id;
+    const { eventId } = req.params;
+
+    // ===============================
+    // GET ASSIGNED DELEGATES
+    // ===============================
+    const assignedData = await AssignTravelService.findOne({
+      eventId,
+      sponsorId,
+    });
+
+    if (!assignedData) {
+      return res.status(404).json({
+        success: false,
+        message: "No assigned travel services found",
+      });
+    }
+
+    const assignedRegistrationIds =
+      assignedData.eventRegistrationId.map((id) =>
+        id.toString()
+      );
+
+    // ===============================
+    // GET ONLY BOOKED ASSIGNED TRAVEL
+    // ===============================
+    const travels = await Travel.find({
+      eventId,
+      sponsorId,
+      createdBy: "sponsor",
+
+      eventRegistrationId: {
+        $in: assignedRegistrationIds,
+      },
+    })
+      .populate("travelAgentId")
+      .populate({
+        path: "eventRegistrationId",
+        populate: {
+          path: "registrationSlabId",
+          select: "slabName",
+        },
+      })
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Booked assigned travel fetched successfully",
+      data: travels,
+    });
+
+  } catch (error) {
+    console.error(
+      "Get Booked Assigned Travel Error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
