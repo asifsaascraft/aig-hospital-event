@@ -70,9 +70,16 @@ export const createTravel = async (req, res) => {
       });
     }
 
-    const agent = await TravelAgent.findById(travelAgentId);
-    if (!agent)
-      return res.status(404).json({ message: "Travel agent not found" });
+    const agent = await TravelAgent.findOne({
+      _id: travelAgentId,
+      status: "Active",
+    });
+
+    if (!agent) {
+      return res.status(404).json({
+        message: "Active travel agent not found",
+      });
+    }
 
     const travel = await Travel.create({
       eventId,
@@ -191,6 +198,23 @@ export const updateTravel = async (req, res) => {
       if (existingTravel) {
         return res.status(400).json({
           message: "Travel already booked for this registration",
+        });
+      }
+    }
+
+    // =======================
+    // CHECK ACTIVE TRAVEL AGENT
+    // =======================
+    if (travelAgentId) {
+
+      const agent = await TravelAgent.findOne({
+        _id: travelAgentId,
+        status: "Active",
+      });
+
+      if (!agent) {
+        return res.status(404).json({
+          message: "Active travel agent not found",
         });
       }
     }

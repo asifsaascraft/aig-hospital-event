@@ -118,10 +118,14 @@ export const createTravelBySponsor = async (req, res) => {
     // =======================
     //  CHECK TRAVEL AGENT
     // =======================
-    const agent = await TravelAgent.findById(travelAgentId);
+    const agent = await TravelAgent.findOne({
+      _id: travelAgentId,
+      status: "Active",
+    });
+
     if (!agent) {
       return res.status(404).json({
-        message: "Travel agent not found",
+        message: "Active travel agent not found",
       });
     }
 
@@ -406,6 +410,23 @@ export const updateTravelBySponsor = async (req, res) => {
       return res.status(400).json({
         message: "Invalid departure pickup datetime format",
       });
+    }
+
+    // =======================
+    // CHECK ACTIVE TRAVEL AGENT
+    // =======================
+    if (req.body.travelAgentId) {
+
+      const agent = await TravelAgent.findOne({
+        _id: req.body.travelAgentId,
+        status: "Active",
+      });
+
+      if (!agent) {
+        return res.status(404).json({
+          message: "Active travel agent not found",
+        });
+      }
     }
 
     // =======================

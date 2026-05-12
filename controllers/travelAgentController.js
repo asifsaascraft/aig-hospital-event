@@ -1,22 +1,26 @@
 import TravelAgent from "../models/TravelAgent.js";
-import Event from "../models/Event.js";
+
 
 // =======================
-// Create Travel Agent (EventAdmin Only)
+// Create Travel Agent (Global)
 // =======================
 export const createTravelAgent = async (req, res) => {
   try {
-    const { eventId } = req.params;
-    const { agentName, email, mobile, company, city, status } = req.body;
 
-    // Validate event
-    const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ message: "Event not found" });
-    }
+    const {
+      agentName,
+      email,
+      mobile,
+      company,
+      city,
+      status,
+    } = req.body;
 
-    //  Check if email already exists
-    const existingEmail = await TravelAgent.findOne({ email });
+    // Check duplicate email
+    const existingEmail = await TravelAgent.findOne({
+      email,
+    });
+
     if (existingEmail) {
       return res.status(400).json({
         success: false,
@@ -24,9 +28,7 @@ export const createTravelAgent = async (req, res) => {
       });
     }
 
-    // Create Travel Agent
     const agent = await TravelAgent.create({
-      eventId,
       agentName,
       email,
       mobile,
@@ -40,43 +42,47 @@ export const createTravelAgent = async (req, res) => {
       message: "Travel Agent created successfully",
       data: agent,
     });
+
   } catch (error) {
     console.error("Create Travel Agent error:", error);
-    res.status(500).json({ message: "Server Error" });
+
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
 
 // =======================
-// Get All Travel Agents by Event ID
+// Get All Travel Agents
 // =======================
-export const getTravelAgentsByEvent = async (req, res) => {
+export const getAllTravelAgents = async (req, res) => {
   try {
-    const { eventId } = req.params;
 
-    const agents = await TravelAgent.find({ eventId }).sort({
-      createdAt: -1,
-    });
+    const agents = await TravelAgent.find()
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
       message: "Travel Agents fetched successfully",
       data: agents,
     });
+
   } catch (error) {
     console.error("Get Travel Agents error:", error);
-    res.status(500).json({ message: "Server Error" });
+
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
 
 // =======================
-// Get Active Travel Agents by Event
+// Get Active Travel Agents
 // =======================
-export const getActiveTravelAgentsByEvent = async (req, res) => {
+export const getActiveTravelAgents = async (req, res) => {
   try {
-    const { eventId } = req.params;
 
     const agents = await TravelAgent.find({
-      eventId,
       status: "Active",
     }).sort({ createdAt: -1 });
 
@@ -85,9 +91,13 @@ export const getActiveTravelAgentsByEvent = async (req, res) => {
       message: "Active Travel Agents fetched successfully",
       data: agents,
     });
+
   } catch (error) {
     console.error("Get Active Travel Agents error:", error);
-    res.status(500).json({ message: "Server Error" });
+
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
 

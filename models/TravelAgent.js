@@ -2,11 +2,6 @@ import mongoose from "mongoose";
 
 const TravelAgentSchema = new mongoose.Schema(
   {
-    eventId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Event",
-      required: true,
-    },
     agentName: {
       type: String,
       required: [true, "Agent Name is required"],
