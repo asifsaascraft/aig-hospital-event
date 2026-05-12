@@ -12,7 +12,6 @@ import adminRoutes from "./routes/adminRoutes.js";
 import eventAdminRoutes from "./routes/eventAdminRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import sponsorAuthRoutes from "./routes/sponsorAuthRoutes.js";
-import exhibitorAuthRoutes from "./routes/exhibitorAuthRoutes.js";
 import reviewerAuthRoutes from "./routes/reviewerAuthRoutes.js";
 
 import announcementRoutes from "./routes/announcementRoutes.js";
@@ -61,10 +60,6 @@ import sponsorRegistrationQuotaRoutes from "./routes/sponsorRegistrationQuotaRou
 import sponsorAccomodationQuotaRoutes from "./routes/sponsorAccomodationQuotaRoutes.js";
 import sponsorTravelQuotaRoutes from "./routes/sponsorTravelQuotaRoutes.js";
 import sponsorTravelRoutes from "./routes/sponsorTravelRoutes.js";
-import exhibitorRoutes from "./routes/exhibitorRoutes.js";
-import exhibitorHallRoutes from "./routes/exhibitorHallRoutes.js";
-import exhibitorBoothRoutes from "./routes/exhibitorBoothRoutes.js";
-import exhibitorCategoryRoutes from "./routes/exhibitorCategoryRoutes.js";
 import eventRegistrationRoutes from "./routes/eventRegistrationRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import sponsorEventRegRoutes from "./routes/sponsorEventRegRoutes.js";
@@ -93,7 +88,6 @@ const allowedOrigins = [
   process.env.EVENT_ADMIN_FRONTEND_URL,
   process.env.USER_FRONTEND_URL,
   process.env.SPONSOR_FRONTEND_URL,
-  process.env.EXHIBITOR_FRONTEND_URL,
   process.env.REVIEWER_FRONTEND_URL,
 ];
 
@@ -125,7 +119,6 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/event-admin", eventAdminRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/sponsors", sponsorAuthRoutes);
-app.use("/api/exhibitors", exhibitorAuthRoutes);
 app.use("/api/reviewers", reviewerAuthRoutes);
 
 
@@ -175,10 +168,6 @@ app.use("/api", sponsorRegistrationQuotaRoutes);
 app.use("/api", sponsorAccomodationQuotaRoutes);
 app.use("/api", sponsorTravelQuotaRoutes);
 app.use("/api", sponsorTravelRoutes);
-app.use("/api", exhibitorRoutes);
-app.use("/api", exhibitorHallRoutes);
-app.use("/api", exhibitorBoothRoutes);
-app.use("/api", exhibitorCategoryRoutes);
 app.use("/api", eventRegistrationRoutes);
 app.use("/api", paymentRoutes);
 app.use("/api", sponsorEventRegRoutes);
