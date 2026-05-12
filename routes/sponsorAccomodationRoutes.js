@@ -4,6 +4,7 @@ import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 import {
   createAccomodation,
   getAccomodationBySponsor,
+  getMyBookedAssignedAccomodations,
   getAllAccomodationByEvent,
   updateAccomodation,
   deleteAccomodation,
@@ -24,6 +25,15 @@ router.get(
   "/sponsor/events/:eventId/accomodation",
   protectSponsor,
   getAccomodationBySponsor
+);
+
+// =======================
+// Sponsor: Get Only Booked Assigned Delegates
+// =======================
+router.get(
+  "/sponsor/events/:eventId/booked-assigned-accomodation",
+  protectSponsor,
+  getMyBookedAssignedAccomodations
 );
 
 // =======================

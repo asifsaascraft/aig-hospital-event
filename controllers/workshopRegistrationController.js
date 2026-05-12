@@ -32,7 +32,7 @@ export const registerForWorkshops = async (req, res) => {
       return res.status(400).json({ message: "One or more workshops not found for this event" });
     }
 
-    // Validate workshop active date/time
+    // Validate workshop status & expiry
     const now = new Date();
 
     for (const ws of workshops) {
@@ -45,19 +45,11 @@ export const registerForWorkshops = async (req, res) => {
         });
       }
 
-      // upcoming workshop
-      if (now < ws.startDateTime) {
-        return res.status(400).json({
-          success: false,
-          message: "Workshop registration has not started yet",
-        });
-      }
-
-      // expired workshop
+      // workshop already over
       if (now > ws.endDateTime) {
         return res.status(400).json({
           success: false,
-          message: "Workshop registration closed",
+          message: `Workshop already ended: ${ws.workshopName}`,
         });
       }
     }
@@ -337,6 +329,28 @@ export const registerForWorkshopsByEventAdmin = async (req, res) => {
     const workshops = await Workshop.find({ _id: { $in: workshopIds }, eventId });
     if (workshops.length !== workshopIds.length) {
       return res.status(400).json({ message: "One or more workshops not found for this event" });
+    }
+
+    // Validate workshop status & expiry
+    const now = new Date();
+
+    for (const ws of workshops) {
+
+      // inactive workshop
+      if (ws.status !== "Active") {
+        return res.status(400).json({
+          success: false,
+          message: `Workshop is inactive: ${ws.workshopName}`,
+        });
+      }
+
+      // workshop already over
+      if (now > ws.endDateTime) {
+        return res.status(400).json({
+          success: false,
+          message: `Workshop already ended: ${ws.workshopName}`,
+        });
+      }
     }
 
     // Ensure all workshops are of same registration type (Paid or Free)

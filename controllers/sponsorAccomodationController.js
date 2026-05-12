@@ -1,6 +1,7 @@
 import Accomodation from "../models/Accomodation.js";
 import AddRoom from "../models/AddRoom.js";
 import SponsorAccomodationQuota from "../models/SponsorAccomodationQuota.js";
+import AssignAccomodationService from "../models/AssignAccomodationService.js";
 
 // =======================
 // Helper Functions
@@ -506,6 +507,99 @@ export const getAccomodationBySponsor = async (req, res) => {
   }
 };
 
+
+
+// =======================
+// Get My Booked Assigned Accomodations
+// =======================
+export const getMyBookedAssignedAccomodations = async (req, res) => {
+  try {
+    const sponsorId = req.sponsor._id;
+    const { eventId } = req.params;
+
+    // ===============================
+    // GET ASSIGNED DELEGATES
+    // ===============================
+    const assignedData = await AssignAccomodationService.findOne({
+      eventId,
+      sponsorId,
+    });
+
+    if (!assignedData) {
+      return res.status(404).json({
+        success: false,
+        message: "No assigned accommodation services found",
+      });
+    }
+
+    const assignedRegistrationIds =
+      assignedData.eventRegistrationId.map((id) =>
+        id.toString()
+      );
+
+    // ===============================
+    // GET ONLY BOOKED ASSIGNED
+    // ===============================
+    const bookings = await Accomodation.find({
+      eventId,
+      sponsorId,
+
+      $or: [
+        {
+          eventRegistrationId: {
+            $in: assignedRegistrationIds,
+          },
+        },
+        {
+          otherEventRegistrationId: {
+            $in: assignedRegistrationIds,
+          },
+        },
+      ],
+    })
+      .populate(
+        "hotelId",
+        "hotelName checkinTime checkoutTime"
+      )
+      .populate(
+        "eventRegistrationId",
+        "prefix name email mobile regNum"
+      )
+      .populate(
+        "otherEventRegistrationId",
+        "prefix name email mobile regNum"
+      )
+      .sort({ createdAt: -1 });
+
+    // ===============================
+    // SAME RESPONSE FORMAT
+    // ===============================
+    const data = bookings.map((item) => ({
+      ...item.toObject(),
+
+      // UI FIELD
+      usedQuota: item.accomodationDays.length,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Booked assigned accomodation fetched successfully",
+      data,
+    });
+
+  } catch (error) {
+    console.error(
+      "Get Booked Assigned Accommodation Error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
 
 // =======================
 // Get All Accomodation By Event (Event Admin)
