@@ -5,6 +5,8 @@ import SponsorRegistrationQuota from "../models/SponsorRegistrationQuota.js";
 import SponsorAccomodationQuota from "../models/SponsorAccomodationQuota.js";
 import SponsorTravelQuota from "../models/SponsorTravelQuota.js";
 import EventRegistration from "../models/EventRegistration.js";
+import Accomodation from "../models/Accomodation.js";
+import Travel from "../models/Travel.js";
 import Event from "../models/Event.js";
 
 // =======================
@@ -269,11 +271,22 @@ export const getSponsorSummary = async (req, res) => {
     // =======================
     const accQuotas = await SponsorAccomodationQuota.find({ eventId });
 
-    const totalAccQuota = accQuotas.reduce((sum, q) => sum + q.quota, 0);
+    const totalAccQuota = accQuotas.reduce((sum, q) => {
+      const quotaSum = q.quotas.reduce(
+        (innerSum, item) => innerSum + item.numberOfQuota,
+        0
+      );
 
-    // ⚠️ USED logic (you must connect with actual accomodation quota registrations table later)
-    const totalAccUsed = 0; // TODO
-    const totalAccRemaining = totalAccQuota - totalAccUsed;
+      return sum + quotaSum;
+    }, 0);
+
+    const totalAccUsed = await Accomodation.countDocuments({
+      eventId,
+    });
+    const totalAccRemaining = Math.max(
+      totalAccQuota - totalAccUsed,
+      0
+    );
 
     // =======================
     // 4. TRAVEL QUOTA
@@ -282,9 +295,14 @@ export const getSponsorSummary = async (req, res) => {
 
     const totalTravelQuota = travelQuotas.reduce((sum, q) => sum + q.quota, 0);
 
-    // ⚠️ USED logic (you must connect with actual travel quota registrations table later)
-    const totalTravelUsed = 0; // TODO
-    const totalTravelRemaining = totalTravelQuota - totalTravelUsed;
+    const totalTravelUsed = await Travel.countDocuments({
+      eventId,
+    });
+
+    const totalTravelRemaining = Math.max(
+      totalTravelQuota - totalTravelUsed,
+      0
+    );
 
     // =======================
     // 5. PER SPONSOR DATA
@@ -303,20 +321,82 @@ export const getSponsorSummary = async (req, res) => {
           sponsorId: sponsor._id,
         });
 
+        // =======================
+        // REGISTRATION USED
+        // =======================
+        const registrationUsed =
+          await EventRegistration.countDocuments({
+            eventId,
+            sponsorId: sponsor._id,
+            registrationType: "Sponsor Registration",
+            isSuspended: false,
+          });
+
+        // =======================
+        // ACCOMODATION QUOTA
+        // =======================
+        const accomodationQuota =
+          acc?.quotas?.reduce(
+            (sum, item) => sum + item.numberOfQuota,
+            0
+          ) || 0;
+
+        // =======================
+        // ACCOMODATION USED
+        // =======================
+        const accomodationUsed =
+          await Accomodation.countDocuments({
+            eventId,
+            sponsorId: sponsor._id,
+          });
+
+        // =======================
+        // TRAVEL USED
+        // =======================
+        const travelUsed =
+          await Travel.countDocuments({
+            eventId,
+            sponsorId: sponsor._id,
+          });
+
         return {
           sponsorName: sponsor.sponsorName,
 
+          // =======================
+          // REGISTRATION
+          // =======================
           registrationQuota: reg?.quota || 0,
-          registrationUsed: 0, // TODO
-          registrationRemaining: reg?.quota || 0,
 
-          accomodationQuota: acc?.quota || 0,
-          accomodationUsed: 0,
-          accomodationRemaining: acc?.quota || 0,
+          registrationUsed,
 
+          registrationRemaining: Math.max(
+            (reg?.quota || 0) - registrationUsed,
+            0
+          ),
+
+          // =======================
+          // ACCOMODATION
+          // =======================
+          accomodationQuota,
+
+          accomodationUsed,
+
+          accomodationRemaining: Math.max(
+            accomodationQuota - accomodationUsed,
+            0
+          ),
+
+          // =======================
+          // TRAVEL
+          // =======================
           travelQuota: travel?.quota || 0,
-          travelUsed: 0,
-          travelRemaining: travel?.quota || 0,
+
+          travelUsed,
+
+          travelRemaining: Math.max(
+            (travel?.quota || 0) - travelUsed,
+            0
+          ),
         };
       }),
     );
