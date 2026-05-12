@@ -12,7 +12,6 @@ import adminRoutes from "./routes/adminRoutes.js";
 import eventAdminRoutes from "./routes/eventAdminRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import sponsorAuthRoutes from "./routes/sponsorAuthRoutes.js";
-import reviewerAuthRoutes from "./routes/reviewerAuthRoutes.js";
 
 import announcementRoutes from "./routes/announcementRoutes.js";
 import departmentRoutes from "./routes/departmentRoutes.js";
@@ -40,14 +39,7 @@ import termsAndConditionRoutes from "./routes/termsAndConditionRoutes.js";
 import createUserRoutes from "./routes/createUserRoutes.js";
 import discountCodeRoutes from "./routes/discountCodeRoutes.js";
 import registrationSettingRoutes from "./routes/registrationSettingRoutes.js";
-import reviewerRoutes from "./routes/reviewerRoutes.js";
-import abstractCategoryRoutes from "./routes/abstractCategoryRoutes.js";
-import abstractTypeRoutes from "./routes/abstractTypeRoutes.js";
-import abstractSettingRoutes from "./routes/abstractSettingRoutes.js";
-import abstractSubmitRoutes from "./routes/abstractSubmitRoutes.js";
 import facultyCategoryRoutes from "./routes/facultyCategoryRoutes.js";
-import agendaSessionTypeRoutes from "./routes/agendaSessionTypeRoutes.js";
-import agendaSessionHallRoutes from "./routes/agendaSessionHallRoutes.js";
 import travelAgentRoutes from "./routes/travelAgentRoutes.js";
 import travelRoutes from "./routes/travelRoutes.js";
 import assignTravelRoutes from "./routes/assignTravelRoutes.js"; 
@@ -88,7 +80,6 @@ const allowedOrigins = [
   process.env.EVENT_ADMIN_FRONTEND_URL,
   process.env.USER_FRONTEND_URL,
   process.env.SPONSOR_FRONTEND_URL,
-  process.env.REVIEWER_FRONTEND_URL,
 ];
 
 const corsOptions = {
@@ -119,7 +110,6 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/event-admin", eventAdminRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/sponsors", sponsorAuthRoutes);
-app.use("/api/reviewers", reviewerAuthRoutes);
 
 
 app.use("/api", announcementRoutes);
@@ -148,14 +138,7 @@ app.use("/api", termsAndConditionRoutes);
 app.use("/api", createUserRoutes);
 app.use("/api", discountCodeRoutes);
 app.use("/api", registrationSettingRoutes);
-app.use("/api", reviewerRoutes);
-app.use("/api", abstractCategoryRoutes);
-app.use("/api", abstractTypeRoutes);
-app.use("/api", abstractSettingRoutes);
-app.use("/api", abstractSubmitRoutes);
 app.use("/api", facultyCategoryRoutes);
-app.use("/api", agendaSessionTypeRoutes);
-app.use("/api", agendaSessionHallRoutes);
 app.use("/api", travelAgentRoutes);
 app.use("/api", travelRoutes);
 app.use("/api", assignTravelRoutes);
