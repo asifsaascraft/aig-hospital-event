@@ -280,9 +280,16 @@ export const getSponsorSummary = async (req, res) => {
       return sum + quotaSum;
     }, 0);
 
-    const totalAccUsed = await Accomodation.countDocuments({
+    const accomodations = await Accomodation.find({
       eventId,
     });
+
+    const totalAccUsed = accomodations.reduce(
+      (sum, booking) =>
+        sum + booking.accomodationDays.length,
+      0
+    );
+
     const totalAccRemaining = Math.max(
       totalAccQuota - totalAccUsed,
       0
@@ -344,11 +351,18 @@ export const getSponsorSummary = async (req, res) => {
         // =======================
         // ACCOMODATION USED
         // =======================
-        const accomodationUsed =
-          await Accomodation.countDocuments({
+        const sponsorAccomodations =
+          await Accomodation.find({
             eventId,
             sponsorId: sponsor._id,
           });
+
+        const accomodationUsed =
+          sponsorAccomodations.reduce(
+            (sum, booking) =>
+              sum + booking.accomodationDays.length,
+            0
+          );
 
         // =======================
         // TRAVEL USED
