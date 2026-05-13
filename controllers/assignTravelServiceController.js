@@ -14,6 +14,7 @@ export const assignTravelService = async (req, res) => {
 
     // validation
     if (
+      
       !sponsorId ||
       !Array.isArray(eventRegistrationId) ||
       eventRegistrationId.length === 0

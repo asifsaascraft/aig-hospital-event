@@ -2,6 +2,7 @@ import AssignAccomodationService from "../models/AssignAccomodationService.js";
 import Event from "../models/Event.js";
 import Sponsor from "../models/Sponsor.js";
 import EventRegistration from "../models/EventRegistration.js";
+import Accomodation from "../models/Accomodation.js";
 
 // =======================
 // ASSIGN Accommodation Service
@@ -163,6 +164,27 @@ export const removeAssignedAccomodationRegistration = async (req, res) => {
       return res.status(404).json({ message: "Assignment not found" });
     }
 
+    // =======================
+    // CHECK IF ACCOMMODATION ALREADY BOOKED
+    // =======================
+    const bookedAccomodation = await Accomodation.findOne({
+      eventId: assign.eventId,
+      sponsorId: assign.sponsorId,
+
+      $or: [
+        { eventRegistrationId: registrationId },
+        { otherEventRegistrationId: registrationId },
+      ],
+    });
+
+    if (bookedAccomodation) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "This registration already booked accommodation. You cannot remove assigned accommodation service.",
+      });
+    }
+
     assign.eventRegistrationId = assign.eventRegistrationId.filter(
       (item) => item.toString() !== registrationId
     );
@@ -206,6 +228,26 @@ export const reassignAccomodationService = async (req, res) => {
     const sponsor = await Sponsor.findById(newSponsorId);
     if (!sponsor) {
       return res.status(404).json({ message: "Sponsor not found" });
+    }
+
+    // =======================
+    // CHECK IF ACCOMMODATION ALREADY BOOKED
+    // =======================
+    const bookedAccomodation = await Accomodation.findOne({
+      eventId,
+
+      $or: [
+        { eventRegistrationId: registrationId },
+        { otherEventRegistrationId: registrationId },
+      ],
+    });
+
+    if (bookedAccomodation) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "This registration already booked accommodation. You cannot reassign accommodation service.",
+      });
     }
 
     // check already assigned

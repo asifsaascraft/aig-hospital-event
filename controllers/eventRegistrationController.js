@@ -6,6 +6,8 @@ import User from "../models/User.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
 import moment from "moment";
 import { getIndianFormattedDate } from "../utils/dateUtils.js";
+import Sponsor from "../models/Sponsor.js";
+
 
 /* 
 ========================================================
@@ -624,6 +626,14 @@ export const getAllRegistrationsByEvent = async (req, res) => {
       .populate({
         path: "registrationSlabId",
         select: "slabName amount",
+      })
+      .populate({
+        path: "sponsorId",
+        select: "sponsorName",
+      })
+      .populate({
+        path: "eventAdminId",
+        select: "name",
       })
       .sort({ createdAt: -1 });
 
