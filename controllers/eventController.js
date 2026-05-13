@@ -23,29 +23,24 @@ export const getEvents = async (req, res) => {
   }
 };
 
-// =======================
-// Get all live and upcomming events (public)
-// =======================
-export const getLiveEvents = async (req, res) => {
-  try {
-    const now = new Date();
 
-    const events = await Event.find({
-      endDateTime: { $gte: now }, // Live + Upcoming
-    })
+// =======================
+// Get only active events (public)
+// =======================
+export const getActiveEvents = async (req, res) => {
+  try {
+    const events = await Event.find({ isActive: true })
       .populate("organizer department venueName groupName")
-      .sort({ startDateTime: 1 });
+      .sort({ createdAt: -1 });
 
     res.json({
       success: true,
-      count: events.length,
-      data: events.map(e => e.toObject({ virtuals: true })),
+      data: events.map((e) => e.toObject({ virtuals: true })),
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Failed to fetch live events",
+      message: "Failed to fetch active events",
       error: error.message,
     });
   }
@@ -265,6 +260,54 @@ export const updateEvent = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to update event",
+      error: error.message,
+    });
+  }
+};
+
+// =======================
+// Update only isActive status (admin only)
+// =======================
+export const updateEventStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body;
+
+    // Validate boolean
+    if (typeof isActive !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "isActive must be true or false",
+      });
+    }
+
+    const updatedEvent = await Event.findByIdAndUpdate(
+      id,
+      { isActive },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!updatedEvent) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Event ${
+        isActive ? "activated" : "deactivated"
+      } successfully`,
+      data: updatedEvent.toObject({ virtuals: true }),
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to update event status",
       error: error.message,
     });
   }

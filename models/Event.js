@@ -99,7 +99,11 @@ const EventSchema = new mongoose.Schema(
     brochureUpload: {
       type: String, // store file path or URL
       required: [true, "Brochure is required"],
-    }
+    },
+    isActive: {
+      type: Boolean,
+      default: false,
+    },
     // status removed from schema because we calculate it dynamically
   },
   { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }

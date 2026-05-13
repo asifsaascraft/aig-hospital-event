@@ -2,10 +2,11 @@
 import express from "express";
 import {
   getEvents,
-  getLiveEvents,
+  getActiveEvents,
   getEventById,
   createEvent,
   updateEvent,
+  updateEventStatus,
   deleteEvent,
 } from "../controllers/eventController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
@@ -15,9 +16,11 @@ const router = express.Router();
 
 // Public: anyone can view all events
 router.get("/events", getEvents);
-// Public: Get all live events
-router.get("/events/live", getLiveEvents);
 
+// Public: Get only active events
+router.get("/events/active", getActiveEvents);
+
+// Public: Get single event By ID
 router.get("/events/:id", getEventById);
 
 // Admin-only: Create a new event
@@ -64,6 +67,14 @@ router.put(
     });
   },
   updateEvent
+);
+
+// Admin-only: Update event active status
+router.patch(
+  "/admin/events/:id/status",
+  protect,
+  authorizeRoles("admin"),
+  updateEventStatus
 );
 
 // Admin-only: Delete an event
