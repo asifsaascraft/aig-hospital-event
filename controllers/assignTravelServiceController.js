@@ -2,6 +2,7 @@ import AssignTravelService from "../models/AssignTravelService.js";
 import Event from "../models/Event.js";
 import Sponsor from "../models/Sponsor.js";
 import EventRegistration from "../models/EventRegistration.js";
+import Travel from "../models/Travel.js";
 
 // =======================
 // ASSIGN Travel Service
@@ -169,6 +170,24 @@ export const removeAssignedTravelRegistration = async (req, res) => {
       return res.status(404).json({ message: "Assignment not found" });
     }
 
+    // =======================
+    // CHECK IF TRAVEL ALREADY BOOKED
+    // =======================
+    const bookedTravel = await Travel.findOne({
+      eventId: assign.eventId,
+      eventRegistrationId: registrationId,
+      sponsorId: assign.sponsorId,
+      createdBy: "sponsor",
+    });
+
+    if (bookedTravel) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "This registration already booked travel. You cannot remove assigned travel service.",
+      });
+    }
+
     assign.eventRegistrationId = assign.eventRegistrationId.filter(
       (item) => item.toString() !== registrationId
     );
@@ -212,6 +231,23 @@ export const reassignTravelService = async (req, res) => {
     const sponsor = await Sponsor.findById(newSponsorId);
     if (!sponsor) {
       return res.status(404).json({ message: "Sponsor not found" });
+    }
+
+    // =======================
+    // CHECK IF TRAVEL ALREADY BOOKED
+    // =======================
+    const bookedTravel = await Travel.findOne({
+      eventId,
+      eventRegistrationId: registrationId,
+      createdBy: "sponsor",
+    });
+
+    if (bookedTravel) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "This registration already booked travel. You cannot reassign travel service.",
+      });
     }
 
     // check already assigned
