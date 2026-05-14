@@ -11,6 +11,7 @@ import Workshop from "../models/Workshop.js";
 import WorkshopRegistration from "../models/WorkshopRegistration.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
 import moment from "moment";
+import { getIndianFormattedDateTime } from "../utils/dateUtils.js";
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -162,13 +163,11 @@ export const verifyPayment = async (req, res) => {
             eventName: event.eventName,
             registrationNumber: registration.regNum,
             registrationSlabName: slabName,
-            startDate: event.startDateTime
-              ? moment(event.startDateTime).format("DD MMM YYYY, hh:mm A")
-              : "N/A",
 
-            endDate: event.endDateTime
-              ? moment(event.endDateTime).format("DD MMM YYYY, hh:mm A")
-              : "N/A",
+            startDate: getIndianFormattedDateTime(event.startDateTime),
+
+            endDate: getIndianFormattedDateTime(event.endDateTime),
+
             designation: registration.designation || "N/A",
             affiliation: registration.affiliation || "N/A",
             country: registration.country || "N/A",
@@ -506,13 +505,11 @@ export const verifyAccompanyPayment = async (req, res) => {
           razorpayPaymentId: payment.razorpayPaymentId,
           razorpayOrderId: payment.razorpayOrderId,
           paymentStatus: payment.status,
-          startDate: event.startDateTime
-            ? moment(event.startDateTime).format("DD MMM YYYY, hh:mm A")
-            : "N/A",
 
-          endDate: event.endDateTime
-            ? moment(event.endDateTime).format("DD MMM YYYY, hh:mm A")
-            : "N/A",
+          startDate: getIndianFormattedDateTime(event.startDateTime),
+
+          endDate: getIndianFormattedDateTime(event.endDateTime),
+
           accompanies: accompanyList,
         },
       });
@@ -670,38 +667,15 @@ export const verifyWorkshopPayment = async (req, res) => {
       const workshopList = workshops.map((ws) => ({
         workshopName: ws.workshopName || "",
         hallName: ws.hallName || "",
-        startDateTime: ws.startDateTime
-          ? new Date(ws.startDateTime).toLocaleString("en-IN", {
-            timeZone: "Asia/Kolkata",
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          })
-          : "",
 
-        endDateTime: ws.endDateTime
-          ? new Date(ws.endDateTime).toLocaleString("en-IN", {
-            timeZone: "Asia/Kolkata",
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          })
-          : "",
+        startDateTime: getIndianFormattedDateTime(ws.startDateTime),
+
+        endDateTime: getIndianFormattedDateTime(ws.endDateTime),
       }));
 
       const ifMultiple = workshopList.length > 1 ? "s" : "";
       const displayName = req.user.name || "Participant";
-      const paymentDate = new Date().toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      });
+      const paymentDate = getIndianFormattedDateTime(new Date());
 
       await sendEmailWithTemplate({
         to: req.user.email,
@@ -954,13 +928,11 @@ export const verifyBanquetPayment = async (req, res) => {
           razorpayPaymentId: payment.razorpayPaymentId,
           razorpayOrderId: payment.razorpayOrderId,
           paymentStatus: payment.status,
-          startDate: event.startDateTime
-            ? moment(event.startDateTime).format("DD MMM YYYY, hh:mm A")
-            : "N/A",
 
-          endDate: event.endDateTime
-            ? moment(event.endDateTime).format("DD MMM YYYY, hh:mm A")
-            : "N/A",
+          startDate: getIndianFormattedDateTime(event.startDateTime),
+
+          endDate: getIndianFormattedDateTime(event.endDateTime),
+
           banquets: banquetList,
         },
       });

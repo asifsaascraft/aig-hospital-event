@@ -4,6 +4,7 @@ import SponsorRegistrationQuota from "../models/SponsorRegistrationQuota.js";
 import User from "../models/User.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
 import moment from "moment";
+import { getIndianFormattedDateTime } from "../utils/dateUtils.js";
 
 // =====================================
 //  1. CHECK EMAIL EXISTS FOR EVENT REGISTRATION (Protected)
@@ -52,9 +53,9 @@ export const checkEmailExists = async (req, res) => {
     // ===============================
     const user = await User.findOne({
       email: normalizedEmail,
-      role: "user"
+      role: "user",
     }).select(
-      "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires"
+      "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires",
     );
 
     // ===============================
@@ -67,7 +68,6 @@ export const checkEmailExists = async (req, res) => {
         : "User not found",
       data: user || null,
     });
-
   } catch (error) {
     console.error("Error checking email:", error);
     return res.status(500).json({
@@ -177,7 +177,6 @@ export const sponsorRegisterForEvent = async (req, res) => {
       });
     }
 
-
     const today = new Date();
 
     if (quotaRecord.startDateTime && today < quotaRecord.startDateTime) {
@@ -267,17 +266,16 @@ export const sponsorRegisterForEvent = async (req, res) => {
       await sendEmailWithTemplate({
         to: finalEmail,
         name: finalName,
-        templateKey: "2518b.554b0da719bc314.k1.84e00a60-c384-11f0-807d-8e9a6c33ddc2.19a90a6be06",
+        templateKey:
+          "2518b.554b0da719bc314.k1.84e00a60-c384-11f0-807d-8e9a6c33ddc2.19a90a6be06",
         mergeInfo: {
           eventName: event.eventName,
           registrationNumber: generatedRegNum,
-          startDate: event.startDateTime
-            ? moment(event.startDateTime).format("DD MMM YYYY, hh:mm A")
-            : "N/A",
 
-          endDate: event.endDateTime
-            ? moment(event.endDateTime).format("DD MMM YYYY, hh:mm A")
-            : "N/A",
+          startDate: getIndianFormattedDateTime(event.startDateTime),
+
+          endDate: getIndianFormattedDateTime(event.endDateTime),
+          
           prefix,
           name,
           email,
@@ -294,7 +292,6 @@ export const sponsorRegisterForEvent = async (req, res) => {
     } catch (emailError) {
       console.error("Email sending failed:", emailError);
     }
-
 
     return res.status(201).json({
       success: true,

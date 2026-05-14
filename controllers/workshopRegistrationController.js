@@ -3,7 +3,7 @@ import Event from "../models/Event.js";
 import WorkshopRegistration from "../models/WorkshopRegistration.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
 import moment from "moment";
-
+import { getIndianFormattedDateTime } from "../utils/dateUtils.js";
 
 /* 
 ========================================================
@@ -27,16 +27,20 @@ export const registerForWorkshops = async (req, res) => {
     }
 
     // Fetch workshops
-    const workshops = await Workshop.find({ _id: { $in: workshopIds }, eventId });
+    const workshops = await Workshop.find({
+      _id: { $in: workshopIds },
+      eventId,
+    });
     if (workshops.length !== workshopIds.length) {
-      return res.status(400).json({ message: "One or more workshops not found for this event" });
+      return res
+        .status(400)
+        .json({ message: "One or more workshops not found for this event" });
     }
 
     // Validate workshop status & expiry
     const now = new Date();
 
     for (const ws of workshops) {
-
       // inactive workshop
       if (ws.status !== "Active") {
         return res.status(400).json({
@@ -55,10 +59,13 @@ export const registerForWorkshops = async (req, res) => {
     }
 
     // Ensure all workshops are of same registration type (Paid or Free)
-    const types = [...new Set(workshops.map((ws) => ws.workshopRegistrationType))];
+    const types = [
+      ...new Set(workshops.map((ws) => ws.workshopRegistrationType)),
+    ];
     if (types.length > 1) {
       return res.status(400).json({
-        message: "You can only register for either all Paid or all Free workshops at once.",
+        message:
+          "You can only register for either all Paid or all Free workshops at once.",
       });
     }
 
@@ -95,7 +102,10 @@ export const registerForWorkshops = async (req, res) => {
     const registration = await WorkshopRegistration.create({
       eventId,
       userId,
-      workshops: workshopIds.map((id) => ({ workshopIds: id, isSuspended: false })),
+      workshops: workshopIds.map((id) => ({
+        workshopIds: id,
+        isSuspended: false,
+      })),
       registrationType,
       totalAmount,
       paymentStatus: registrationType === "Free" ? "Completed" : "Pending",
@@ -113,41 +123,20 @@ export const registerForWorkshops = async (req, res) => {
           workshopName: ws.workshopName || "",
           hallName: ws.hallName || "",
 
-          startDateTime: ws.startDateTime
-            ? new Date(ws.startDateTime).toLocaleString("en-IN", {
-              timeZone: "Asia/Kolkata",
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-            })
-            : "",
+          startDateTime: getIndianFormattedDateTime(ws.startDateTime),
 
-          endDateTime: ws.endDateTime
-            ? new Date(ws.endDateTime).toLocaleString("en-IN", {
-              timeZone: "Asia/Kolkata",
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-            })
-            : "",
+          endDateTime: getIndianFormattedDateTime(ws.endDateTime),
         }));
 
         const displayName =
           user.name ||
-          [user.fname, user.mname, user.lname].filter(Boolean).join(" ").trim() ||
+          [user.fname, user.mname, user.lname]
+            .filter(Boolean)
+            .join(" ")
+            .trim() ||
           "Participant";
 
-        const registrationDate = new Date().toLocaleDateString("en-IN", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        });
+        const registrationDate = getIndianFormattedDateTime(new Date());
 
         const ifMultiple = workshopList.length > 1 ? "s" : "";
 
@@ -162,7 +151,8 @@ export const registerForWorkshops = async (req, res) => {
         await sendEmailWithTemplate({
           to: user.email,
           name: displayName,
-          templateKey: "2518b.554b0da719bc314.k1.d03e4850-ba2e-11f0-87d4-ae9c7e0b6a9f.19a53799155",
+          templateKey:
+            "2518b.554b0da719bc314.k1.d03e4850-ba2e-11f0-87d4-ae9c7e0b6a9f.19a53799155",
           mergeInfo,
         });
       } catch (emailErr) {
@@ -247,7 +237,8 @@ export const getAllWorkshopRegistrationsByEvent = async (req, res) => {
       })
       .populate({
         path: "workshops.workshopIds",
-        select: "workshopName amount workshopRegistrationType workshopCategory hallName",
+        select:
+          "workshopName amount workshopRegistrationType workshopCategory hallName",
       })
       .sort({ createdAt: -1 });
 
@@ -283,12 +274,16 @@ export const updateWorkshopSuspension = async (req, res) => {
 
     const registration = await WorkshopRegistration.findById(registrationId);
     if (!registration) {
-      return res.status(404).json({ success: false, message: "Workshop registration not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Workshop registration not found" });
     }
 
     const workshopSub = registration.workshops.id(subId);
     if (!workshopSub) {
-      return res.status(404).json({ success: false, message: "Workshop entry not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Workshop entry not found" });
     }
 
     workshopSub.isSuspended = isSuspended;
@@ -312,7 +307,6 @@ export const updateWorkshopSuspension = async (req, res) => {
 */
 export const registerForWorkshopsByEventAdmin = async (req, res) => {
   try {
-
     const { eventId } = req.params;
     const { userId, workshopIds, totalAmount } = req.body; // array of workshop IDs
 
@@ -326,16 +320,20 @@ export const registerForWorkshopsByEventAdmin = async (req, res) => {
     }
 
     // Fetch workshops
-    const workshops = await Workshop.find({ _id: { $in: workshopIds }, eventId });
+    const workshops = await Workshop.find({
+      _id: { $in: workshopIds },
+      eventId,
+    });
     if (workshops.length !== workshopIds.length) {
-      return res.status(400).json({ message: "One or more workshops not found for this event" });
+      return res
+        .status(400)
+        .json({ message: "One or more workshops not found for this event" });
     }
 
     // Validate workshop status & expiry
     const now = new Date();
 
     for (const ws of workshops) {
-
       // inactive workshop
       if (ws.status !== "Active") {
         return res.status(400).json({
@@ -354,10 +352,13 @@ export const registerForWorkshopsByEventAdmin = async (req, res) => {
     }
 
     // Ensure all workshops are of same registration type (Paid or Free)
-    const types = [...new Set(workshops.map((ws) => ws.workshopRegistrationType))];
+    const types = [
+      ...new Set(workshops.map((ws) => ws.workshopRegistrationType)),
+    ];
     if (types.length > 1) {
       return res.status(400).json({
-        message: "You can only register for either all Paid or all Free workshops at once.",
+        message:
+          "You can only register for either all Paid or all Free workshops at once.",
       });
     }
 
@@ -367,7 +368,6 @@ export const registerForWorkshopsByEventAdmin = async (req, res) => {
 
     // validate and assign amount
     if (registrationType === "Paid") {
-
       // required check
       if (totalAmount === undefined || totalAmount === null) {
         return res.status(400).json({
@@ -401,7 +401,6 @@ export const registerForWorkshopsByEventAdmin = async (req, res) => {
       finalAmount = 0;
     }
 
-
     // Check max registration limit for each workshop
     for (const ws of workshops) {
       const regCount = await WorkshopRegistration.countDocuments({
@@ -421,7 +420,10 @@ export const registerForWorkshopsByEventAdmin = async (req, res) => {
     const registration = await WorkshopRegistration.create({
       eventId,
       userId,
-      workshops: workshopIds.map((id) => ({ workshopIds: id, isSuspended: false })),
+      workshops: workshopIds.map((id) => ({
+        workshopIds: id,
+        isSuspended: false,
+      })),
       registrationType,
       totalAmount: finalAmount,
       paymentStatus: "Completed",

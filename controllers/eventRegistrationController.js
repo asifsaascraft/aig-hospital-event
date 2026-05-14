@@ -5,9 +5,11 @@ import DynamicRegForm from "../models/DynamicRegForm.js";
 import User from "../models/User.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
 import moment from "moment";
-import { getIndianFormattedDate } from "../utils/dateUtils.js";
+import {
+  getIndianFormattedDate,
+  getIndianFormattedDateTime,
+} from "../utils/dateUtils.js";
 import Sponsor from "../models/Sponsor.js";
-
 
 /* 
 ========================================================
@@ -23,7 +25,7 @@ export const getPrefilledRegistrationForm = async (req, res) => {
     if (!event) return res.status(404).json({ message: "Event not found" });
 
     const user = await User.findById(userId).select(
-      "name prefix gender email mobile designation affiliation mciNumber mciState department country address city state pincode"
+      "name prefix gender email mobile designation affiliation mciNumber mciState department country address city state pincode",
     );
     if (!user) return res.status(404).json({ message: "User not found" });
 
@@ -158,8 +160,6 @@ export const registerForEvent = async (req, res) => {
       });
     }
 
-
-
     if (now.isBefore(slabStart)) {
       return res.status(400).json({
         message: `Registration will start on ${getIndianFormattedDate(slab.startDateTime)}`,
@@ -225,7 +225,7 @@ export const registerForEvent = async (req, res) => {
 
       for (const field of slab.additionalFields) {
         const answered = parsedAdditional.find(
-          (a) => Number(a.id) === Number(field.id)
+          (a) => Number(a.id) === Number(field.id),
         );
 
         const fileKey = `file_${field.id}`;
@@ -255,7 +255,11 @@ export const registerForEvent = async (req, res) => {
             fileUrl: fileData.location,
           });
         } else {
-          if (!answered || answered.value === undefined || answered.value === "") {
+          if (
+            !answered ||
+            answered.value === undefined ||
+            answered.value === ""
+          ) {
             return res.status(400).json({
               message: `Value required for: ${field.label}`,
             });
@@ -295,7 +299,7 @@ export const registerForEvent = async (req, res) => {
 
       for (const field of dynamicForm.fields) {
         const answered = parsedDynamic.find(
-          (a) => String(a.id) === String(field.id)
+          (a) => String(a.id) === String(field.id),
         );
 
         const fileKey = `file_dyn_${field.id}`;
@@ -454,13 +458,11 @@ export const registerForEvent = async (req, res) => {
             eventName: event.eventName,
             registrationNumber: registration.regNum,
             registrationSlabName: slabName,
-            startDate: event.startDateTime
-              ? moment(event.startDateTime).format("DD MMM YYYY, hh:mm A")
-              : "N/A",
 
-            endDate: event.endDateTime
-              ? moment(event.endDateTime).format("DD MMM YYYY, hh:mm A")
-              : "N/A",
+            startDate: getIndianFormattedDateTime(event.startDateTime),
+
+            endDate: getIndianFormattedDateTime(event.endDateTime),
+
             designation: registration.designation || "N/A",
             affiliation: registration.affiliation || "N/A",
             country: registration.country || "N/A",
@@ -519,7 +521,6 @@ export const registerForEvent = async (req, res) => {
       message: "Event registration created successfully (payment pending)",
       data: registration,
     });
-
   } catch (error) {
     console.error("Event registration error:", error);
     res.status(500).json({
@@ -682,8 +683,9 @@ export const updateRegistrationSuspension = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Registration ${isSuspended ? "suspended" : "unsuspended"
-        } successfully`,
+      message: `Registration ${
+        isSuspended ? "suspended" : "unsuspended"
+      } successfully`,
       data: registration,
     });
   } catch (error) {
@@ -728,7 +730,6 @@ export const registerForEventByEventAdmin = async (req, res) => {
       fileMap[file.fieldname].push(file);
     });
 
-
     // Get slabId from body OR query
     let { registrationSlabId } = req.body;
     if (!registrationSlabId && req.query.registrationSlabId) {
@@ -740,7 +741,6 @@ export const registerForEventByEventAdmin = async (req, res) => {
         message: "registrationSlabId is required",
       });
     }
-
 
     const {
       prefix,
@@ -805,7 +805,6 @@ export const registerForEventByEventAdmin = async (req, res) => {
       });
     }
 
-
     // Suspended?
     const suspendedReg = await EventRegistration.findOne({
       userId,
@@ -854,7 +853,7 @@ export const registerForEventByEventAdmin = async (req, res) => {
 
       for (const field of slab.additionalFields) {
         const answered = parsedAdditional.find(
-          (a) => Number(a.id) === Number(field.id)
+          (a) => Number(a.id) === Number(field.id),
         );
         const fileKey = `file_${field.id}`;
         const fileData = fileMap?.[fileKey]?.[0];
@@ -928,7 +927,7 @@ export const registerForEventByEventAdmin = async (req, res) => {
 
       for (const field of dynamicForm.fields) {
         const answered = parsedDynamic.find(
-          (a) => String(a.id) === String(field.id)
+          (a) => String(a.id) === String(field.id),
         );
         const fileKey = `file_dyn_${field.id}`;
         const fileUpload = fileMap?.[fileKey]?.[0];
@@ -938,7 +937,6 @@ export const registerForEventByEventAdmin = async (req, res) => {
 
         // ===============================
         if (field.type === "input" && field.inputTypes === "file") {
-
           // required file
           if (field.required && !fileUpload) {
             return res.status(400).json({
@@ -1031,7 +1029,6 @@ export const registerForEventByEventAdmin = async (req, res) => {
           maxSelected: field.maxSelected,
         });
       }
-
     }
 
     // ----------------------------------------------------
@@ -1100,17 +1097,16 @@ export const registerForEventByEventAdmin = async (req, res) => {
       await sendEmailWithTemplate({
         to: finalEmail,
         name: finalName,
-        templateKey: "2518b.554b0da719bc314.k1.6e017640-d986-11f0-8c89-62d0161cbd93.19b20e123a4",
+        templateKey:
+          "2518b.554b0da719bc314.k1.6e017640-d986-11f0-8c89-62d0161cbd93.19b20e123a4",
         mergeInfo: {
           eventName: event.eventName,
           registrationNumber: generatedRegNum,
-          startDate: event.startDateTime
-            ? moment(event.startDateTime).format("DD MMM YYYY, hh:mm A")
-            : "N/A",
 
-          endDate: event.endDateTime
-            ? moment(event.endDateTime).format("DD MMM YYYY, hh:mm A")
-            : "N/A",
+          startDate: getIndianFormattedDateTime(event.startDateTime),
+
+          endDate: getIndianFormattedDateTime(event.endDateTime),
+
           prefix,
           name,
           email,
@@ -1128,7 +1124,6 @@ export const registerForEventByEventAdmin = async (req, res) => {
       console.error("Email sending failed:", emailError);
     }
 
-
     res.status(201).json({
       success: true,
       message: "Event registration created successfully by event admin",
@@ -1139,7 +1134,6 @@ export const registerForEventByEventAdmin = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 // =====================================
 //  8. CHECK EMAIL EXISTS FOR EVENT REGISTRATION (Protected) (for bulk registration)
@@ -1188,9 +1182,9 @@ export const checkEmailRegister = async (req, res) => {
     // ===============================
     const user = await User.findOne({
       email: normalizedEmail,
-      role: "user"
+      role: "user",
     }).select(
-      "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires"
+      "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires",
     );
 
     // ===============================
@@ -1203,7 +1197,6 @@ export const checkEmailRegister = async (req, res) => {
         : "User not found",
       data: user || null,
     });
-
   } catch (error) {
     console.error("Error checking email:", error);
     return res.status(500).json({
@@ -1355,7 +1348,8 @@ export const bulkRegisterForEventByEventAdmin = async (req, res) => {
       await sendEmailWithTemplate({
         to: finalEmail,
         name: finalName,
-        templateKey: "2518b.554b0da719bc314.k1.6e017640-d986-11f0-8c89-62d0161cbd93.19b20e123a4",
+        templateKey:
+          "2518b.554b0da719bc314.k1.6e017640-d986-11f0-8c89-62d0161cbd93.19b20e123a4",
         mergeInfo: {
           eventName: event.eventName,
           registrationNumber: generatedRegNum,
@@ -1383,7 +1377,6 @@ export const bulkRegisterForEventByEventAdmin = async (req, res) => {
       console.error("Email sending failed:", emailError);
     }
 
-
     return res.status(201).json({
       success: true,
       message: "Event registration created successfully by event admin",
@@ -1408,15 +1401,13 @@ export const getMyEventAdminRegistrations = async (req, res) => {
     const registrations = await EventRegistration.find({
       eventAdminId,
       eventId,
-    })
-      .sort({ createdAt: -1 });
+    }).sort({ createdAt: -1 });
 
     res.json({
       success: true,
       total: registrations.length,
       data: registrations,
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -1424,7 +1415,6 @@ export const getMyEventAdminRegistrations = async (req, res) => {
     });
   }
 };
-
 
 /* 
 ========================================================
@@ -1465,7 +1455,6 @@ export const updateEventRegistration = async (req, res) => {
       message: "Registration updated successfully",
       data: registration,
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
