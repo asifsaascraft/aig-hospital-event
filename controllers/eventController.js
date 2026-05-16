@@ -301,9 +301,8 @@ export const updateEventStatus = async (req, res) => {
 
     res.json({
       success: true,
-      message: `Event ${
-        isActive ? "activated" : "deactivated"
-      } successfully`,
+      message: `Event ${isActive ? "activated" : "deactivated"
+        } successfully`,
       data: updatedEvent.toObject({ virtuals: true }),
     });
   } catch (error) {
@@ -347,8 +346,8 @@ export const deleteEvent = async (req, res) => {
 export const trackEventVisit = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { id: eventId } = req.params;
-
+    const { eventId } = req.params;
+    
     // check event exists
     const event = await Event.findById(eventId);
 
@@ -405,3 +404,4 @@ export const trackEventVisit = async (req, res) => {
     });
   }
 };
+

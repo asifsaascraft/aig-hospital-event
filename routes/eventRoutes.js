@@ -26,7 +26,7 @@ router.get("/events/:id", getEventById);
 
 // User-only: Visit event
 router.post(
-  "/events/:id/visit",
+  "/events/:eventId/visit",
   protect,
   authorizeRoles("user"),
   trackEventVisit
