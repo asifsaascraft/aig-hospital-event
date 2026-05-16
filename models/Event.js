@@ -26,6 +26,10 @@ const EventSchema = new mongoose.Schema(
     regNum: {
       type: String,
     },
+    regCounter: {
+      type: Number,
+      default: 0,
+    },
     organizer: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Organizer",

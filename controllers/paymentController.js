@@ -116,24 +116,14 @@ export const verifyPayment = async (req, res) => {
     const event = await Event.findById(registration.eventId);
     if (!event) return res.status(404).json({ message: "Event not found" });
 
-    // Generate new registration number
-    const lastPaidRegistration = await EventRegistration.findOne({
-      eventId: registration.eventId,
-      regNumGenerated: true,
-    })
-      .sort({ createdAt: -1 })
-      .limit(1);
+    // Atomic counter increment
+    const updatedEvent = await Event.findByIdAndUpdate(
+      event._id,
+      { $inc: { regCounter: 1 } },
+      { new: true }
+    );
 
-    let newRegNumInt;
-    if (lastPaidRegistration && lastPaidRegistration.regNum) {
-      const lastNum = parseInt(lastPaidRegistration.regNum.split("-").pop());
-      newRegNumInt = lastNum + 1;
-    } else {
-      const baseNum = parseInt(event.regNum || 0);
-      newRegNumInt = baseNum + 1;
-    }
-
-    const generatedRegNum = `${event.eventCode}-${newRegNumInt}`;
+    const generatedRegNum = `${event.eventCode}-${updatedEvent.regCounter}`;
 
     // Update registration & payment
     registration.isPaid = true;

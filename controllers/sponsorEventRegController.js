@@ -209,19 +209,13 @@ export const sponsorRegisterForEvent = async (req, res) => {
       });
     }
 
-    // ===============================
-    // Generate Reg Number
-    // ===============================
-    const last = await EventRegistration.findOne({
-      eventId,
-      regNumGenerated: true,
-    }).sort({ createdAt: -1 });
+    const updatedEvent = await Event.findByIdAndUpdate(
+      event._id,
+      { $inc: { regCounter: 1 } },
+      { new: true }
+    );
 
-    let newNum = last?.regNum
-      ? parseInt(last.regNum.split("-").pop()) + 1
-      : parseInt(event.regNum || 0) + 1;
-
-    const generatedRegNum = `${event.eventCode}-${newNum}`;
+    const generatedRegNum = `${event.eventCode}-${updatedEvent.regCounter}`;
 
     // ===============================
     // Create Registration
@@ -275,7 +269,7 @@ export const sponsorRegisterForEvent = async (req, res) => {
           startDate: getIndianFormattedDateTime(event.startDateTime),
 
           endDate: getIndianFormattedDateTime(event.endDateTime),
-          
+
           prefix,
           name,
           email,

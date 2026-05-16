@@ -168,6 +168,10 @@ const EventRegistrationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+EventRegistrationSchema.index(
+  { eventId: 1, regNum: 1 },
+  { unique: true, sparse: true }
+);
 
 
 // Avoid model overwrite during hot-reload

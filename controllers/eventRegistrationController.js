@@ -393,22 +393,13 @@ export const registerForEvent = async (req, res) => {
     // FREE SLAB FLOW (AUTO COMPLETE REGISTRATION)
     // ======================================================
     if (Number(slab.amount) === 0) {
-      const lastPaidRegistration = await EventRegistration.findOne({
-        eventId,
-        regNumGenerated: true,
-      }).sort({ createdAt: -1 });
+      const updatedEvent = await Event.findByIdAndUpdate(
+        event._id,
+        { $inc: { regCounter: 1 } },
+        { new: true }
+      );
 
-      let newRegNumInt;
-
-      if (lastPaidRegistration?.regNum) {
-        const lastNum = parseInt(lastPaidRegistration.regNum.split("-").pop());
-        newRegNumInt = lastNum + 1;
-      } else {
-        const baseNum = parseInt(event.regNum || 0);
-        newRegNumInt = baseNum + 1;
-      }
-
-      const generatedRegNum = `${event.eventCode}-${newRegNumInt}`;
+      const generatedRegNum = `${event.eventCode}-${updatedEvent.regCounter}`;
 
       const registration = await EventRegistration.create({
         userId,
@@ -683,9 +674,8 @@ export const updateRegistrationSuspension = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Registration ${
-        isSuspended ? "suspended" : "unsuspended"
-      } successfully`,
+      message: `Registration ${isSuspended ? "suspended" : "unsuspended"
+        } successfully`,
       data: registration,
     });
   } catch (error) {
@@ -1031,26 +1021,13 @@ export const registerForEventByEventAdmin = async (req, res) => {
       }
     }
 
-    // ----------------------------------------------------
-    //  Generate Registration Number
-    // ----------------------------------------------------
-    const lastPaidRegistration = await EventRegistration.findOne({
-      eventId,
-      regNumGenerated: true,
-    })
-      .sort({ createdAt: -1 })
-      .limit(1);
+    const updatedEvent = await Event.findByIdAndUpdate(
+      event._id,
+      { $inc: { regCounter: 1 } },
+      { new: true }
+    );
 
-    let newRegNumInt;
-    if (lastPaidRegistration && lastPaidRegistration.regNum) {
-      const lastNum = parseInt(lastPaidRegistration.regNum.split("-").pop());
-      newRegNumInt = lastNum + 1;
-    } else {
-      const baseNum = parseInt(event.regNum || 0);
-      newRegNumInt = baseNum + 1;
-    }
-
-    const generatedRegNum = `${event.eventCode}-${newRegNumInt}`;
+    const generatedRegNum = `${event.eventCode}-${updatedEvent.regCounter}`;
 
     // Create Registration
     const registration = await EventRegistration.create({
@@ -1291,19 +1268,13 @@ export const bulkRegisterForEventByEventAdmin = async (req, res) => {
       });
     }
 
-    // ===============================
-    // Generate Reg Number
-    // ===============================
-    const last = await EventRegistration.findOne({
-      eventId,
-      regNumGenerated: true,
-    }).sort({ createdAt: -1 });
+    const updatedEvent = await Event.findByIdAndUpdate(
+      event._id,
+      { $inc: { regCounter: 1 } },
+      { new: true }
+    );
 
-    let newNum = last?.regNum
-      ? parseInt(last.regNum.split("-").pop()) + 1
-      : parseInt(event.regNum || 0) + 1;
-
-    const generatedRegNum = `${event.eventCode}-${newNum}`;
+    const generatedRegNum = `${event.eventCode}-${updatedEvent.regCounter}`;
 
     // ===============================
     // Create Registration
