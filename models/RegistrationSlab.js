@@ -58,6 +58,11 @@ const RegistrationSlabSchema = new mongoose.Schema(
       trim: true,
     },
 
+    description: {
+      type: String,
+      trim: true,
+    },
+
     amount: {
       type: Number,
       min: [0, "Amount must be a positive number"],

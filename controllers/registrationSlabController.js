@@ -11,6 +11,7 @@ export const createRegistrationSlab = async (req, res) => {
 
     const {
       slabName,
+      description,
       amount,
       AccompanyAmount,
       startDateTime,
@@ -58,6 +59,7 @@ export const createRegistrationSlab = async (req, res) => {
     const slab = await RegistrationSlab.create({
       eventId,
       slabName,
+      description,
       amount,
       AccompanyAmount,
       startDateTime: start,
@@ -145,6 +147,7 @@ export const updateRegistrationSlab = async (req, res) => {
 
     const {
       slabName,
+      description,
       amount,
       AccompanyAmount,
       startDateTime,
@@ -190,6 +193,7 @@ export const updateRegistrationSlab = async (req, res) => {
     // UPDATE FIELDS
     // =======================
     if (slabName !== undefined) slab.slabName = slabName;
+    if (description !== undefined) slab.description = description;
     if (amount !== undefined) slab.amount = amount;
     if (AccompanyAmount !== undefined) slab.AccompanyAmount = AccompanyAmount;
 
