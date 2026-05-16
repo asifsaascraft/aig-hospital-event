@@ -18,7 +18,6 @@ export const createRegistrationSlab = async (req, res) => {
       endDateTime,
       needAdditionalInfo,
       additionalFields,
-      status,
     } = req.body;
 
     // =======================
@@ -68,7 +67,6 @@ export const createRegistrationSlab = async (req, res) => {
       additionalFields: Array.isArray(additionalFields)
         ? additionalFields
         : [],
-      status: status || "Active",
     });
 
     res.status(201).json({
@@ -116,7 +114,6 @@ export const getActiveRegistrationSlabsByEvent = async (req, res) => {
 
     const slabs = await RegistrationSlab.find({
       eventId,
-      status: "Active",
       startDateTime: { $lte: now },
       endDateTime: { $gte: now },
     }).sort({ createdAt: -1 });
@@ -154,7 +151,6 @@ export const updateRegistrationSlab = async (req, res) => {
       endDateTime,
       needAdditionalInfo,
       additionalFields,
-      status,
     } = req.body;
 
     // =======================
@@ -205,8 +201,6 @@ export const updateRegistrationSlab = async (req, res) => {
         ? additionalFields
         : [];
     }
-
-    if (status !== undefined) slab.status = status;
 
     await slab.save();
 

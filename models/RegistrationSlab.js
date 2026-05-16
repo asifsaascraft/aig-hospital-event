@@ -101,12 +101,6 @@ const RegistrationSlabSchema = new mongoose.Schema(
       type: [AdditionalFieldSchema],
       default: [],
     },
-    status: {
-      type: String,
-      enum: ["Active", "Inactive"], //  restricts to these values
-      default: "Active",
-      required: [true, "Status is required"],
-    },
   },
   { timestamps: true }
 );

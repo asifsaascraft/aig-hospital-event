@@ -637,7 +637,7 @@ export const verifyWorkshopPayment = async (req, res) => {
     const registration = await WorkshopRegistration.findById(
       payment.workshopRegistrationId,
     ).populate([
-      { path: "eventId", select: "eventName startDate endDate" },
+      { path: "eventId", select: "eventName startDateTime endDateTime" },
       {
         path: "workshops.workshopIds",
         select:
@@ -825,7 +825,7 @@ export const verifyBanquetPayment = async (req, res) => {
     const banquetReg = await BanquetRegistration.findById(
       payment.banquetRegistrationId,
     )
-      .populate("eventId", "eventName startDate endDate")
+      .populate("eventId", "eventName startDateTime endDateTime")
       .populate("banquetId") // full banquet details
       .populate("eventRegistrationId", "regNum email name")
       .lean();
@@ -866,11 +866,12 @@ export const verifyBanquetPayment = async (req, res) => {
       const banquetDetails = await Banquet.findById(banquetReg.banquetId);
       const banquetName =
         banquetDetails?.banquetslabName || banquetDetails?.banquetName || "N/A";
-      const banquetStart = banquetDetails?.startDate
-        ? moment(banquetDetails.startDate).format("DD MMM YYYY")
+      const banquetStart = banquetDetails?.startDateTime
+        ? getIndianFormattedDateTime(banquetDetails.startDateTime)
         : "N/A";
-      const banquetEnd = banquetDetails?.endDate
-        ? moment(banquetDetails.endDate).format("DD MMM YYYY")
+
+      const banquetEnd = banquetDetails?.endDateTime
+        ? getIndianFormattedDateTime(banquetDetails.endDateTime)
         : "N/A";
       const banquetVenue = banquetDetails?.venue || "N/A";
 
