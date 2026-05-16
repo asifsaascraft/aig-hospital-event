@@ -1,5 +1,7 @@
 // controllers/eventController.js
 import Event from "../models/Event.js";
+import EventVisitor from "../models/EventVisitor.js";
+import EventRegistration from "../models/EventRegistration.js";
 
 // =======================
 // Get all events (public)
@@ -334,6 +336,72 @@ export const deleteEvent = async (req, res) => {
       success: false,
       message: "Failed to delete event",
       error: error.message,
+    });
+  }
+};
+
+
+// =======================
+// Track Event Visit
+// =======================
+export const trackEventVisit = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { id: eventId } = req.params;
+
+    // check event exists
+    const event = await Event.findById(eventId);
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    // check already registered
+    const existingRegistration = await EventRegistration.findOne({
+      userId,
+      eventId,
+      isPaid: true,
+      isSuspended: false,
+    });
+
+    // if already registered then no need store visitor
+    if (existingRegistration) {
+      return res.status(200).json({
+        success: true,
+        message: "User already registered",
+      });
+    }
+
+    // store only once
+    await EventVisitor.findOneAndUpdate(
+      {
+        userId,
+        eventId,
+      },
+      {
+        userId,
+        eventId,
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Event visitor tracked successfully",
+    });
+  } catch (error) {
+    console.error("Track visit error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 };

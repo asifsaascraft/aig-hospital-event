@@ -12,6 +12,9 @@ import {
   bulkRegisterForEventByEventAdmin,
   getMyEventAdminRegistrations,
   updateEventRegistration,
+  getEventVisitorsNotRegistered,
+  sendReminderEmails,
+  sendReminderEmailToSingleUser,
 } from "../controllers/eventRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 import { eventUpload } from "../middlewares/eventUploadMiddleware.js";
@@ -60,8 +63,15 @@ router.get(
   authorizeRoles("eventAdmin"),
   getAllRegistrationsByEvent
 );
+// 6 Get All User who's not registered for an Event (Event Admin)
+router.get(
+  "/event-admin/events/:eventId/visitors",
+  protect,
+  authorizeRoles("eventAdmin"),
+  getEventVisitorsNotRegistered
+);
 
-// 6 Update Registration Suspension Status (Event Admin)
+// 7 Update Registration Suspension Status (Event Admin)
 router.patch(
   "/event-admin/registrations/:registrationId/suspension",
   protect,
@@ -69,7 +79,7 @@ router.patch(
   updateRegistrationSuspension
 );
 
-// 7 Event Admin only :- Register User for an Event (eventId in URL, not body)
+// 8 Event Admin only :- Register User for an Event (eventId in URL, not body)
 router.post(
   "/event-admin/events/:eventId/register",
   protect,
@@ -79,7 +89,7 @@ router.post(
 );
 
 // =====================================
-//  8. CHECK EMAIL EXISTS FOR EVENT REGISTRATION (Protected) (for bulk registration)
+//  9. CHECK EMAIL EXISTS FOR EVENT REGISTRATION (Protected) (for bulk registration)
 // =====================================
 router.post(
   "/event-admin/events/:eventId/check-email-exist",
@@ -89,7 +99,7 @@ router.post(
 );
 
 // ======================================
-//  9. ADD EVENT REGISTRATION (Protected) (Bulk registration)
+//  10. ADD EVENT REGISTRATION (Protected) (Bulk registration)
 // ======================================
 router.post(
   "/event-admin/events/:eventId/bulk-register",
@@ -99,7 +109,7 @@ router.post(
 );
 
 // =====================================
-//  10. Get Registrations (Only registrations created by logged-in eventAdmin)
+//  11. Get Registrations (Only registrations created by logged-in eventAdmin)
 // =====================================
 router.get(
   "/event-admin/events/:eventId/my-registrations",
@@ -109,13 +119,33 @@ router.get(
 );
 
 // =====================================
-//  11. Update Registration (Only registrations created by logged-in eventAdmin)
+//  12. Update Registration (Only registrations created by logged-in eventAdmin)
 // =====================================
 router.put(
   "/event-admin/registrations/:registrationId",
   protect,
   authorizeRoles("eventAdmin"),
   updateEventRegistration
+);
+
+// =====================================
+//  13. Send reminder email
+// =====================================
+router.post(
+  "/event-admin/events/:eventId/send-reminders",
+  protect,
+  authorizeRoles("eventAdmin"),
+  sendReminderEmails
+);
+
+ // =====================================
+ //  14. Send reminder email to single user
+ // =====================================
+router.post(
+  "/event-admin/events/:eventId/send-reminder/:userId",
+  protect,
+  authorizeRoles("eventAdmin"),
+  sendReminderEmailToSingleUser
 );
 
 export default router;

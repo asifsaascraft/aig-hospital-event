@@ -10,6 +10,8 @@ import {
   getIndianFormattedDateTime,
 } from "../utils/dateUtils.js";
 import Sponsor from "../models/Sponsor.js";
+import EventVisitor from "../models/EventVisitor.js";
+
 
 /* 
 ========================================================
@@ -1428,6 +1430,264 @@ export const updateEventRegistration = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
+/*
+========================================================
+  Get Event Visitors Not Registered
+========================================================
+*/
+export const getEventVisitorsNotRegistered = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    // event exists?
+    const event = await Event.findById(eventId);
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    // all visitors
+    const visitors = await EventVisitor.find({
+      eventId,
+    }).populate({
+      path: "userId",
+      select:
+        "name email mobile designation affiliation city state country",
+    });
+
+    // registered users
+    const registrations = await EventRegistration.find({
+      eventId,
+      isPaid: true,
+      isSuspended: false,
+    }).select("userId");
+
+    const registeredUserIds = registrations.map((r) =>
+      r.userId.toString()
+    );
+
+    // filter non registered users
+    const nonRegisteredVisitors = visitors.filter(
+      (visitor) =>
+        !registeredUserIds.includes(visitor.userId._id.toString())
+    );
+
+    return res.status(200).json({
+      success: true,
+      total: nonRegisteredVisitors.length,
+      data: nonRegisteredVisitors,
+    });
+  } catch (error) {
+    console.error("Get visitors error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
+/*
+========================================================
+  Send Reminder Emails
+========================================================
+*/
+
+export const sendReminderEmails = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    // event
+    const event = await Event.findById(eventId);
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    // visitors
+    const visitors = await EventVisitor.find({
+      eventId,
+    }).populate("userId");
+
+    // registrations
+    const registrations = await EventRegistration.find({
+      eventId,
+      isPaid: true,
+      isSuspended: false,
+    }).select("userId");
+
+    const registeredUserIds = registrations.map((r) =>
+      r.userId.toString()
+    );
+
+    // filter only not registered
+    const pendingVisitors = visitors.filter(
+      (visitor) =>
+        !registeredUserIds.includes(visitor.userId._id.toString())
+    );
+
+    let totalSent = 0;
+
+    for (const visitor of pendingVisitors) {
+      const user = visitor.userId;
+
+      if (!user?.email) continue;
+
+      try {
+        await sendEmailWithTemplate({
+          to: user.email,
+          name: user.name,
+          templateKey: "2518b.554b0da719bc314.k1.e0feee90-5116-11f1-a7f9-fa912d477de9.19e3074abf9",
+          mergeInfo: {
+            name: user.name,
+            eventName: event.eventName,
+
+            startDate: getIndianFormattedDateTime(
+              event.startDateTime
+            ),
+
+            endDate: getIndianFormattedDateTime(
+              event.endDateTime
+            ),
+          },
+        });
+
+        totalSent++;
+      } catch (emailError) {
+        console.error(
+          `Email failed for ${user.email}`,
+          emailError
+        );
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Reminder emails sent successfully",
+      totalSent,
+    });
+  } catch (error) {
+    console.error("Reminder email error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
+ /*
+========================================================
+  Send Reminder Email To Single User
+========================================================
+*/
+export const sendReminderEmailToSingleUser = async (req, res) => {
+  try {
+    const { eventId, userId } = req.params;
+
+    // =========================
+    // EVENT
+    // =========================
+    const event = await Event.findById(eventId);
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    // =========================
+    // USER
+    // =========================
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // =========================
+    // CHECK VISITOR EXISTS
+    // =========================
+    const visitor = await EventVisitor.findOne({
+      eventId,
+      userId,
+    });
+
+    if (!visitor) {
+      return res.status(404).json({
+        success: false,
+        message: "User did not visit this event",
+      });
+    }
+
+    // =========================
+    // CHECK ALREADY REGISTERED
+    // =========================
+    const registration = await EventRegistration.findOne({
+      eventId,
+      userId,
+      isPaid: true,
+      isSuspended: false,
+    });
+
+    if (registration) {
+      return res.status(400).json({
+        success: false,
+        message: "User already registered for this event",
+      });
+    }
+
+    // =========================
+    // SEND EMAIL
+    // =========================
+    await sendEmailWithTemplate({
+      to: user.email,
+      name: user.name,
+
+      templateKey:
+        "2518b.554b0da719bc314.k1.e0feee90-5116-11f1-a7f9-fa912d477de9.19e3074abf9",
+
+      mergeInfo: {
+        name: user.name,
+        eventName: event.eventName,
+
+        startDate: getIndianFormattedDateTime(
+          event.startDateTime
+        ),
+
+        endDate: getIndianFormattedDateTime(
+          event.endDateTime
+        ),
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Reminder email sent successfully",
+    });
+  } catch (error) {
+    console.error("Single reminder email error:", error);
+
+    return res.status(500).json({
       success: false,
       message: "Server error",
     });

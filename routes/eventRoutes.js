@@ -8,6 +8,7 @@ import {
   updateEvent,
   updateEventStatus,
   deleteEvent,
+  trackEventVisit,
 } from "../controllers/eventController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 import { uploadEventFiles } from "../middlewares/uploadMiddleware.js";
@@ -22,6 +23,15 @@ router.get("/events/active", getActiveEvents);
 
 // Public: Get single event By ID
 router.get("/events/:id", getEventById);
+
+// User-only: Visit event
+router.post(
+  "/events/:id/visit",
+  protect,
+  authorizeRoles("user"),
+  trackEventVisit
+);
+
 
 // Admin-only: Create a new event
 router.post(
@@ -84,5 +94,7 @@ router.delete(
   authorizeRoles("admin"),
   deleteEvent
 );
+
+
 
 export default router;
