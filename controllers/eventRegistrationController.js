@@ -1591,14 +1591,22 @@ export const sendReminderEmails = async (req, res) => {
 };
 
 
- /*
+/*
 ========================================================
-  Send Reminder Email To Single User
+ Send Reminder Email To Single User
 ========================================================
 */
 export const sendReminderEmailToSingleUser = async (req, res) => {
   try {
-    const { eventId, userId } = req.params;
+    const { eventId } = req.params;
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "userId is required",
+      });
+    }
 
     // =========================
     // EVENT

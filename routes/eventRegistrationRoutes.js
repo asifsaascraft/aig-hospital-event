@@ -142,7 +142,7 @@ router.post(
  //  14. Send reminder email to single user
  // =====================================
 router.post(
-  "/event-admin/events/:eventId/send-reminder/:userId",
+  "/event-admin/events/:eventId/send-reminder",
   protect,
   authorizeRoles("eventAdmin"),
   sendReminderEmailToSingleUser
