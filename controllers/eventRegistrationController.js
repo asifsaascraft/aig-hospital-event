@@ -1554,17 +1554,23 @@ export const sendReminderEmails = async (req, res) => {
           templateKey: "2518b.554b0da719bc314.k1.e0feee90-5116-11f1-a7f9-fa912d477de9.19e3074abf9",
           mergeInfo: {
             name: user.name,
+            eventId: event._id.toString(),
             eventName: event.eventName,
-
             startDate: getIndianFormattedDateTime(
               event.startDateTime
             ),
-
             endDate: getIndianFormattedDateTime(
               event.endDateTime
             ),
           },
         });
+
+        // =========================
+        // UPDATE REMINDER STATUS
+        // =========================
+        visitor.reminderEmailSent = true;
+
+        await visitor.save();
 
         totalSent++;
       } catch (emailError) {
@@ -1676,17 +1682,23 @@ export const sendReminderEmailToSingleUser = async (req, res) => {
 
       mergeInfo: {
         name: user.name,
+        eventId: event._id.toString(),
         eventName: event.eventName,
-
         startDate: getIndianFormattedDateTime(
           event.startDateTime
         ),
-
         endDate: getIndianFormattedDateTime(
           event.endDateTime
         ),
       },
     });
+
+    // =========================
+    // UPDATE REMINDER STATUS
+    // =========================
+    visitor.reminderEmailSent = true;
+
+    await visitor.save();
 
     return res.status(200).json({
       success: true,

@@ -13,6 +13,12 @@ const EventVisitorSchema = new mongoose.Schema(
       ref: "Event",
       required: true,
     },
+
+    reminderEmailSent: {
+      type: Boolean,
+      default: false,
+    },
+
   },
   { timestamps: true }
 );
