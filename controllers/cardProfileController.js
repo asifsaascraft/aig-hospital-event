@@ -1,42 +1,30 @@
 import CardProfile from "../models/CardProfile.js";
-import Event from "../models/Event.js";
 
 // =======================
 // Create Card Profile (EventAdmin)
 // =======================
 export const createCardProfile = async (req, res) => {
   try {
-    const { eventId } = req.params;
     const { CardProfileName, status } = req.body;
 
-    // Validate input
     if (!CardProfileName) {
       return res.status(400).json({
         message: "CardProfileName is required",
       });
     }
 
-    // Check Event
-    const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ message: "Event not found" });
-    }
-
-    //  Check duplicate (case-insensitive)
     const existing = await CardProfile.findOne({
-      eventId,
       CardProfileName: CardProfileName.trim(),
     });
 
     if (existing) {
       return res.status(400).json({
         success: false,
-        message: "Card profile already exists for this event",
+        message: "Card profile already exists",
       });
     }
 
     const profile = await CardProfile.create({
-      eventId,
       CardProfileName: CardProfileName.trim(),
       status,
     });
@@ -50,10 +38,9 @@ export const createCardProfile = async (req, res) => {
   } catch (error) {
     console.error("Create CardProfile error:", error);
 
-    // Handle duplicate index
     if (error.code === 11000) {
       return res.status(400).json({
-        message: "Duplicate card profile for this event",
+        message: "Duplicate card profile",
       });
     }
 
@@ -62,13 +49,12 @@ export const createCardProfile = async (req, res) => {
 };
 
 // =======================
-// Get All Card Profiles by Event ID (Public/User)
+// Get All Card Profiles (Public/User)
 // =======================
-export const getCardProfilesByEvent = async (req, res) => {
+export const getCardProfiles = async (req, res) => {
   try {
-    const { eventId } = req.params;
 
-    const profiles = await CardProfile.find({ eventId }).sort({
+    const profiles = await CardProfile.find().sort({
       createdAt: -1,
     });
 
@@ -85,14 +71,12 @@ export const getCardProfilesByEvent = async (req, res) => {
 };
 
 // =======================
-// Get Active Card Profiles by Event ID (Public/User)
+// Get Active Card Profiles (Public/User)
 // =======================
-export const getActiveCardProfilesByEvent = async (req, res) => {
+export const getActiveCardProfiles = async (req, res) => {
   try {
-    const { eventId } = req.params;
 
     const profiles = await CardProfile.find({
-      eventId,
       status: "Active",
     }).sort({ createdAt: -1 });
 
@@ -117,30 +101,42 @@ export const updateCardProfile = async (req, res) => {
     const { CardProfileName, status } = req.body;
 
     const profile = await CardProfile.findById(id);
+
     if (!profile) {
       return res.status(404).json({
         message: "Card profile not found",
       });
     }
 
-    //  Prevent duplicate on update
+    // Prevent updating Delegate profile
+    if (profile.CardProfileName === "Delegate") {
+      return res.status(400).json({
+        success: false,
+        message: "Delegate card profile cannot be updated",
+      });
+    }
+
+    // Prevent duplicate globally
     if (CardProfileName) {
+
       const existing = await CardProfile.findOne({
-        eventId: profile.eventId,
         CardProfileName: CardProfileName.trim(),
         _id: { $ne: id },
       });
 
       if (existing) {
         return res.status(400).json({
-          message: "Card profile already exists for this event",
+          success: false,
+          message: "Card profile already exists",
         });
       }
 
       profile.CardProfileName = CardProfileName.trim();
     }
 
-    if (status) profile.status = status;
+    if (status) {
+      profile.status = status;
+    }
 
     await profile.save();
 
@@ -152,7 +148,17 @@ export const updateCardProfile = async (req, res) => {
 
   } catch (error) {
     console.error("Update CardProfile error:", error);
-    res.status(500).json({ message: "Server Error" });
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "Duplicate card profile",
+      });
+    }
+
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
 
@@ -167,6 +173,14 @@ export const deleteCardProfile = async (req, res) => {
     if (!profile) {
       return res.status(404).json({
         message: "Card profile not found",
+      });
+    }
+
+    // Prevent deleting Delegate profile
+    if (profile.CardProfileName === "Delegate") {
+      return res.status(400).json({
+        success: false,
+        message: "Delegate card profile cannot be deleted",
       });
     }
 

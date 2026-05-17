@@ -2,16 +2,13 @@ import mongoose from "mongoose";
 
 const CardProfileSchema = new mongoose.Schema(
   {
-    eventId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Event",
-      required: true,
-    },
     CardProfileName: {
       type: String,
       required: [true, "Card profile name is required"],
       trim: true,
+      unique: true,
     },
+
     status: {
       type: String,
       enum: ["Active", "Inactive"],
@@ -22,9 +19,9 @@ const CardProfileSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-//  Prevent duplicate name per event
+// Prevent duplicate globally
 CardProfileSchema.index(
-  { eventId: 1, CardProfileName: 1 },
+  { CardProfileName: 1 },
   { unique: true }
 );
 

@@ -1,19 +1,23 @@
 import express from "express";
+
 import {
   createCardProfile,
-  getCardProfilesByEvent,
-  getActiveCardProfilesByEvent,
+  getCardProfiles,
+  getActiveCardProfiles,
   updateCardProfile,
   deleteCardProfile,
 } from "../controllers/cardProfileController.js";
 
-import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
+import {
+  protect,
+  authorizeRoles,
+} from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
 // Create
 router.post(
-  "/event-admin/events/:eventId/card-profiles",
+  "/event-admin/card-profiles",
   protect,
   authorizeRoles("eventAdmin"),
   createCardProfile
@@ -21,14 +25,14 @@ router.post(
 
 // Get all
 router.get(
-  "/events/:eventId/card-profiles",
-  getCardProfilesByEvent
+  "/card-profiles",
+  getCardProfiles
 );
 
 // Get active
 router.get(
-  "/events/:eventId/card-profiles/active",
-  getActiveCardProfilesByEvent
+  "/card-profiles/active",
+  getActiveCardProfiles
 );
 
 // Update
