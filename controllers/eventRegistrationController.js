@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import EventRegistration from "../models/EventRegistration.js";
 import Event from "../models/Event.js";
 import RegistrationSlab from "../models/RegistrationSlab.js";
@@ -11,7 +12,7 @@ import {
 } from "../utils/dateUtils.js";
 import Sponsor from "../models/Sponsor.js";
 import EventVisitor from "../models/EventVisitor.js";
-
+import CardProfile from "../models/CardProfile.js";
 
 /* 
 ========================================================
@@ -104,6 +105,7 @@ export const registerForEvent = async (req, res) => {
 
     const {
       prefix,
+      cardProfileId,
       name,
       gender,
       email,
@@ -122,6 +124,33 @@ export const registerForEvent = async (req, res) => {
       pincode,
       additionalAnswers,
     } = req.body;
+
+    // ===============================
+    // Validate Card Profile
+    // ===============================
+    if (!cardProfileId) {
+      return res.status(400).json({
+        message: "cardProfileId is required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(cardProfileId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid cardProfileId",
+      });
+    }
+
+    const cardProfile = await CardProfile.findOne({
+      _id: cardProfileId,
+      status: "Active",
+    });
+
+    if (!cardProfile) {
+      return res.status(404).json({
+        message: "Active card profile not found",
+      });
+    }
 
     // ===============================
     // Validate Slab
@@ -408,6 +437,7 @@ export const registerForEvent = async (req, res) => {
         eventId,
         registrationSlabId,
         prefix,
+        cardProfileId,
         name,
         gender,
         email,
@@ -482,6 +512,7 @@ export const registerForEvent = async (req, res) => {
       eventId,
       registrationSlabId,
       prefix,
+      cardProfileId,
       name,
       gender,
       email,
@@ -541,7 +572,11 @@ export const getMyRegistrations = async (req, res) => {
       })
       .populate({
         path: "registrationSlabId",
-        select: "slabName amount", // Include more fields if needed
+        select: "slabName amount",
+      })
+      .populate({
+        path: "cardProfileId",
+        select: "CardProfileName",
       })
       .sort({ createdAt: -1 });
 
@@ -578,6 +613,10 @@ export const getRegistrationById = async (req, res) => {
       .populate({
         path: "registrationSlabId",
         select: "slabName amount",
+      })
+      .populate({
+        path: "cardProfileId",
+        select: "CardProfileName",
       });
 
     if (!registration) {
@@ -628,6 +667,10 @@ export const getAllRegistrationsByEvent = async (req, res) => {
       .populate({
         path: "eventAdminId",
         select: "name",
+      })
+      .populate({
+        path: "cardProfileId",
+        select: "CardProfileName",
       })
       .sort({ createdAt: -1 });
 
@@ -736,6 +779,7 @@ export const registerForEventByEventAdmin = async (req, res) => {
 
     const {
       prefix,
+      cardProfileId,
       name,
       gender,
       email,
@@ -755,6 +799,35 @@ export const registerForEventByEventAdmin = async (req, res) => {
       amount,
       additionalAnswers,
     } = req.body;
+
+    // ===============================
+    // Validate Card Profile
+    // ===============================
+    if (!cardProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: "cardProfileId is required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(cardProfileId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid cardProfileId",
+      });
+    }
+
+    const cardProfile = await CardProfile.findOne({
+      _id: cardProfileId,
+      status: "Active",
+    });
+
+    if (!cardProfile) {
+      return res.status(404).json({
+        success: false,
+        message: "Active card profile not found",
+      });
+    }
 
     const slab = await RegistrationSlab.findById(registrationSlabId);
     if (!slab)
@@ -1037,6 +1110,7 @@ export const registerForEventByEventAdmin = async (req, res) => {
       eventId,
       registrationSlabId,
       prefix,
+      cardProfileId,
       name,
       gender,
       email,
@@ -1196,6 +1270,7 @@ export const bulkRegisterForEventByEventAdmin = async (req, res) => {
     const {
       userId,
       prefix,
+      cardProfileId,
       name,
       gender,
       email,
@@ -1237,6 +1312,35 @@ export const bulkRegisterForEventByEventAdmin = async (req, res) => {
     // ===============================
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ message: "Event not found" });
+
+    // ===============================
+    // Validate Card Profile
+    // ===============================
+    if (!cardProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: "cardProfileId is required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(cardProfileId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid cardProfileId",
+      });
+    }
+
+    const cardProfile = await CardProfile.findOne({
+      _id: cardProfileId,
+      status: "Active",
+    });
+
+    if (!cardProfile) {
+      return res.status(404).json({
+        success: false,
+        message: "Active card profile not found",
+      });
+    }
 
     // ===============================
     // Suspended Check
@@ -1286,6 +1390,7 @@ export const bulkRegisterForEventByEventAdmin = async (req, res) => {
       userId,
       eventId,
       prefix,
+      cardProfileId,
       name,
       gender,
       email,
@@ -1374,7 +1479,12 @@ export const getMyEventAdminRegistrations = async (req, res) => {
     const registrations = await EventRegistration.find({
       eventAdminId,
       eventId,
-    }).sort({ createdAt: -1 });
+    })
+      .populate({
+        path: "cardProfileId",
+        select: "CardProfileName",
+      })
+      .sort({ createdAt: -1 });
 
     res.json({
       success: true,
@@ -1417,6 +1527,31 @@ export const updateEventRegistration = async (req, res) => {
         success: false,
         message: "Registration not found",
       });
+    }
+
+    // ===============================
+    // Validate cardProfileId
+    // ===============================
+    if (updateData.cardProfileId) {
+
+      if (!mongoose.Types.ObjectId.isValid(updateData.cardProfileId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid cardProfileId",
+        });
+      }
+
+      const cardProfile = await CardProfile.findOne({
+        _id: updateData.cardProfileId,
+        status: "Active",
+      });
+
+      if (!cardProfile) {
+        return res.status(404).json({
+          success: false,
+          message: "Active card profile not found",
+        });
+      }
     }
 
     Object.assign(registration, updateData);

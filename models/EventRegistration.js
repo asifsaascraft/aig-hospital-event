@@ -74,6 +74,11 @@ const EventRegistrationSchema = new mongoose.Schema(
       match: [/^\d{10}$/, "Mobile number must be 10 digits"],
       trim: true,
     },
+    cardProfileId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CardProfile",
+      required: [true, "Card Profile is required"],
+    },
     designation: {
       type: String,
       required: [true, "Designation is required"],
