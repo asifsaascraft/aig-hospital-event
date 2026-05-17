@@ -79,6 +79,10 @@ const EventRegistrationSchema = new mongoose.Schema(
       ref: "CardProfile",
       required: [true, "Card Profile is required"],
     },
+    cardProfileUpdated: {
+      type: Boolean,
+      default: false,
+    },
     designation: {
       type: String,
       required: [true, "Designation is required"],

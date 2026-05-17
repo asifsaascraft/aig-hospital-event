@@ -1572,9 +1572,139 @@ export const updateEventRegistration = async (req, res) => {
 };
 
 
+/* 
+========================================================
+  12. Update Card Profile of Registration (Event Admin)
+========================================================
+*/
+export const updateRegistrationCardProfile = async (req, res) => {
+  try {
+
+    const { eventId } = req.params;
+
+    const {
+      eventRegistrationId,
+      cardProfileId,
+    } = req.body;
+
+    // ===============================
+    // Validate eventRegistrationId
+    // ===============================
+    if (!eventRegistrationId) {
+      return res.status(400).json({
+        success: false,
+        message: "eventRegistrationId is required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(eventRegistrationId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid eventRegistrationId",
+      });
+    }
+
+    // ===============================
+    // Validate cardProfileId
+    // ===============================
+    if (!cardProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: "cardProfileId is required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(cardProfileId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid cardProfileId",
+      });
+    }
+
+    const cardProfile = await CardProfile.findOne({
+      _id: cardProfileId,
+      status: "Active",
+    });
+
+    if (!cardProfile) {
+      return res.status(404).json({
+        success: false,
+        message: "Active card profile not found",
+      });
+    }
+
+    // ===============================
+    // Find Registration
+    // ===============================
+    const registration = await EventRegistration.findOne({
+      _id: eventRegistrationId,
+      eventId,
+    });
+
+    if (!registration) {
+      return res.status(404).json({
+        success: false,
+        message: "Registration not found",
+      });
+    }
+
+    // ===============================
+    // Prevent Same Card Profile Update
+    // ===============================
+    if (
+      registration.cardProfileId.toString() ===
+      cardProfileId
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "This card profile is already assigned",
+      });
+    }
+
+    // ===============================
+    // Update Card Profile
+    // ===============================
+    registration.cardProfileId = cardProfileId;
+
+    registration.cardProfileUpdated = true;
+
+    await registration.save();
+
+    // ===============================
+    // Populate Updated Data
+    // ===============================
+    const updatedRegistration =
+      await EventRegistration.findById(
+        eventRegistrationId
+      ).populate({
+        path: "cardProfileId",
+        select: "CardProfileName",
+      });
+
+    return res.status(200).json({
+      success: true,
+      message: "Card profile updated successfully",
+      data: updatedRegistration,
+    });
+
+  } catch (error) {
+
+    console.error(
+      "Update card profile error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
 /*
 ========================================================
-  Get Event Visitors Not Registered
+  13. Get Event Visitors Not Registered
 ========================================================
 */
 export const getEventVisitorsNotRegistered = async (req, res) => {
@@ -1635,7 +1765,7 @@ export const getEventVisitorsNotRegistered = async (req, res) => {
 
 /*
 ========================================================
-  Send Reminder Emails
+  14. Send Reminder Emails
 ========================================================
 */
 
@@ -1734,7 +1864,7 @@ export const sendReminderEmails = async (req, res) => {
 
 /*
 ========================================================
- Send Reminder Email To Single User
+ 15. Send Reminder Email To Single User
 ========================================================
 */
 export const sendReminderEmailToSingleUser = async (req, res) => {
@@ -1845,6 +1975,47 @@ export const sendReminderEmailToSingleUser = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server error",
+    });
+  }
+};
+
+
+/* 
+========================================================
+  16. Get All Card Profile Updated Registrations
+========================================================
+*/
+export const getCardProfileUpdatedRegistrations = async (req, res) => {
+  try {
+
+    const { eventId } = req.params;
+
+    const registrations = await EventRegistration.find({
+      eventId,
+      cardProfileUpdated: true,
+    })
+      .populate({
+        path: "cardProfileId",
+        select: "CardProfileName",
+      })
+      .sort({ updatedAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      total: registrations.length,
+      data: registrations,
+    });
+
+  } catch (error) {
+
+    console.error(
+      "Get card profile updated registrations error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
     });
   }
 };

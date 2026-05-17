@@ -7,6 +7,8 @@ import {
   getRegistrationById,
   getAllRegistrationsByEvent,
   updateRegistrationSuspension,
+  updateRegistrationCardProfile,
+  getCardProfileUpdatedRegistrations,
   registerForEventByEventAdmin,
   checkEmailRegister,
   bulkRegisterForEventByEventAdmin,
@@ -129,7 +131,27 @@ router.put(
 );
 
 // =====================================
-//  13. Send reminder email
+//  13. Update Registration Card Profile
+// =====================================
+router.put(
+  "/event-admin/events/:eventId/update-card-profile",
+  protect,
+  authorizeRoles("eventAdmin"),
+  updateRegistrationCardProfile
+);
+
+// =====================================
+//  14. Get All Card Profile Updated Registrations
+// =====================================
+router.get(
+  "/event-admin/events/:eventId/updated-card-profile",
+  protect,
+  authorizeRoles("eventAdmin"),
+  getCardProfileUpdatedRegistrations
+);
+
+// =====================================
+//  15. Send reminder email
 // =====================================
 router.post(
   "/event-admin/events/:eventId/send-reminders",
@@ -139,7 +161,7 @@ router.post(
 );
 
  // =====================================
- //  14. Send reminder email to single user
+ //  16. Send reminder email to single user
  // =====================================
 router.post(
   "/event-admin/events/:eventId/send-reminder",
