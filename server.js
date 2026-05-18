@@ -66,6 +66,8 @@ import assignTravelServiceRoutes from "./routes/assignTravelServiceRoutes.js";
 import assignAccomodationServiceRoutes from "./routes/assignAccomodationServiceRoutes.js";
 import noteRoutes from "./routes/noteRoutes.js";
 import sponsorAccomodationRoutes from "./routes/sponsorAccomodationRoutes.js";
+import scanTypeRoutes from "./routes/scanTypeRoutes.js";
+
 await connectDB();
 
 const app = express();
@@ -164,7 +166,7 @@ app.use("/api", assignTravelServiceRoutes);
 app.use("/api", assignAccomodationServiceRoutes);
 app.use("/api", noteRoutes);
 app.use("/api", sponsorAccomodationRoutes);
-
+app.use("/api", scanTypeRoutes);
 
 // =======================
 // Multer & File Upload Error Handler
