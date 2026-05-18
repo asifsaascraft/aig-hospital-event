@@ -6,7 +6,6 @@ const CardProfileSchema = new mongoose.Schema(
       type: String,
       required: [true, "Card profile name is required"],
       trim: true,
-      unique: true,
     },
 
     status: {
