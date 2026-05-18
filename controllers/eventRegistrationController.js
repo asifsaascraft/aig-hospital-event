@@ -1727,7 +1727,7 @@ export const getEventVisitorsNotRegistered = async (req, res) => {
     }).populate({
       path: "userId",
       select:
-        "name email mobile designation affiliation department city state country",
+        "prefix name email mobile designation affiliation department city state country",
     });
 
     // registered users
