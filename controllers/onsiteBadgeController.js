@@ -5,7 +5,7 @@ import OnsiteBadge from '../models/onsiteBadge.js'
 import CardProfile from '../models/CardProfile.js'
 import { generateOnsiteRegNum } from '../utils/generateOnsiteRegNum.js'
 import QRCode from 'qrcode'
-import Event from '../models/event.js'
+import Event from '../models/Event.js'
 import sendEmailWithTemplate from '../utils/sendEmail.js'
 import { getIndianFormattedDateTime } from '../utils/dateUtils.js'
 
