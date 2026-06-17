@@ -69,6 +69,7 @@ import sponsorAccomodationRoutes from "./routes/sponsorAccomodationRoutes.js";
 import scanTypeRoutes from "./routes/scanTypeRoutes.js";
 import onsiteImportRoutes from './routes/onsiteBadge.js'
 import badgeProfilePrivilegeRoutes from './routes/badgeProfilePrivilegeRoutes.js'
+import loginGenerateTokenRoutes from "./routes/loginGenerateTokenRoutes.js";
 
 await connectDB();
 
@@ -171,6 +172,9 @@ app.use("/api", sponsorAccomodationRoutes);
 app.use("/api", scanTypeRoutes);
 app.use('/api', onsiteImportRoutes)
 app.use('/api', badgeProfilePrivilegeRoutes)
+app.use('/api', loginGenerateTokenRoutes)
+
+
 // =======================
 // Multer & File Upload Error Handler
 // =======================
