@@ -67,6 +67,8 @@ import assignAccomodationServiceRoutes from "./routes/assignAccomodationServiceR
 import noteRoutes from "./routes/noteRoutes.js";
 import sponsorAccomodationRoutes from "./routes/sponsorAccomodationRoutes.js";
 import scanTypeRoutes from "./routes/scanTypeRoutes.js";
+import onsiteImportRoutes from './routes/onsiteBadge.js'
+import badgeProfilePrivilegeRoutes from './routes/badgeProfilePrivilegeRoutes.js'
 
 await connectDB();
 
@@ -167,7 +169,8 @@ app.use("/api", assignAccomodationServiceRoutes);
 app.use("/api", noteRoutes);
 app.use("/api", sponsorAccomodationRoutes);
 app.use("/api", scanTypeRoutes);
-
+app.use('/api', onsiteImportRoutes)
+app.use('/api', badgeProfilePrivilegeRoutes)
 // =======================
 // Multer & File Upload Error Handler
 // =======================

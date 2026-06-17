@@ -1,231 +1,406 @@
-import ScanType from "../models/ScanType.js";
-import Event from "../models/Event.js";
+import mongoose from 'mongoose'
 
-// ======================================
-// Create Scan Type
-// ======================================
+import ScanType from '../models/ScanType.js'
+import Event from '../models/Event.js'
+
+//======================================================
+// CREATE SCAN TYPE
+//======================================================
+
 export const createScanType = async (req, res) => {
   try {
-    const { eventId } = req.params;
-    const { scanType, scanMode, status } = req.body;
+    const { eventId } = req.params
+
+    const {
+      scanType,
+      scanCode,
+      description,
+      scanMode,
+      allowReEntry,
+      scanStartTime,
+      scanEndTime,
+      status,
+    } = req.body
+
+    /**
+     * VALIDATION
+     */
+
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({
+        success: false,
+
+        message: 'Invalid event id',
+      })
+    }
 
     if (!scanType) {
       return res.status(400).json({
         success: false,
-        message: "scanType is required",
-      });
+
+        message: 'scanType is required',
+      })
     }
 
-    if (!scanMode) {
+    if (!scanCode) {
       return res.status(400).json({
         success: false,
-        message: "scanMode is required",
-      });
+
+        message: 'scanCode is required',
+      })
     }
 
-    // Check event
-    const event = await Event.findById(eventId);
+    /**
+     * EVENT CHECK
+     */
+
+    const event = await Event.findById(eventId)
 
     if (!event) {
       return res.status(404).json({
         success: false,
-        message: "Event not found",
-      });
+
+        message: 'Event not found',
+      })
     }
 
-    // Check duplicate
+    /**
+     * DUPLICATE CHECK
+     */
+
     const existing = await ScanType.findOne({
       eventId,
-      scanType: scanType.trim(),
-      scanMode,
-    });
+
+      scanCode: scanCode.toUpperCase(),
+
+      isDeleted: false,
+    })
 
     if (existing) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
-        message: "Scan type already exists for this event",
-      });
+
+        message: 'Scan code already exists for this event',
+      })
     }
+
+    /**
+     * CREATE
+     */
 
     const data = await ScanType.create({
       eventId,
+
       scanType: scanType.trim(),
-      scanMode,
-      status,
-    });
 
-    res.status(201).json({
+      scanCode: scanCode.trim().toUpperCase(),
+
+      description: description || '',
+
+      scanMode: scanMode || 'single',
+
+      allowReEntry: allowReEntry || false,
+
+      scanStartTime: scanStartTime || null,
+
+      scanEndTime: scanEndTime || null,
+
+      status: status || 'Active',
+    })
+
+    return res.status(201).json({
       success: true,
-      message: "Scan type created successfully",
-      data,
-    });
 
+      message: 'Scan type created successfully',
+
+      data,
+    })
   } catch (error) {
-    console.error("Create ScanType Error:", error);
+    console.error('CREATE SCAN TYPE ERROR:', error)
 
     if (error.code === 11000) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
-        message: "Duplicate scan type for this event",
-      });
+
+        message: 'Duplicate scan code for this event',
+      })
     }
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Server Error",
-    });
-  }
-};
 
-// ======================================
-// Get All Scan Types By Event
-// ======================================
+      message: 'Failed to create scan type',
+
+      error: error.message,
+    })
+  }
+}
+
+//======================================================
+// GET ALL SCAN TYPES
+//======================================================
+
 export const getScanTypes = async (req, res) => {
   try {
-    const { eventId } = req.params;
-
-    const data = await ScanType.find({ eventId })
-      .sort({ createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      message: "Scan types fetched successfully",
-      data,
-    });
-
-  } catch (error) {
-    console.error("Get ScanTypes Error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
-  }
-};
-
-// ======================================
-// Get Active Scan Types By Event
-// ======================================
-export const getActiveScanTypes = async (req, res) => {
-  try {
-    const { eventId } = req.params;
+    const { eventId } = req.params
 
     const data = await ScanType.find({
       eventId,
-      status: "Active",
-    }).sort({ createdAt: -1 });
 
-    res.status(200).json({
+      isDeleted: false,
+    }).sort({
+      createdAt: -1,
+    })
+
+    return res.status(200).json({
       success: true,
-      message: "Active scan types fetched successfully",
+
+      message: 'Scan types fetched successfully',
+
+      total: data.length,
+
       data,
-    });
-
+    })
   } catch (error) {
-    console.error("Get Active ScanTypes Error:", error);
+    console.error('GET SCAN TYPES ERROR:', error)
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Server Error",
-    });
-  }
-};
 
-// ======================================
-// Update Scan Type
-// ======================================
+      message: 'Failed to fetch scan types',
+
+      error: error.message,
+    })
+  }
+}
+
+//======================================================
+// GET ACTIVE SCAN TYPES
+//======================================================
+
+export const getActiveScanTypes = async (req, res) => {
+  try {
+    const { eventId } = req.params
+
+    const data = await ScanType.find({
+      eventId,
+
+      status: 'Active',
+
+      isDeleted: false,
+    }).sort({
+      createdAt: -1,
+    })
+
+    return res.status(200).json({
+      success: true,
+
+      message: 'Active scan types fetched successfully',
+
+      total: data.length,
+
+      data,
+    })
+  } catch (error) {
+    console.error('GET ACTIVE SCAN TYPES ERROR:', error)
+
+    return res.status(500).json({
+      success: false,
+
+      message: 'Failed to fetch active scan types',
+
+      error: error.message,
+    })
+  }
+}
+
+//======================================================
+// GET SINGLE SCAN TYPE
+//======================================================
+
+export const getSingleScanType = async (req, res) => {
+  try {
+    const { id } = req.params
+
+    const data = await ScanType.findOne({
+      _id: id,
+
+      isDeleted: false,
+    })
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+
+        message: 'Scan type not found',
+      })
+    }
+
+    return res.status(200).json({
+      success: true,
+
+      data,
+    })
+  } catch (error) {
+    console.error('GET SINGLE SCAN TYPE ERROR:', error)
+
+    return res.status(500).json({
+      success: false,
+
+      message: 'Failed to fetch scan type',
+
+      error: error.message,
+    })
+  }
+}
+
+//======================================================
+// UPDATE SCAN TYPE
+//======================================================
+
 export const updateScanType = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { scanType, scanMode, status } = req.body;
+    const { id } = req.params
 
-    const existingScanType = await ScanType.findById(id);
+    const {
+      scanType,
+      scanCode,
+      description,
+      scanMode,
+      allowReEntry,
+      scanStartTime,
+      scanEndTime,
+      status,
+    } = req.body
 
-    if (!existingScanType) {
+    /**
+     * FIND EXISTING
+     */
+
+    const existing = await ScanType.findById(id)
+
+    if (!existing || existing.isDeleted) {
       return res.status(404).json({
         success: false,
-        message: "Scan type not found",
-      });
+
+        message: 'Scan type not found',
+      })
     }
 
-    // Final values after update
-    const finalScanType = scanType
-      ? scanType.trim()
-      : existingScanType.scanType;
+    /**
+     * FINAL VALUES
+     */
 
-    const finalScanMode = scanMode
-      ? scanMode
-      : existingScanType.scanMode;
+    const finalScanCode = scanCode
+      ? scanCode.trim().toUpperCase()
+      : existing.scanCode
 
-    // Prevent duplicate
+    /**
+     * DUPLICATE CHECK
+     */
+
     const duplicate = await ScanType.findOne({
-      eventId: existingScanType.eventId,
-      scanType: finalScanType,
-      scanMode: finalScanMode,
-      _id: { $ne: id },
-    });
+      eventId: existing.eventId,
+
+      scanCode: finalScanCode,
+
+      _id: {
+        $ne: id,
+      },
+
+      isDeleted: false,
+    })
 
     if (duplicate) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
-        message: "Scan type already exists for this event",
-      });
+
+        message: 'Scan code already exists for this event',
+      })
     }
 
-    existingScanType.scanType = finalScanType;
-    existingScanType.scanMode = finalScanMode;
+    /**
+     * UPDATE
+     */
 
-    if (status) {
-      existingScanType.status = status;
-    }
+    existing.scanType = scanType?.trim() || existing.scanType
 
-    await existingScanType.save();
+    existing.scanCode = finalScanCode
 
-    res.status(200).json({
+    existing.description = description ?? existing.description
+
+    existing.scanMode = scanMode || existing.scanMode
+
+    existing.allowReEntry = allowReEntry ?? existing.allowReEntry
+
+    existing.scanStartTime = scanStartTime ?? existing.scanStartTime
+
+    existing.scanEndTime = scanEndTime ?? existing.scanEndTime
+
+    existing.status = status || existing.status
+
+    await existing.save()
+
+    return res.status(200).json({
       success: true,
-      message: "Scan type updated successfully",
-      data: existingScanType,
-    });
 
+      message: 'Scan type updated successfully',
+
+      data: existing,
+    })
   } catch (error) {
-    console.error("Update ScanType Error:", error);
+    console.error('UPDATE SCAN TYPE ERROR:', error)
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Server Error",
-    });
-  }
-};
 
-// ======================================
-// Delete Scan Type
-// ======================================
+      message: 'Failed to update scan type',
+
+      error: error.message,
+    })
+  }
+}
+
+//======================================================
+// DELETE SCAN TYPE (SOFT DELETE)
+//======================================================
+
 export const deleteScanType = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params
 
-    const scanType = await ScanType.findById(id);
+    const scanType = await ScanType.findById(id)
 
-    if (!scanType) {
+    if (!scanType || scanType.isDeleted) {
       return res.status(404).json({
         success: false,
-        message: "Scan type not found",
-      });
+
+        message: 'Scan type not found',
+      })
     }
 
-    await scanType.deleteOne();
+    /**
+     * SOFT DELETE
+     */
 
-    res.status(200).json({
+    scanType.isDeleted = true
+
+    await scanType.save()
+
+    return res.status(200).json({
       success: true,
-      message: "Scan type deleted successfully",
-    });
 
+      message: 'Scan type deleted successfully',
+    })
   } catch (error) {
-    console.error("Delete ScanType Error:", error);
+    console.error('DELETE SCAN TYPE ERROR:', error)
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Server Error",
-    });
+
+      message: 'Failed to delete scan type',
+
+      error: error.message,
+    })
   }
-};
+}

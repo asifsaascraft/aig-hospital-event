@@ -1,4 +1,5 @@
 // middlewares/uploadMiddleware.js
+import path from 'path'
 import multer from "multer";
 import multerS3 from "multer-s3";
 import s3 from "../config/s3.js";
@@ -121,3 +122,56 @@ export const uploadBoothPDF = multer({
     }
   },
 });
+
+
+
+// Allow Excel / CSV files
+// Allow Excel / CSV files
+const excelFileFilter = (req, file, cb) => {
+  const allowedMimeTypes = [
+    // XLSX
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+
+    // XLS
+    'application/vnd.ms-excel',
+
+    // CSV
+    'text/csv',
+    'application/csv',
+    'text/plain',
+  ]
+
+  const allowedExtensions = [
+    '.xlsx',
+    '.xls',
+    '.csv',
+  ]
+
+  const ext = path
+    .extname(file.originalname)
+    .toLowerCase()
+
+  if (
+    allowedMimeTypes.includes(
+      file.mimetype,
+    ) &&
+    allowedExtensions.includes(ext)
+  ) {
+    cb(null, true)
+  } else {
+    cb(
+      new Error(
+        'Only Excel (.xlsx, .xls) and CSV files are allowed.',
+      ),
+      false,
+    )
+  }
+}
+
+
+// Sponsor Excel Upload
+export const uploadSponsorExcel =
+  createUploader(
+    'sponsor-excel',
+    excelFileFilter,
+  )

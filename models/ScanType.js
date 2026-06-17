@@ -1,41 +1,152 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose'
 
 const ScanTypeSchema = new mongoose.Schema(
   {
+    /**
+     * EVENT
+     */
+
     eventId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Event",
+
+      ref: 'Event',
+
       required: true,
     },
 
+    /**
+     * DISPLAY NAME
+     * Example:
+     * Lunch Access
+     * Dinner Entry
+     * Kit Bag
+     */
+
     scanType: {
       type: String,
-      required: [true, "Scan Type is required"],
+
+      required: [true, 'Scan Type is required'],
+
       trim: true,
     },
 
+    /**
+     * UNIQUE CODE
+     * Example:
+     * LUNCH
+     * DINNER
+     * KITBAG
+     */
+
+    scanCode: {
+      type: String,
+
+      required: [true, 'Scan Code is required'],
+
+      uppercase: true,
+
+      trim: true,
+    },
+
+    /**
+     * DESCRIPTION
+     */
+
+    description: {
+      type: String,
+
+      trim: true,
+
+      default: '',
+    },
+
+    /**
+     * SCAN MODE
+     * single
+     * multiple
+     */
+
     scanMode: {
       type: String,
-      enum: ["Single Scan", "Multi Scan"],
-      default: "Single Scan",
-      required: [true, "Scan Mode is required"],
+
+      enum: ['single', 'multiple'],
+
+      default: 'single',
+
+      required: true,
     },
+
+    /**
+     * RE-ENTRY
+     */
+
+    allowReEntry: {
+      type: Boolean,
+
+      default: false,
+    },
+
+    /**
+     * SCAN TIME WINDOW
+     */
+
+    scanStartTime: {
+      type: Date,
+
+      default: null,
+    },
+
+    scanEndTime: {
+      type: Date,
+
+      default: null,
+    },
+
+    /**
+     * STATUS
+     */
 
     status: {
       type: String,
-      enum: ["Active", "Inactive"],
-      default: "Active",
-      required: [true, "Status is required"],
+
+      enum: ['Active', 'Inactive'],
+
+      default: 'Active',
+
+      required: true,
+    },
+
+    /**
+     * SOFT DELETE
+     */
+
+    isDeleted: {
+      type: Boolean,
+
+      default: false,
     },
   },
-  { timestamps: true }
-);
 
-// Prevent duplicate scanType + scanMode per event
+  {
+    timestamps: true,
+  },
+)
+
+/**
+ * PREVENT DUPLICATES
+ */
+
 ScanTypeSchema.index(
-  { eventId: 1, scanType: 1, scanMode: 1 },
-  { unique: true }
-);
+  {
+    eventId: 1,
+
+    scanCode: 1,
+  },
+
+  {
+    unique: true,
+  },
+)
 
 export default mongoose.models.ScanType ||
-  mongoose.model("ScanType", ScanTypeSchema);
+  mongoose.model('ScanType', ScanTypeSchema)
