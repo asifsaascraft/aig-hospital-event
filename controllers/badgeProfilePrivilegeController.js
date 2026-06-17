@@ -2,7 +2,7 @@ import mongoose from 'mongoose'
 
 import BadgeProfilePrivilege from '../models/BadgeProfilePrivilege.js'
 
-import CardProfile from '../models/cardProfile.js'
+import CardProfile from '../models/CardProfile.js'
 import ScanType from '../models/ScanType.js'
 
 //======================================================
