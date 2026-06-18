@@ -21,7 +21,6 @@ export const importRegistrations = async (req, res) => {
         message: 'Invalid event id',
       })
     }
-
     /**
      * FETCH REGISTRATIONS
      */
