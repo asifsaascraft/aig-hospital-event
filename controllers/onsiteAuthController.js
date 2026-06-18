@@ -2,7 +2,6 @@ import jwt from "jsonwebtoken";
 import LoginGenerateToken from "../models/LoginGenerateToken.js";
 import Event from "../models/Event.js";
 
-
 // =======================
 // Onsite Login
 // =======================
@@ -31,7 +30,7 @@ export const loginOnsite = async (req, res) => {
       {
         id: tokenRecord._id,
         role: "onsite",
-        eventId: tokenRecord.eventId,
+        eventId: tokenRecord.eventId._id,
       },
       process.env.JWT_SECRET,
       {
@@ -46,8 +45,6 @@ export const loginOnsite = async (req, res) => {
         _id: tokenRecord._id,
         eventId: tokenRecord.eventId,
         name: tokenRecord.name,
-        loginToken: tokenRecord.loginToken,
-        status: tokenRecord.status,
         accessToken,
       },
     });

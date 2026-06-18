@@ -68,7 +68,7 @@ import assignAccomodationServiceRoutes from "./routes/assignAccomodationServiceR
 import noteRoutes from "./routes/noteRoutes.js";
 import sponsorAccomodationRoutes from "./routes/sponsorAccomodationRoutes.js";
 import scanTypeRoutes from "./routes/scanTypeRoutes.js";
-import onsiteImportRoutes from './routes/onsiteBadge.js'
+import onsiteBadgeRoutes from "./routes/onsiteBadgeRoutes.js";
 import badgeProfilePrivilegeRoutes from './routes/badgeProfilePrivilegeRoutes.js'
 import loginGenerateTokenRoutes from "./routes/loginGenerateTokenRoutes.js";
 
@@ -171,7 +171,7 @@ app.use("/api", assignAccomodationServiceRoutes);
 app.use("/api", noteRoutes);
 app.use("/api", sponsorAccomodationRoutes);
 app.use("/api", scanTypeRoutes);
-app.use('/api', onsiteImportRoutes)
+app.use('/api', onsiteBadgeRoutes)
 app.use('/api', badgeProfilePrivilegeRoutes)
 app.use('/api', loginGenerateTokenRoutes)
 

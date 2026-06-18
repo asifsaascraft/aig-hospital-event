@@ -1,7 +1,7 @@
 import axios from 'axios'
 import mongoose from 'mongoose'
 import XLSX from 'xlsx'
-import OnsiteBadge from '../models/onsiteBadge.js'
+import OnsiteBadge from '../models/OnsiteBadge.js'
 import CardProfile from '../models/CardProfile.js'
 import { generateOnsiteRegNum } from '../utils/generateOnsiteRegNum.js'
 import QRCode from 'qrcode'
@@ -1423,197 +1423,297 @@ export const sendSingleBadgeEmail = async (req, res) => {
   }
 }
 
-//======== Onsite Badge Search Controller ======//
+// //======== Onsite Badge Search Controller ======//
 
+// export const searchOnsiteBadges = async (req, res) => {
+//   try {
+//     const { eventId } = req.params
+
+//     const {
+//       search = '',
+//       page = 1,
+//       limit = 20,
+//       badgePrinted,
+//       badgeProfileName,
+//       sourceType,
+//     } = req.query
+
+//     /**
+//      * PAGINATION
+//      */
+
+//     const currentPage = parseInt(page)
+
+//     const pageLimit = parseInt(limit)
+
+//     const skip = (currentPage - 1) * pageLimit
+
+//     /**
+//      * FILTER
+//      */
+
+//     const filter = {
+//       eventId,
+
+//       isDeleted: false,
+//     }
+
+//     /**
+//      * SEARCH
+//      */
+
+//     if (search) {
+//       filter.$or = [
+//         {
+//           regNum: {
+//             $regex: search,
+//             $options: 'i',
+//           },
+//         },
+
+//         {
+//           name: {
+//             $regex: search,
+//             $options: 'i',
+//           },
+//         },
+
+//         {
+//           email: {
+//             $regex: search,
+//             $options: 'i',
+//           },
+//         },
+
+//         {
+//           mobile: {
+//             $regex: search,
+//             $options: 'i',
+//           },
+//         },
+//       ]
+//     }
+
+//     /**
+//      * FILTERS
+//      */
+
+//     if (badgePrinted !== undefined) {
+//       filter.badgePrinted = badgePrinted === 'true'
+//     }
+
+//     if (badgeProfileName) {
+//       filter.badgeProfileName = badgeProfileName
+//     }
+
+//     if (sourceType) {
+//       filter.sourceType = sourceType
+//     }
+
+//     /**
+//      * FETCH
+//      */
+
+//     const data = await OnsiteBadge.find(filter)
+//       .sort({
+//         createdAt: -1,
+//       })
+//       .skip(skip)
+//       .limit(pageLimit)
+
+//     /**
+//      * TOTAL
+//      */
+
+//     const total = await OnsiteBadge.countDocuments(filter)
+
+//     return res.status(200).json({
+//       success: true,
+
+//       total,
+
+//       currentPage,
+
+//       totalPages: Math.ceil(total / pageLimit),
+
+//       data,
+//     })
+//   } catch (error) {
+//     console.error('SEARCH ONSITE BADGES ERROR:', error)
+
+//     return res.status(500).json({
+//       success: false,
+
+//       message: 'Failed to search badges',
+
+//       error: error.message,
+//     })
+//   }
+// }
+
+// //========= Badge Print Controller ======//
+
+// export const printBadge = async (req, res) => {
+//   try {
+//     const { badgeId } = req.params
+
+//     /**
+//      * FIND BADGE
+//      */
+
+//     const badge = await OnsiteBadge.findById(badgeId)
+
+//     if (!badge) {
+//       return res.status(404).json({
+//         success: false,
+
+//         message: 'Badge not found',
+//       })
+//     }
+
+//     /**
+//      * UPDATE
+//      */
+
+//     badge.badgePrinted = true
+
+//     badge.printCount = (badge.printCount || 0) + 1
+
+//     badge.lastPrintedAt = new Date()
+
+//     /**
+//      * PRINT LOG
+//      */
+
+//     badge.printLogs.push({
+//       printedAt: new Date(),
+
+//       printedBy: req.user?._id || null,
+
+//       reprint: badge.printCount > 1,
+//     })
+
+//     await badge.save()
+
+//     return res.status(200).json({
+//       success: true,
+
+//       message:
+//         badge.printCount > 1
+//           ? 'Badge reprinted successfully'
+//           : 'Badge printed successfully',
+
+//       data: badge,
+//     })
+//   } catch (error) {
+//     console.error('PRINT BADGE ERROR:', error)
+
+//     return res.status(500).json({
+//       success: false,
+
+//       message: 'Failed to print badge',
+
+//       error: error.message,
+//     })
+//   }
+// }
+
+
+
+// ======================================================
+// SEARCH BADGES
+// ======================================================
 export const searchOnsiteBadges = async (req, res) => {
   try {
-    const { eventId } = req.params
+    const { search } = req.query;
 
-    const {
-      search = '',
-      page = 1,
-      limit = 20,
-      badgePrinted,
-      badgeProfileName,
-      sourceType,
-    } = req.query
+    const eventId = req.onsite.eventId;
 
-    /**
-     * PAGINATION
-     */
+    if (!search || !search.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Search value is required",
+      });
+    }
 
-    const currentPage = parseInt(page)
+    const regex = new RegExp(search.trim(), "i");
 
-    const pageLimit = parseInt(limit)
-
-    const skip = (currentPage - 1) * pageLimit
-
-    /**
-     * FILTER
-     */
-
-    const filter = {
+    const badges = await OnsiteBadge.find({
       eventId,
-
       isDeleted: false,
-    }
-
-    /**
-     * SEARCH
-     */
-
-    if (search) {
-      filter.$or = [
-        {
-          regNum: {
-            $regex: search,
-            $options: 'i',
-          },
-        },
-
-        {
-          name: {
-            $regex: search,
-            $options: 'i',
-          },
-        },
-
-        {
-          email: {
-            $regex: search,
-            $options: 'i',
-          },
-        },
-
-        {
-          mobile: {
-            $regex: search,
-            $options: 'i',
-          },
-        },
-      ]
-    }
-
-    /**
-     * FILTERS
-     */
-
-    if (badgePrinted !== undefined) {
-      filter.badgePrinted = badgePrinted === 'true'
-    }
-
-    if (badgeProfileName) {
-      filter.badgeProfileName = badgeProfileName
-    }
-
-    if (sourceType) {
-      filter.sourceType = sourceType
-    }
-
-    /**
-     * FETCH
-     */
-
-    const data = await OnsiteBadge.find(filter)
-      .sort({
-        createdAt: -1,
-      })
-      .skip(skip)
-      .limit(pageLimit)
-
-    /**
-     * TOTAL
-     */
-
-    const total = await OnsiteBadge.countDocuments(filter)
+      $or: [
+        { name: regex },
+        { email: regex },
+        { mobile: regex },
+        { regNum: regex },
+      ],
+    })
+      .select("-printLogs")
+      .limit(50)
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
-
-      total,
-
-      currentPage,
-
-      totalPages: Math.ceil(total / pageLimit),
-
-      data,
-    })
+      total: badges.length,
+      data: badges,
+    });
   } catch (error) {
-    console.error('SEARCH ONSITE BADGES ERROR:', error)
+    console.error("SEARCH BADGE ERROR:", error);
 
     return res.status(500).json({
       success: false,
-
-      message: 'Failed to search badges',
-
-      error: error.message,
-    })
+      message: "Failed to search badges",
+    });
   }
-}
+};
 
-//========= Badge Print Controller ======//
+// ======================================================
+// PRINT BADGE
+// ======================================================
 
 export const printBadge = async (req, res) => {
   try {
-    const { badgeId } = req.params
+    const { id } = req.params;
 
-    /**
-     * FIND BADGE
-     */
+    const eventId = req.onsite.eventId;
 
-    const badge = await OnsiteBadge.findById(badgeId)
+    const badge = await OnsiteBadge.findOne({
+      _id: id,
+      eventId,
+      isDeleted: false,
+    });
 
     if (!badge) {
       return res.status(404).json({
         success: false,
-
-        message: 'Badge not found',
-      })
+        message: "Badge not found",
+      });
     }
 
-    /**
-     * UPDATE
-     */
+    badge.badgePrinted = true;
 
-    badge.badgePrinted = true
+    badge.printCount = (badge.printCount || 0) + 1;
 
-    badge.printCount = (badge.printCount || 0) + 1
-
-    badge.lastPrintedAt = new Date()
-
-    /**
-     * PRINT LOG
-     */
+    badge.lastPrintedAt = new Date();
 
     badge.printLogs.push({
       printedAt: new Date(),
+      reason: "Badge Printed",
+    });
 
-      printedBy: req.user?._id || null,
-
-      reprint: badge.printCount > 1,
-    })
-
-    await badge.save()
+    await badge.save();
 
     return res.status(200).json({
       success: true,
-
-      message:
-        badge.printCount > 1
-          ? 'Badge reprinted successfully'
-          : 'Badge printed successfully',
-
+      message: "Badge printed successfully",
       data: badge,
-    })
+    });
   } catch (error) {
-    console.error('PRINT BADGE ERROR:', error)
+    console.error("PRINT BADGE ERROR:", error);
 
     return res.status(500).json({
       success: false,
-
-      message: 'Failed to print badge',
-
-      error: error.message,
-    })
+      message: "Failed to print badge",
+    });
   }
-}
+};
