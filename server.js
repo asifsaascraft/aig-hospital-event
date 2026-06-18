@@ -12,6 +12,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import eventAdminRoutes from "./routes/eventAdminRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import sponsorAuthRoutes from "./routes/sponsorAuthRoutes.js";
+import onsiteAuthRoutes from "./routes/onsiteAuthRoutes.js";
 
 import announcementRoutes from "./routes/announcementRoutes.js";
 import departmentRoutes from "./routes/departmentRoutes.js";
@@ -114,7 +115,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/event-admin", eventAdminRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/sponsors", sponsorAuthRoutes);
-
+app.use("/api/onsite", onsiteAuthRoutes);
 
 app.use("/api", announcementRoutes);
 app.use("/api", departmentRoutes);
