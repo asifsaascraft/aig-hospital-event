@@ -1,4 +1,4 @@
-import OnsiteBadge from '../models/onsiteBadge.js'
+import OnsiteBadge from '../models/OnsiteBadge.js'
 
 /**
  * GENERATE UNIQUE ONSITE REG NUMBER
