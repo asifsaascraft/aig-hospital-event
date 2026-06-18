@@ -9,6 +9,8 @@ import Event from '../models/Event.js'
 import sendEmailWithTemplate from '../utils/sendEmail.js'
 import { getIndianFormattedDateTime } from '../utils/dateUtils.js'
 
+
+
 export const importRegistrations = async (req, res) => {
   try {
     const { eventId } = req.params
