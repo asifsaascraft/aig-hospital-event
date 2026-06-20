@@ -64,10 +64,15 @@ const AccompanySchema = new mongoose.Schema(
           required: true,
           default: false,
         },
+        cardProfileId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "CardProfile",
+          required: [true, "Card Profile is required"],
+        },
       },
     ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Avoid model overwrite during hot-reload

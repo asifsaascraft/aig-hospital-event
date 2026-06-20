@@ -3,6 +3,7 @@ import Accompany from "../models/Accompany.js";
 import Event from "../models/Event.js";
 import EventRegistration from "../models/EventRegistration.js";
 import RegistrationSlab from "../models/RegistrationSlab.js";
+import CardProfile from "../models/CardProfile.js";
 
 /* 
 ========================================================
@@ -36,7 +37,9 @@ export const getAccompanyAmount = async (req, res) => {
     }
 
     //  Get the registration slab linked to that registration
-    const slab = await RegistrationSlab.findById(registration.registrationSlabId);
+    const slab = await RegistrationSlab.findById(
+      registration.registrationSlabId,
+    );
 
     if (!slab) {
       return res
@@ -86,7 +89,19 @@ export const addAccompanies = async (req, res) => {
       isSuspended: false, //  Only non-suspended registration
     });
     if (!registration)
-      return res.status(400).json({ message: "You must complete event registration first" });
+      return res
+        .status(400)
+        .json({ message: "You must complete event registration first" });
+
+    const accompanyProfile = await CardProfile.findOne({
+      CardProfileName: "Accompany",
+    });
+
+    if (!accompanyProfile) {
+      return res.status(500).json({
+        message: "Accompany card profile not found",
+      });
+    }
 
     // Find existing accompany entry for this registration (if any)
     let accompanyDoc = await Accompany.findOne({
@@ -108,7 +123,8 @@ export const addAccompanies = async (req, res) => {
     accompanies.forEach((a) => {
       accompanyDoc.accompanies.push({
         ...a,
-        isSuspended: false, // ensure consistent default
+        cardProfileId: accompanyProfile._id,
+        isSuspended: false,
       });
     });
     await accompanyDoc.save();
@@ -123,7 +139,6 @@ export const addAccompanies = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
 
 /* 
 ========================================================
@@ -156,7 +171,9 @@ export const getAllPaidAccompaniesByEvent = async (req, res) => {
     // Filter out only paid accompanies (inside the array)
     const paidAccompanies = accompanies
       .map((doc) => {
-        const paidList = doc.accompanies.filter((a) => a.isPaid === true && a.isSuspended === false);
+        const paidList = doc.accompanies.filter(
+          (a) => a.isPaid === true && a.isSuspended === false,
+        );
         if (paidList.length > 0) {
           return {
             _id: doc._id,
@@ -187,8 +204,6 @@ export const getAllPaidAccompaniesByEvent = async (req, res) => {
   }
 };
 
-
-
 /* 
 ========================================================
   4️ Edit Paid Accompanies (Only editable fields)
@@ -201,7 +216,9 @@ export const editPaidAccompanies = async (req, res) => {
     const { accompanies } = req.body; // array of objects with _id + editable fields
 
     if (!Array.isArray(accompanies) || accompanies.length === 0) {
-      return res.status(400).json({ message: "No accompany data provided for edit" });
+      return res
+        .status(400)
+        .json({ message: "No accompany data provided for edit" });
     }
 
     // Fetch accompany document
@@ -232,7 +249,8 @@ export const editPaidAccompanies = async (req, res) => {
 
     if (updatedCount === 0) {
       return res.status(400).json({
-        message: "No valid paid accompanies found to edit or invalid IDs provided",
+        message:
+          "No valid paid accompanies found to edit or invalid IDs provided",
       });
     }
 
@@ -358,8 +376,9 @@ export const updateAccompanySuspension = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Accompany member ${isSuspended ? "suspended" : "unsuspended"
-        } successfully`,
+      message: `Accompany member ${
+        isSuspended ? "suspended" : "unsuspended"
+      } successfully`,
       data: subAccompany,
     });
   } catch (error) {
@@ -399,7 +418,8 @@ export const checkEmailExists = async (req, res) => {
       email: normalizedEmail,
       isPaid: true,
       isSuspended: false, //  Only non-suspended registration
-    }).select("_id eventId userId registrationSlabId")
+    })
+      .select("_id eventId userId registrationSlabId")
       .populate({
         path: "registrationSlabId",
         select: "AccompanyAmount",
@@ -427,7 +447,6 @@ export const checkEmailExists = async (req, res) => {
     });
   }
 };
- 
 
 /*
 ========================================================
@@ -461,7 +480,18 @@ export const addAccompaniesByEventAdmin = async (req, res) => {
       });
     }
 
-    const accompanyAmount = registration.registrationSlabId?.AccompanyAmount || 0;
+    const accompanyAmount =
+      registration.registrationSlabId?.AccompanyAmount || 0;
+
+    const accompanyProfile = await CardProfile.findOne({
+      CardProfileName: "Accompany",
+    });
+
+    if (!accompanyProfile) {
+      return res.status(500).json({
+        message: "Accompany card profile not found",
+      });
+    }
 
     // Find / create accompany doc
     let accompanyDoc = await Accompany.findOne({
@@ -510,6 +540,7 @@ export const addAccompaniesByEventAdmin = async (req, res) => {
         isPaid: true,
         regNumGenerated: true,
         regNum: `${registration.regNum}-A${counter}`,
+        cardProfileId: accompanyProfile._id,
         isSuspended: false,
       });
       counter++;
@@ -544,13 +575,16 @@ export const getAllSpecificUserAccompanyesByEventAdmin = async (req, res) => {
     }
 
     // Find accompany records for this event and user
-    const accompanies = await Accompany.find({ userId, eventId })
-      .sort({ createdAt: -1 });
+    const accompanies = await Accompany.find({ userId, eventId }).sort({
+      createdAt: -1,
+    });
 
     // Filter out only paid accompanies (inside the array)
     const paidAccompanies = accompanies
       .map((doc) => {
-        const paidList = doc.accompanies.filter((a) => a.isPaid === true && a.isSuspended === false);
+        const paidList = doc.accompanies.filter(
+          (a) => a.isPaid === true && a.isSuspended === false,
+        );
         if (paidList.length > 0) {
           return {
             _id: doc._id,
@@ -580,4 +614,3 @@ export const getAllSpecificUserAccompanyesByEventAdmin = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-

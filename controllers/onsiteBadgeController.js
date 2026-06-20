@@ -1,26 +1,24 @@
-import axios from 'axios'
-import mongoose from 'mongoose'
-import XLSX from 'xlsx'
-import OnsiteBadge from '../models/OnsiteBadge.js'
-import CardProfile from '../models/CardProfile.js'
-import { generateOnsiteRegNum } from '../utils/generateOnsiteRegNum.js'
-import QRCode from 'qrcode'
-import Event from '../models/Event.js'
-import sendEmailWithTemplate from '../utils/sendEmail.js'
-import { getIndianFormattedDateTime } from '../utils/dateUtils.js'
-
-
+import axios from "axios";
+import mongoose from "mongoose";
+import XLSX from "xlsx";
+import OnsiteBadge from "../models/OnsiteBadge.js";
+import CardProfile from "../models/CardProfile.js";
+import { generateOnsiteRegNum } from "../utils/generateOnsiteRegNum.js";
+import QRCode from "qrcode";
+import Event from "../models/Event.js";
+import sendEmailWithTemplate from "../utils/sendEmail.js";
+import { getIndianFormattedDateTime } from "../utils/dateUtils.js";
 
 export const importRegistrations = async (req, res) => {
   try {
-    const { eventId } = req.params
+    const { eventId } = req.params;
     if (!mongoose.Types.ObjectId.isValid(eventId)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid event id',
-      })
+        message: "Invalid event id",
+      });
     }
-    
+
     // FETCH REGISTRATIONS
     const registrationResponse = await axios.get(
       `${process.env.BASE_URL}/api/event-admin/events/${eventId}/registrations`,
@@ -29,94 +27,92 @@ export const importRegistrations = async (req, res) => {
           Authorization: req.headers.authorization,
         },
       },
-    )
+    );
 
-    const registrations = registrationResponse?.data?.data || []
+    const registrations = registrationResponse?.data?.data || [];
 
     if (!registrations.length) {
       return res.status(404).json({
         success: false,
-        message: 'No registrations found',
-      })
+        message: "No registrations found",
+      });
     }
 
-    const operations = []
+    const operations = [];
 
-    let importedCount = 0
-    let updatedCount = 0
+    let importedCount = 0;
+    let updatedCount = 0;
 
     for (const registration of registrations) {
-
-      let badgeProfileId = null
-      let badgeProfileName = 'Delegate'
+      let badgeProfileId = null;
+      let badgeProfileName = "Delegate";
 
       // POPULATED OBJECT
       if (
         registration?.cardProfileId &&
-        typeof registration.cardProfileId === 'object' &&
+        typeof registration.cardProfileId === "object" &&
         registration.cardProfileId?.CardProfileName
       ) {
-        badgeProfileId = registration.cardProfileId._id || null
+        badgeProfileId = registration.cardProfileId._id || null;
         badgeProfileName =
-          registration.cardProfileId.CardProfileName || 'Delegate'
+          registration.cardProfileId.CardProfileName || "Delegate";
       } else if (registration?.cardProfileId) {
-
-      // RAW OBJECT ID
+        // RAW OBJECT ID
         const badgeProfile = await BadgeProfile.findById(
           registration.cardProfileId,
-        ).select('_id CardProfileName')
+        ).select("_id CardProfileName");
 
         if (badgeProfile) {
-          badgeProfileId = badgeProfile._id
-          badgeProfileName = badgeProfile.CardProfileName || 'Delegate'
+          badgeProfileId = badgeProfile._id;
+          badgeProfileName = badgeProfile.CardProfileName || "Delegate";
         }
       }
 
       // UNIQUE KEY
-      const uniqueCompositeKey = `${eventId}-registration-${registration._id}`
+      const uniqueCompositeKey = `${eventId}-registration-${registration._id}`;
 
       // TRANSFORM DATA
       const transformedData = {
         eventId,
-        sourceType: 'registration',
+        sourceType: "registration",
         sourceId: registration._id,
-        prefix: registration.prefix || '',
-        name: registration.name || '',
-        gender: registration.gender || '',
-        email: registration.email || '',
-        mobile: registration.mobile || '',
-        designation: registration.designation || '',
-        affiliation: registration.affiliation || '',
-        department: registration.department || '',
-        city: registration.city || '',
-        state: registration.state || '',
-        country: registration.country || '',
-        address: registration.address || '',
-        pincode: registration.pincode || '',
-        mciNumber: registration.mciNumber || '',
-        mciState: registration.mciState || '',
-        regNum: registration.regNum || '',
-        registrationType: registration.registrationType || '',
+        prefix: registration.prefix || "",
+        name: registration.name || "",
+        gender: registration.gender || "",
+        email: registration.email || "",
+        mobile: registration.mobile || "",
+        designation: registration.designation || "",
+        affiliation: registration.affiliation || "",
+        department: registration.department || "",
+        city: registration.city || "",
+        state: registration.state || "",
+        country: registration.country || "",
+        address: registration.address || "",
+        pincode: registration.pincode || "",
+        mciNumber: registration.mciNumber || "",
+        mciState: registration.mciState || "",
+        regNum: registration.regNum || "",
+        registrationType: registration.registrationType || "",
 
         badgeProfileId,
         badgeProfileName,
         sponsorId: registration?.sponsorId?._id || null,
-        sponsorName: registration?.sponsorId?.sponsorName || '',
+        sponsorName: registration?.sponsorId?.sponsorName || "",
         parentRegistrationId: registration._id,
         isPaid: registration.isPaid || false,
         isSuspended: registration.isSuspended || false,
         uniqueCompositeKey,
-      }
+      };
 
       // CHECK EXISTING
       const alreadyExists = await OnsiteBadge.findOne({
         uniqueCompositeKey,
-      }).select('_id')
+      }).select("_id");
 
       if (alreadyExists) {
-        updatedCount++
+        updatedCount++;
       } else {
-        importedCount++
+        importedCount++;
       }
 
       // UPSERT
@@ -130,42 +126,42 @@ export const importRegistrations = async (req, res) => {
           },
           upsert: true,
         },
-      })
+      });
     }
 
     // BULK WRITE
     if (operations.length > 0) {
-      await OnsiteBadge.bulkWrite(operations)
+      await OnsiteBadge.bulkWrite(operations);
     }
 
     return res.status(200).json({
       success: true,
-      message: 'Registrations imported successfully',
+      message: "Registrations imported successfully",
       stats: {
         totalFetched: registrations.length,
         imported: importedCount,
         updated: updatedCount,
       },
-    })
+    });
   } catch (error) {
-    console.error('IMPORT REGISTRATIONS ERROR:', error)
+    console.error("IMPORT REGISTRATIONS ERROR:", error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to import registrations',
+      message: "Failed to import registrations",
       error: error.message,
-    })
+    });
   }
-}
+};
 
 // ===========fetch Accompany ============
 export const importAccompanies = async (req, res) => {
   try {
-    const { eventId } = req.params
+    const { eventId } = req.params;
     if (!mongoose.Types.ObjectId.isValid(eventId)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid event id',
-      })
+        message: "Invalid event id",
+      });
     }
 
     // FETCH ACCOMPANIES API
@@ -176,91 +172,80 @@ export const importAccompanies = async (req, res) => {
           Authorization: req.headers.authorization,
         },
       },
-    )
+    );
 
-    const accompanyData = accompanyResponse?.data?.data || []
+    const accompanyData = accompanyResponse?.data?.data || [];
     if (!accompanyData.length) {
       return res.status(404).json({
         success: false,
-        message: 'No accompanies found',
-      })
+        message: "No accompanies found",
+      });
     }
-    const operations = []
+    const operations = [];
 
-    let importedCount = 0
-    let updatedCount = 0
-    let totalAccompanies = 0
+    let importedCount = 0;
+    let updatedCount = 0;
+    let totalAccompanies = 0;
 
     for (const item of accompanyData) {
-      const registration = item?.registration || {}
-      const paidAccompanies = item?.paidAccompanies || []
-
-      // HANDLE CARD PROFILE
-      let badgeProfileId = null
-      let badgeProfileName = 'Accompany'
-
-      // POPULATED OBJECT
-      if (
-        registration?.cardProfileId &&
-        typeof registration.cardProfileId === 'object' &&
-        registration.cardProfileId?.CardProfileName
-      ) {
-        badgeProfileId = registration.cardProfileId._id || null
-        badgeProfileName =
-          registration.cardProfileId.CardProfileName || 'Accompany'
-      } else if (registration?.cardProfileId) {
-      // RAW OBJECT ID
-        const badgeProfile = await CardProfile.findById(
-          registration.cardProfileId,
-        ).select('_id CardProfileName')
-
-        if (badgeProfile) {
-          badgeProfileId = badgeProfile._id
-          badgeProfileName = badgeProfile.CardProfileName || 'Accompany'
-        }
-      }
+      const registration = item?.registration || {};
+      const paidAccompanies = item?.paidAccompanies || [];
 
       for (const accompany of paidAccompanies) {
+        let badgeProfileId = null;
+        let badgeProfileName = "Accompany";
+
+        if (accompany.cardProfileId) {
+          const badgeProfile = await CardProfile.findById(
+            accompany.cardProfileId,
+          ).select("_id CardProfileName");
+
+          if (badgeProfile) {
+            badgeProfileId = badgeProfile._id;
+            badgeProfileName = badgeProfile.CardProfileName || "Accompany";
+          }
+        }
+
         totalAccompanies++;
-        const uniqueCompositeKey = `${eventId}-accompany-${accompany._id}`
+        const uniqueCompositeKey = `${eventId}-accompany-${accompany._id}`;
         const transformedData = {
           eventId,
-          sourceType: 'accompany',
+          sourceType: "accompany",
           sourceId: accompany._id,
-          prefix: accompany.prefix || '',
-          name: accompany.fullName || accompany.name || '',
-          gender: accompany.gender || '',
-          email: accompany.email || '',
-          mobile: accompany.mobile || '',
-          designation: accompany.designation || '',
-          affiliation: registration.affiliation || '',
-          department: registration.department || '',
-          city: registration.city || '',
-          state: registration.state || '',
-          country: registration.country || '',
-          address: registration.address || '',
-          pincode: registration.pincode || '',
-          regNum: accompany.regNum || '',
-          registrationType: 'Accompany',
+          prefix: accompany.prefix || "",
+          name: accompany.fullName || accompany.name || "",
+          gender: accompany.gender || "",
+          email: accompany.email || "",
+          mobile: accompany.mobile || "",
+          designation: accompany.designation || "",
+          affiliation: registration.affiliation || "",
+          department: registration.department || "",
+          city: registration.city || "",
+          state: registration.state || "",
+          country: registration.country || "",
+          address: registration.address || "",
+          pincode: registration.pincode || "",
+          regNum: accompany.regNum || "",
+          registrationType: "Accompany",
           badgeProfileId,
           badgeProfileName,
           sponsorId: registration?.sponsorId?._id || null,
-          sponsorName: registration?.sponsorId?.sponsorName || '',
+          sponsorName: registration?.sponsorId?.sponsorName || "",
           parentRegistrationId: registration._id,
           isPaid: true,
           isSuspended: false,
           uniqueCompositeKey,
-        }
+        };
 
         // CHECK EXISTING
         const alreadyExists = await OnsiteBadge.findOne({
           uniqueCompositeKey,
-        }).select('_id')
+        }).select("_id");
 
         if (alreadyExists) {
-          updatedCount++
+          updatedCount++;
         } else {
-          importedCount++
+          importedCount++;
         }
 
         // UPSERT
@@ -274,184 +259,180 @@ export const importAccompanies = async (req, res) => {
             },
             upsert: true,
           },
-        })
+        });
       }
     }
 
-    
     if (operations.length > 0) {
-      await OnsiteBadge.bulkWrite(operations)
+      await OnsiteBadge.bulkWrite(operations);
     }
 
     return res.status(200).json({
       success: true,
-      message: 'Accompanies imported successfully',
+      message: "Accompanies imported successfully",
       stats: {
         totalFetched: totalAccompanies,
         imported: importedCount,
         updated: updatedCount,
       },
-    })
+    });
   } catch (error) {
-    console.error('IMPORT ACCOMPANIES ERROR:', error)
+    console.error("IMPORT ACCOMPANIES ERROR:", error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to import accompanies',
+      message: "Failed to import accompanies",
       error: error.message,
-    })
+    });
   }
-}
+};
 
 //====== Sponsor CSV / Excel Import ======
 export const importSponsorExcel = async (req, res) => {
   try {
-    const { eventId } = req.params
-    const { badgeProfileId } = req.body
+    const { eventId } = req.params;
+    const { badgeProfileId } = req.body;
 
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: 'File is required',
-      })
+        message: "File is required",
+      });
     }
 
     if (!badgeProfileId) {
       return res.status(400).json({
         success: false,
-        message: 'Badge profile is required',
-      })
+        message: "Badge profile is required",
+      });
     }
 
     const selectedBadgeProfile = await CardProfile.findById(
       badgeProfileId,
-    ).select('_id CardProfileName')
+    ).select("_id CardProfileName");
 
     if (!selectedBadgeProfile) {
       return res.status(404).json({
         success: false,
-        message: 'Selected badge profile not found',
-      })
+        message: "Selected badge profile not found",
+      });
     }
 
     // READ FILE FROM S3
     const response = await axios.get(req.file.location, {
-      responseType: 'arraybuffer',
-    })
+      responseType: "arraybuffer",
+    });
 
     // PARSE EXCEL
     const workbook = XLSX.read(response.data, {
-      type: 'buffer',
-    })
-    const sheetName = workbook.SheetNames[0]
-    const worksheet = workbook.Sheets[sheetName]
+      type: "buffer",
+    });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
     const rows = XLSX.utils.sheet_to_json(worksheet, {
-      defval: '',
-    })
+      defval: "",
+    });
 
     // EMPTY FILE CHECK
     if (!rows.length) {
       return res.status(400).json({
         success: false,
-        message: 'Excel file is empty',
-      })
+        message: "Excel file is empty",
+      });
     }
 
     // IMPORT BATCH ID
-    const importBatchId = `SPONSOR-${Date.now()}`
+    const importBatchId = `SPONSOR-${Date.now()}`;
 
-    let imported = 0
-    let updated = 0
-    let skipped = 0
+    let imported = 0;
+    let updated = 0;
+    let skipped = 0;
 
-    const duplicates = []
-    const invalidRows = []
-    const operations = []
+    const duplicates = [];
+    const invalidRows = [];
+    const operations = [];
 
-    const localDuplicateSet = new Set()
+    const localDuplicateSet = new Set();
 
     const lastSponsorBadge = await OnsiteBadge.findOne({
       eventId,
       regNum: {
-        $regex: '^SPONSOR-',
+        $regex: "^SPONSOR-",
       },
     })
       .sort({ createdAt: -1 })
-      .select('regNum')
+      .select("regNum");
 
-    let sponsorCounter = 1
+    let sponsorCounter = 1;
 
     if (lastSponsorBadge?.regNum) {
-      const match = lastSponsorBadge.regNum.match(/(\d+)$/)
+      const match = lastSponsorBadge.regNum.match(/(\d+)$/);
       if (match?.[1]) {
-        sponsorCounter = parseInt(match[1], 10) + 1
+        sponsorCounter = parseInt(match[1], 10) + 1;
       }
     }
 
     for (let index = 0; index < rows.length; index++) {
-      const row = rows[index]
-      const name = String(row.name || '').trim()
-      const email = String(row.email || '')
+      const row = rows[index];
+      const name = String(row.name || "").trim();
+      const email = String(row.email || "")
         .trim()
-        .toLowerCase()
-      const mobile = String(row.mobile || '').trim()
-      const designation = String(row.designation || '').trim()
-      const affiliation = String(row.affiliation || '').trim()
-      const department = String(row.department || '').trim()
-      const city = String(row.city || '').trim()
-      const state = String(row.state || '').trim()
-      const country = String(row.country || '').trim()
+        .toLowerCase();
+      const mobile = String(row.mobile || "").trim();
+      const designation = String(row.designation || "").trim();
+      const affiliation = String(row.affiliation || "").trim();
+      const department = String(row.department || "").trim();
+      const city = String(row.city || "").trim();
+      const state = String(row.state || "").trim();
+      const country = String(row.country || "").trim();
 
       if (!name) {
         invalidRows.push({
           row: index + 2,
-          reason: 'Name is required',
-        })
-        skipped++
-        continue
+          reason: "Name is required",
+        });
+        skipped++;
+        continue;
       }
 
       if (!email && !mobile) {
         invalidRows.push({
           row: index + 2,
-          reason: 'Email or mobile is required',
-        })
-        skipped++
-        continue
+          reason: "Email or mobile is required",
+        });
+        skipped++;
+        continue;
       }
 
-      const duplicateKey = `${eventId}-${email}-${mobile}`
+      const duplicateKey = `${eventId}-${email}-${mobile}`;
       if (localDuplicateSet.has(duplicateKey)) {
         duplicates.push({
           row: index + 2,
-          reason: 'Duplicate inside uploaded file',
-        })
-        skipped++
-        continue
+          reason: "Duplicate inside uploaded file",
+        });
+        skipped++;
+        continue;
       }
 
-      localDuplicateSet.add(duplicateKey)
+      localDuplicateSet.add(duplicateKey);
 
       const existingRecord = await OnsiteBadge.findOne({
         eventId,
         isDeleted: false,
-        $or: [
-          ...(email ? [{ email }] : []),
-          ...(mobile ? [{ mobile }] : []),
-        ],
-      }).select('_id regNum')
+        $or: [...(email ? [{ email }] : []), ...(mobile ? [{ mobile }] : [])],
+      }).select("_id regNum");
 
-      const uniqueCompositeKey = `${eventId}-sponsor_csv-${email}-${mobile}`
+      const uniqueCompositeKey = `${eventId}-sponsor_csv-${email}-${mobile}`;
 
-      let regNum = existingRecord?.regNum
+      let regNum = existingRecord?.regNum;
 
       if (!regNum) {
-        regNum = `SPONSOR-${String(sponsorCounter).padStart(4, '0')}`
-        sponsorCounter++
+        regNum = `SPONSOR-${String(sponsorCounter).padStart(4, "0")}`;
+        sponsorCounter++;
       }
 
       const transformedData = {
         eventId,
-        sourceType: 'sponsor_csv',
+        sourceType: "sponsor_csv",
         sourceId: uniqueCompositeKey,
         name,
         email,
@@ -464,20 +445,19 @@ export const importSponsorExcel = async (req, res) => {
         state,
         country,
         badgeProfileId: selectedBadgeProfile._id,
-        badgeProfileName:
-          selectedBadgeProfile.CardProfileName,
+        badgeProfileName: selectedBadgeProfile.CardProfileName,
         badgePrinted: false,
         printCount: 0,
         isPaid: true,
         isSuspended: false,
         importBatchId,
         uniqueCompositeKey,
-      }
+      };
 
       if (existingRecord) {
-        updated++
+        updated++;
       } else {
-        imported++
+        imported++;
       }
 
       operations.push({
@@ -490,16 +470,16 @@ export const importSponsorExcel = async (req, res) => {
           },
           upsert: true,
         },
-      })
+      });
     }
 
     if (operations.length > 0) {
-      await OnsiteBadge.bulkWrite(operations)
+      await OnsiteBadge.bulkWrite(operations);
     }
 
     return res.status(200).json({
       success: true,
-      message: 'Sponsor excel imported successfully',
+      message: "Sponsor excel imported successfully",
       fileUrl: req.file.location,
       badgeProfile: {
         id: selectedBadgeProfile._id,
@@ -513,249 +493,250 @@ export const importSponsorExcel = async (req, res) => {
         duplicates,
         invalidRows,
       },
-    })
+    });
   } catch (error) {
-    console.error('SPONSOR IMPORT ERROR:', error)
+    console.error("SPONSOR IMPORT ERROR:", error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to import sponsor excel',
+      message: "Failed to import sponsor excel",
       error: error.message,
-    })
+    });
   }
-}
+};
 
 //==== Add Manual Badge Functionality ====
 export const createManualBadge = async (req, res) => {
   try {
-    const { eventId } = req.params
-    const { prefix, name, gender, cardProfileId, email, mobile } = req.body
+    const { eventId } = req.params;
+    const { prefix, name, gender, cardProfileId, email, mobile } = req.body;
 
     if (!name) {
       return res.status(400).json({
         success: false,
-        message: 'Name is required',
-      })
+        message: "Name is required",
+      });
     }
 
     if (!email && !mobile) {
       return res.status(400).json({
         success: false,
-        message: 'Email or mobile is required',
-      })
+        message: "Email or mobile is required",
+      });
     }
 
     let badgeProfile = await CardProfile.findById(cardProfileId).select(
-      '_id CardProfileName',
-    )
+      "_id CardProfileName",
+    );
 
     if (!badgeProfile) {
       badgeProfile = await CardProfile.findOne({
-        CardProfileName: 'Delegate',
-      }).select('_id CardProfileName')
+        CardProfileName: "Delegate",
+      }).select("_id CardProfileName");
     }
 
     const existingRecord = await OnsiteBadge.findOne({
       eventId,
       $or: [...(email ? [{ email }] : []), ...(mobile ? [{ mobile }] : [])],
-    })
+    });
 
     if (existingRecord) {
       return res.status(409).json({
         success: false,
-        message: 'Badge already exists with same email or mobile',
-      })
+        message: "Badge already exists with same email or mobile",
+      });
     }
 
-    const uniqueCompositeKey = `${eventId}-manual-${email}-${mobile}`
+    const uniqueCompositeKey = `${eventId}-manual-${email}-${mobile}`;
 
     const regNum = await generateOnsiteRegNum({
       eventId,
-      type: 'SPOT',
-    })
+      type: "SPOT",
+    });
 
     const newBadge = await OnsiteBadge.create({
       eventId,
-      sourceType: 'manual',
+      sourceType: "manual",
       sourceId: uniqueCompositeKey,
-      prefix: prefix || 'Dr',
+      prefix: prefix || "Dr",
       name,
       gender,
-      email: email || '',
-      mobile: mobile || '',
+      email: email || "",
+      mobile: mobile || "",
       regNum,
       badgeProfileId: badgeProfile?._id || null,
-      badgeProfileName: badgeProfile?.CardProfileName || 'Delegate',
+      badgeProfileName: badgeProfile?.CardProfileName || "Delegate",
       badgePrinted: false,
       printCount: 0,
       isPaid: true,
       isSuspended: false,
       uniqueCompositeKey,
-    })
+    });
 
     return res.status(201).json({
       success: true,
-      message: 'Manual badge created successfully',
+      message: "Manual badge created successfully",
       data: newBadge,
-    })
+    });
   } catch (error) {
-    console.error('CREATE MANUAL BADGE ERROR:', error)
+    console.error("CREATE MANUAL BADGE ERROR:", error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to create manual badge',
+      message: "Failed to create manual badge",
       error: error.message,
-    })
+    });
   }
-}
+};
 
 //=== Update Manual Badge Functionality ===
 export const updateOnsiteBadge = async (req, res) => {
   try {
-    const { badgeId } = req.params
-    const { prefix, name, gender, cardProfileId, email, mobile } = req.body
+    const { badgeId } = req.params;
+    const { prefix, name, gender, cardProfileId, email, mobile } = req.body;
 
-    const existingBadge = await OnsiteBadge.findById(badgeId)
+    const existingBadge = await OnsiteBadge.findById(badgeId);
 
     if (!existingBadge) {
       return res.status(404).json({
         success: false,
-        message: 'Badge not found',
-      })
+        message: "Badge not found",
+      });
     }
 
     let badgeProfile = await CardProfile.findById(cardProfileId).select(
-      '_id CardProfileName',
-    )
+      "_id CardProfileName",
+    );
 
     if (!badgeProfile) {
       badgeProfile = await CardProfile.findOne({
-        CardProfileName: 'Delegate',
-      }).select('_id CardProfileName')
+        CardProfileName: "Delegate",
+      }).select("_id CardProfileName");
     }
 
     const duplicateBadge = await OnsiteBadge.findOne({
       _id: { $ne: badgeId },
       eventId: existingBadge.eventId,
       $or: [...(email ? [{ email }] : []), ...(mobile ? [{ mobile }] : [])],
-    })
+    });
 
     if (duplicateBadge) {
       return res.status(409).json({
         success: false,
-        message: 'Another badge already exists with same email or mobile',
-      })
+        message: "Another badge already exists with same email or mobile",
+      });
     }
 
-    existingBadge.prefix = prefix || 'Dr'
-    existingBadge.name = name
-    existingBadge.gender = gender
-    existingBadge.email = email || ''
-    existingBadge.mobile = mobile || ''
-    existingBadge.badgeProfileId = badgeProfile?._id || null
-    existingBadge.badgeProfileName = badgeProfile?.CardProfileName || 'Delegate'
+    existingBadge.prefix = prefix || "Dr";
+    existingBadge.name = name;
+    existingBadge.gender = gender;
+    existingBadge.email = email || "";
+    existingBadge.mobile = mobile || "";
+    existingBadge.badgeProfileId = badgeProfile?._id || null;
+    existingBadge.badgeProfileName =
+      badgeProfile?.CardProfileName || "Delegate";
 
-    await existingBadge.save()
+    await existingBadge.save();
 
     return res.status(200).json({
       success: true,
-      message: 'Badge updated successfully',
+      message: "Badge updated successfully",
       data: existingBadge,
-    })
+    });
   } catch (error) {
-    console.error('UPDATE ONSITE BADGE ERROR:', error)
+    console.error("UPDATE ONSITE BADGE ERROR:", error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to update badge',
+      message: "Failed to update badge",
       error: error.message,
-    })
+    });
   }
-}
+};
 
 //==== Get All Onsite Badges ====
 export const getAllOnsiteBadges = async (req, res) => {
   try {
-    const { eventId } = req.params
+    const { eventId } = req.params;
     const {
-      search = '',
+      search = "",
       sourceType,
       badgePrinted,
       badgeProfileName,
-    } = req.query
+    } = req.query;
 
     const filter = {
       eventId,
       isDeleted: false,
-    }
+    };
 
     if (search) {
       filter.$or = [
         {
           name: {
             $regex: search,
-            $options: 'i',
+            $options: "i",
           },
         },
         {
           email: {
             $regex: search,
-            $options: 'i',
+            $options: "i",
           },
         },
         {
           mobile: {
             $regex: search,
-            $options: 'i',
+            $options: "i",
           },
         },
         {
           regNum: {
             $regex: search,
-            $options: 'i',
+            $options: "i",
           },
         },
-      ]
+      ];
     }
 
     if (sourceType) {
-      filter.sourceType = sourceType
+      filter.sourceType = sourceType;
     }
     if (badgePrinted !== undefined) {
-      filter.badgePrinted = badgePrinted === 'true'
+      filter.badgePrinted = badgePrinted === "true";
     }
     if (badgeProfileName) {
-      filter.badgeProfileName = badgeProfileName
+      filter.badgeProfileName = badgeProfileName;
     }
     const badges = await OnsiteBadge.find(filter).sort({
       createdAt: -1,
-    })
-    const total = badges.length
+    });
+    const total = badges.length;
     return res.status(200).json({
       success: true,
       total,
       data: badges,
-    })
+    });
   } catch (error) {
-    console.error('GET ALL ONSITE BADGES ERROR:', error)
+    console.error("GET ALL ONSITE BADGES ERROR:", error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to fetch onsite badges',
+      message: "Failed to fetch onsite badges",
       error: error.message,
-    })
+    });
   }
-}
+};
 
 //====================================
 // SEND BULK BADGE EMAILS
 //====================================
 export const sendBulkBadgeEmails = async (req, res) => {
   try {
-    const { eventId } = req.params
+    const { eventId } = req.params;
 
-    const event = await Event.findById(eventId)
+    const event = await Event.findById(eventId);
     if (!event) {
       return res.status(404).json({
         success: false,
-        message: 'Event not found',
-      })
+        message: "Event not found",
+      });
     }
 
     const badges = await OnsiteBadge.find({
@@ -763,33 +744,33 @@ export const sendBulkBadgeEmails = async (req, res) => {
       isDeleted: false,
       isSuspended: false,
       email: {
-        $ne: '',
+        $ne: "",
       },
       bulkEmailSent: false,
-    })
+    });
 
     if (!badges.length) {
       return res.status(400).json({
         success: false,
-        message: 'All badge emails already sent',
-      })
+        message: "All badge emails already sent",
+      });
     }
 
-    let totalSent = 0
-    let failedEmails = []
+    let totalSent = 0;
+    let failedEmails = [];
 
     for (const badge of badges) {
       try {
         // const qrCode = await QRCode.toDataURL(badge.regNum) // OLD - USING QR CODE LIBRARY
         const qrCode = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
           badge.regNum,
-        )}`
+        )}`;
 
         await sendEmailWithTemplate({
           to: badge.email,
           name: badge.name,
           templateKey:
-            '2518b.554b0da719bc314.k1.13012a80-54ea-11f1-9ef1-d2cf08f4ca8c.19e4985ed28',
+            "2518b.554b0da719bc314.k1.13012a80-54ea-11f1-9ef1-d2cf08f4ca8c.19e4985ed28",
 
           mergeInfo: {
             name: badge.name,
@@ -799,77 +780,77 @@ export const sendBulkBadgeEmails = async (req, res) => {
             endDateTime: getIndianFormattedDateTime(event.endDateTime),
             qrCode,
           },
-        })
+        });
 
-        badge.bulkEmailSent = true
-        badge.bulkEmailSentAt = new Date()
-        await badge.save()
-        totalSent++
+        badge.bulkEmailSent = true;
+        badge.bulkEmailSentAt = new Date();
+        await badge.save();
+        totalSent++;
       } catch (emailError) {
-        console.error(`Badge email failed for ${badge.email}`, emailError)
+        console.error(`Badge email failed for ${badge.email}`, emailError);
         failedEmails.push({
           email: badge.email,
           reason: emailError.message,
-        })
+        });
       }
     }
 
     return res.status(200).json({
       success: true,
-      message: 'Bulk badge emails sent successfully',
+      message: "Bulk badge emails sent successfully",
       totalSent,
       totalFailed: failedEmails.length,
       failedEmails,
-    })
+    });
   } catch (error) {
-    console.error('SEND BULK BADGE EMAIL ERROR:', error)
+    console.error("SEND BULK BADGE EMAIL ERROR:", error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to send bulk badge emails',
+      message: "Failed to send bulk badge emails",
       error: error.message,
-    })
+    });
   }
-}
+};
 
 //=======================================
 // SEND SINGLE BADGE EMAIL
 //=======================================
 export const sendSingleBadgeEmail = async (req, res) => {
   try {
-    const { badgeId } = req.params
+    const { badgeId } = req.params;
 
-    const badge = await OnsiteBadge.findById(badgeId)
+    const badge = await OnsiteBadge.findById(badgeId);
     if (!badge) {
       return res.status(404).json({
         success: false,
-        message: 'Badge not found',
-      })
+        message: "Badge not found",
+      });
     }
 
-    const event = await Event.findById(badge.eventId)
+    const event = await Event.findById(badge.eventId);
     if (!event) {
       return res.status(404).json({
         success: false,
-        message: 'Event not found',
-      })
+        message: "Event not found",
+      });
     }
 
     if (!badge.email) {
       return res.status(400).json({
         success: false,
-        message: 'Badge email not found',
-      })
+        message: "Badge email not found",
+      });
     }
 
     const qrCode = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
       badge.regNum,
-    )}`
+    )}`;
 
     await sendEmailWithTemplate({
       to: badge.email,
       name: badge.name,
       templateKey:
-        '2518b.554b0da719bc314.k1.13012a80-54ea-11f1-9ef1-d2cf08f4ca8c.19e4985ed28',
+        "2518b.554b0da719bc314.k1.13012a80-54ea-11f1-9ef1-d2cf08f4ca8c.19e4985ed28",
       mergeInfo: {
         name: badge.name,
         regNum: badge.regNum,
@@ -878,26 +859,26 @@ export const sendSingleBadgeEmail = async (req, res) => {
         endDateTime: getIndianFormattedDateTime(event.endDateTime),
         qrCode,
       },
-    })
+    });
 
-    badge.singleEmailSent = true
-    badge.singleEmailSentAt = new Date()
+    badge.singleEmailSent = true;
+    badge.singleEmailSentAt = new Date();
 
-    await badge.save()
+    await badge.save();
 
     return res.status(200).json({
       success: true,
-      message: 'Badge email sent successfully',
-    })
+      message: "Badge email sent successfully",
+    });
   } catch (error) {
-    console.error('SEND SINGLE BADGE EMAIL ERROR:', error)
+    console.error("SEND SINGLE BADGE EMAIL ERROR:", error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to send badge email',
+      message: "Failed to send badge email",
       error: error.message,
-    })
+    });
   }
-}
+};
 
 // //======== Onsite Badge Search Controller ======
 // export const searchOnsiteBadges = async (req, res) => {
@@ -1092,8 +1073,6 @@ export const sendSingleBadgeEmail = async (req, res) => {
 //     })
 //   }
 // }
-
-
 
 // ======================================================
 // SEARCH BADGES
