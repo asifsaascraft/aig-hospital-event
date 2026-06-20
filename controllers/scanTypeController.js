@@ -203,17 +203,10 @@ export const updateScanType = async (req, res) => {
       });
     }
 
-    /**
-     * FINAL VALUES
-     */
-
+    // FINAL VALUES
     const finalScanCode = scanCode
       ? scanCode.trim().toUpperCase()
       : existing.scanCode;
-
-    /**
-     * DUPLICATE CHECK
-     */
 
     const duplicate = await ScanType.findOne({
       eventId: existing.eventId,

@@ -1,110 +1,54 @@
-import mongoose from 'mongoose'
+import mongoose from "mongoose";
 
 const BadgeProfilePrivilegeSchema = new mongoose.Schema(
   {
-    /**
-     * EVENT
-     */
-
     eventId: {
       type: mongoose.Schema.Types.ObjectId,
-
-      ref: 'Event',
-
+      ref: "Event",
       required: true,
     },
-
-    /**
-     * BADGE PROFILE
-     */
-
     badgeProfileId: {
       type: mongoose.Schema.Types.ObjectId,
-
-      ref: 'CardProfile',
-
+      ref: "CardProfile",
       required: true,
     },
-
-    /**
-     * SCAN TYPE
-     */
-
     scanTypeId: {
       type: mongoose.Schema.Types.ObjectId,
-
-      ref: 'ScanType',
-
+      ref: "ScanType",
       required: true,
     },
-
-    /**
-     * ACCESS CONTROL
-     */
-
     isAllowed: {
       type: Boolean,
-
       default: false,
     },
-
-    /**
-     * OPTIONAL NOTE
-     */
-
     note: {
       type: String,
-
       trim: true,
-
-      default: '',
+      default: "",
     },
-
-    /**
-     * STATUS
-     */
-
     status: {
       type: String,
-
-      enum: ['Active', 'Inactive'],
-
-      default: 'Active',
+      enum: ["Active", "Inactive"],
+      default: "Active",
     },
-
-    /**
-     * SOFT DELETE
-     */
-
     isDeleted: {
       type: Boolean,
-
       default: false,
     },
   },
-
   {
     timestamps: true,
   },
-)
-
-/**
- * PREVENT DUPLICATES
- */
+);
 
 BadgeProfilePrivilegeSchema.index(
   {
     eventId: 1,
-
     badgeProfileId: 1,
-
     scanTypeId: 1,
   },
-
-  {
-    unique: true,
-  },
-)
+  { unique: true },
+);
 
 export default mongoose.models.BadgeProfilePrivilege ||
-  mongoose.model('BadgeProfilePrivilege', BadgeProfilePrivilegeSchema)
+  mongoose.model("BadgeProfilePrivilege", BadgeProfilePrivilegeSchema);
