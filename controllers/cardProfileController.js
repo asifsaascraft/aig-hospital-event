@@ -34,7 +34,6 @@ export const createCardProfile = async (req, res) => {
       message: "Card profile created successfully",
       data: profile,
     });
-
   } catch (error) {
     console.error("Create CardProfile error:", error);
 
@@ -53,7 +52,6 @@ export const createCardProfile = async (req, res) => {
 // =======================
 export const getCardProfiles = async (req, res) => {
   try {
-
     const profiles = await CardProfile.find().sort({
       createdAt: -1,
     });
@@ -63,7 +61,6 @@ export const getCardProfiles = async (req, res) => {
       message: "Card profiles fetched successfully",
       data: profiles,
     });
-
   } catch (error) {
     console.error("Get CardProfiles error:", error);
     res.status(500).json({ message: "Server Error" });
@@ -75,7 +72,6 @@ export const getCardProfiles = async (req, res) => {
 // =======================
 export const getActiveCardProfiles = async (req, res) => {
   try {
-
     const profiles = await CardProfile.find({
       status: "Active",
     }).sort({ createdAt: -1 });
@@ -85,7 +81,6 @@ export const getActiveCardProfiles = async (req, res) => {
       message: "Active card profiles fetched successfully",
       data: profiles,
     });
-
   } catch (error) {
     console.error("Get Active CardProfiles error:", error);
     res.status(500).json({ message: "Server Error" });
@@ -108,17 +103,16 @@ export const updateCardProfile = async (req, res) => {
       });
     }
 
-    // Prevent updating Delegate profile
-    if (profile.CardProfileName === "Delegate") {
+    // Prevent updating Delegate & Accompany profiles
+    if (["Delegate", "Accompany"].includes(profile.CardProfileName)) {
       return res.status(400).json({
         success: false,
-        message: "Delegate card profile cannot be updated",
+        message: `${profile.CardProfileName} card profile cannot be updated`,
       });
     }
 
     // Prevent duplicate globally
     if (CardProfileName) {
-
       const existing = await CardProfile.findOne({
         CardProfileName: CardProfileName.trim(),
         _id: { $ne: id },
@@ -145,7 +139,6 @@ export const updateCardProfile = async (req, res) => {
       message: "Card profile updated successfully",
       data: profile,
     });
-
   } catch (error) {
     console.error("Update CardProfile error:", error);
 
@@ -176,11 +169,11 @@ export const deleteCardProfile = async (req, res) => {
       });
     }
 
-    // Prevent deleting Delegate profile
-    if (profile.CardProfileName === "Delegate") {
+    // Prevent deleting Delegate & Accompany profiles
+    if (["Delegate", "Accompany"].includes(profile.CardProfileName)) {
       return res.status(400).json({
         success: false,
-        message: "Delegate card profile cannot be deleted",
+        message: `${profile.CardProfileName} card profile cannot be deleted`,
       });
     }
 
@@ -190,7 +183,6 @@ export const deleteCardProfile = async (req, res) => {
       success: true,
       message: "Card profile deleted successfully",
     });
-
   } catch (error) {
     console.error("Delete CardProfile error:", error);
     res.status(500).json({ message: "Server Error" });
