@@ -14,6 +14,7 @@ import {
   bulkRegisterForEventByEventAdmin,
   onSpotRegisterForEventByEventAdmin,
   getMyEventAdminRegistrations,
+  getAllSpotRegistrationsByEvent,
   updateEventRegistration,
   getEventVisitorsNotRegistered,
   sendReminderEmails,
@@ -129,6 +130,14 @@ router.get(
   protect,
   authorizeRoles("eventAdmin"),
   getMyEventAdminRegistrations
+);
+
+// Get All Spot Registrations for an Event (Event Admin)
+router.get(
+  "/event-admin/events/:eventId/spot-registrations",
+  protect,
+  authorizeRoles("eventAdmin"),
+  getAllSpotRegistrationsByEvent
 );
 
 // =====================================

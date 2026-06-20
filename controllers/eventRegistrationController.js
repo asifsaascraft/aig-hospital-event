@@ -1706,6 +1706,57 @@ export const getMyEventAdminRegistrations = async (req, res) => {
   }
 };
 
+/*
+========================================================
+  Get All Spot Registrations By Event (Event Admin)
+========================================================
+*/
+export const getAllSpotRegistrationsByEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    const event = await Event.findById(eventId);
+
+    if (!event) {
+      return res.status(404).json({
+        message: "Event not found",
+      });
+    }
+
+    const registrations = await EventRegistration.find({
+      eventId,
+      registrationType: "On-Spot Registration",
+      isPaid: true,
+    })
+      .populate({
+        path: "cardProfileId",
+        select: "CardProfileName",
+      })
+      .populate({
+        path: "eventAdminId",
+        select: "name",
+      })
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "Spot registrations fetched successfully",
+      event: {
+        id: event._id,
+        name: event.eventName,
+      },
+      totalRegistrations: registrations.length,
+      data: registrations,
+    });
+  } catch (error) {
+    console.error("Get spot registrations error:", error);
+
+    return res.status(500).json({
+      message: "Server Error",
+    });
+  }
+};
+
 /* 
 ========================================================
   12. Update Registrations By eventAdmin (Event Admin)

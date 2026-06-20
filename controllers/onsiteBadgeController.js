@@ -277,11 +277,15 @@ export const importAccompanies = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("IMPORT ACCOMPANIES ERROR:", error);
+    console.error(
+      "IMPORT ACCOMPANIES ERROR:",
+      error?.response?.data || error.message,
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to import accompanies",
-      error: error.message,
+      error: error?.response?.data || error.message,
     });
   }
 };
