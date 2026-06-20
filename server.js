@@ -71,6 +71,7 @@ import scanTypeRoutes from "./routes/scanTypeRoutes.js";
 import onsiteBadgeRoutes from "./routes/onsiteBadgeRoutes.js";
 import badgeProfilePrivilegeRoutes from './routes/badgeProfilePrivilegeRoutes.js'
 import loginGenerateTokenRoutes from "./routes/loginGenerateTokenRoutes.js";
+import onsiteScanRoutes from "./routes/onsiteScanRoutes.js";
 
 await connectDB();
 
@@ -174,6 +175,7 @@ app.use("/api", scanTypeRoutes);
 app.use('/api', onsiteBadgeRoutes)
 app.use('/api', badgeProfilePrivilegeRoutes)
 app.use('/api', loginGenerateTokenRoutes)
+app.use('/api', onsiteScanRoutes)
 
 
 // =======================
