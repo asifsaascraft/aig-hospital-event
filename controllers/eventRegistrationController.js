@@ -1466,9 +1466,216 @@ export const bulkRegisterForEventByEventAdmin = async (req, res) => {
   }
 };
 
+// ======================================
+//  10. ADD EVENT REGISTRATION (Protected) (On-Spot registration)
+// ======================================
+export const onSpotRegisterForEventByEventAdmin = async (req, res) => {
+  try {
+    const eventAdminId = req.user._id;
+    const { eventId } = req.params;
+
+    const {
+      userId,
+      prefix,
+      cardProfileId,
+      name,
+      gender,
+      email,
+      mobile,
+      designation,
+      affiliation,
+      mciNumber,
+      mciState,
+      department,
+      alternateEmail,
+      alternateMobile,
+      country,
+      city,
+      state,
+      address,
+      pincode,
+    } = req.body;
+
+    // ===============================
+    // Validate Event
+    // ===============================
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "userId is required",
+      });
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // ===============================
+    // Validate Event
+    // ===============================
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: "Event not found" });
+
+    // ===============================
+    // Validate Card Profile
+    // ===============================
+    if (!cardProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: "cardProfileId is required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(cardProfileId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid cardProfileId",
+      });
+    }
+
+    const cardProfile = await CardProfile.findOne({
+      _id: cardProfileId,
+      status: "Active",
+    });
+
+    if (!cardProfile) {
+      return res.status(404).json({
+        success: false,
+        message: "Active card profile not found",
+      });
+    }
+
+    // ===============================
+    // Suspended Check
+    // ===============================
+    const suspendedReg = await EventRegistration.findOne({
+      userId,
+      eventId,
+      isSuspended: true,
+    });
+
+    if (suspendedReg) {
+      return res.status(403).json({
+        success: false,
+        message: "Your previous registration for this event is suspended.",
+      });
+    }
+
+    // ===============================
+    // Already Paid Check
+    // ===============================
+    const existingPaidReg = await EventRegistration.findOne({
+      userId,
+      eventId,
+      isPaid: true,
+    });
+
+    if (existingPaidReg) {
+      return res.status(400).json({
+        success: false,
+        message: "User already registered for this event",
+      });
+    }
+
+    const updatedEvent = await Event.findByIdAndUpdate(
+      event._id,
+      { $inc: { regCounter: 1 } },
+      { new: true }
+    );
+
+    const generatedRegNum = `${event.eventCode}-${updatedEvent.regCounter}`;
+
+    // ===============================
+    // Create Registration
+    // ===============================
+    const registration = await EventRegistration.create({
+      eventAdminId,
+      userId,
+      eventId,
+      prefix,
+      cardProfileId,
+      name,
+      gender,
+      email,
+      mobile,
+      designation,
+      affiliation,
+      mciNumber,
+      mciState,
+      department,
+      alternateEmail,
+      alternateMobile,
+      country,
+      city,
+      state,
+      address,
+      pincode,
+      isPaid: true,
+      regNumGenerated: true,
+      regNum: generatedRegNum,
+      registrationType: "On-Spot Registration",
+    });
+
+    // -----------------------------
+    // SAFE FALLBACKS (IMPORTANT)
+    // -----------------------------
+    const finalEmail = email || targetUser.email;
+    const finalName = name || targetUser.name;
+
+    // ----------------------------------------------------
+    //  Send Email Notification to User
+    // ----------------------------------------------------
+    try {
+      await sendEmailWithTemplate({
+        to: finalEmail,
+        name: finalName,
+        templateKey:
+          "2518b.554b0da719bc314.k1.6e017640-d986-11f0-8c89-62d0161cbd93.19b20e123a4",
+        mergeInfo: {
+          eventName: event.eventName,
+          registrationNumber: generatedRegNum,
+          startDate: event.startDateTime
+            ? moment(event.startDateTime).format("DD MMM YYYY, hh:mm A")
+            : "N/A",
+
+          endDate: event.endDateTime
+            ? moment(event.endDateTime).format("DD MMM YYYY, hh:mm A")
+            : "N/A",
+          prefix,
+          name,
+          email,
+          mobile,
+          designation,
+          affiliation,
+          country,
+          state,
+          city,
+          address,
+          pincode,
+        },
+      });
+    } catch (emailError) {
+      console.error("Email sending failed:", emailError);
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "On-Spot Registration successfull by event admin",
+      data: registration,
+    });
+  } catch (error) {
+    console.error("Sponsor registration error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
 /* 
 ========================================================
-  10. Get All Registrations for an Event per eventAdmin (Event Admin)
+  11. Get All Registrations for an Event per eventAdmin (Event Admin)
 ========================================================
 */
 export const getMyEventAdminRegistrations = async (req, res) => {
@@ -1501,7 +1708,7 @@ export const getMyEventAdminRegistrations = async (req, res) => {
 
 /* 
 ========================================================
-  11. Update Registrations By eventAdmin (Event Admin)
+  12. Update Registrations By eventAdmin (Event Admin)
 ========================================================
 */
 export const updateEventRegistration = async (req, res) => {
@@ -1574,7 +1781,7 @@ export const updateEventRegistration = async (req, res) => {
 
 /* 
 ========================================================
-  12. Update Card Profile of Registration (Event Admin)
+  13. Update Card Profile of Registration (Event Admin)
 ========================================================
 */
 export const updateRegistrationCardProfile = async (req, res) => {
@@ -1704,7 +1911,7 @@ export const updateRegistrationCardProfile = async (req, res) => {
 
 /*
 ========================================================
-  13. Get Event Visitors Not Registered
+  14. Get Event Visitors Not Registered
 ========================================================
 */
 export const getEventVisitorsNotRegistered = async (req, res) => {
@@ -1765,7 +1972,7 @@ export const getEventVisitorsNotRegistered = async (req, res) => {
 
 /*
 ========================================================
-  14. Send Reminder Emails
+  15. Send Reminder Emails
 ========================================================
 */
 
@@ -1864,7 +2071,7 @@ export const sendReminderEmails = async (req, res) => {
 
 /*
 ========================================================
- 15. Send Reminder Email To Single User
+ 16. Send Reminder Email To Single User
 ========================================================
 */
 export const sendReminderEmailToSingleUser = async (req, res) => {
@@ -1982,7 +2189,7 @@ export const sendReminderEmailToSingleUser = async (req, res) => {
 
 /* 
 ========================================================
-  16. Get All Card Profile Updated Registrations
+  17. Get All Card Profile Updated Registrations
 ========================================================
 */
 export const getCardProfileUpdatedRegistrations = async (req, res) => {

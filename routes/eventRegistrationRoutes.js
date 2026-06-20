@@ -12,6 +12,7 @@ import {
   registerForEventByEventAdmin,
   checkEmailRegister,
   bulkRegisterForEventByEventAdmin,
+  onSpotRegisterForEventByEventAdmin,
   getMyEventAdminRegistrations,
   updateEventRegistration,
   getEventVisitorsNotRegistered,
@@ -110,8 +111,18 @@ router.post(
   bulkRegisterForEventByEventAdmin
 );
 
+// ======================================
+//  11. ADD EVENT REGISTRATION (Protected) (On-Spot registration)
+// ======================================
+router.post(
+  "/event-admin/events/:eventId/spot-register",
+  protect,
+  authorizeRoles("eventAdmin"),
+  onSpotRegisterForEventByEventAdmin
+);
+
 // =====================================
-//  11. Get Registrations (Only registrations created by logged-in eventAdmin)
+//  12. Get Registrations (Only registrations created by logged-in eventAdmin)
 // =====================================
 router.get(
   "/event-admin/events/:eventId/my-registrations",
@@ -121,7 +132,7 @@ router.get(
 );
 
 // =====================================
-//  12. Update Registration (Only registrations created by logged-in eventAdmin)
+//  13. Update Registration (Only registrations created by logged-in eventAdmin)
 // =====================================
 router.put(
   "/event-admin/registrations/:registrationId",
@@ -131,7 +142,7 @@ router.put(
 );
 
 // =====================================
-//  13. Update Registration Card Profile
+//  14. Update Registration Card Profile
 // =====================================
 router.put(
   "/event-admin/events/:eventId/update-card-profile",
@@ -141,7 +152,7 @@ router.put(
 );
 
 // =====================================
-//  14. Get All Card Profile Updated Registrations
+//  15. Get All Card Profile Updated Registrations
 // =====================================
 router.get(
   "/event-admin/events/:eventId/updated-card-profile",
@@ -151,7 +162,7 @@ router.get(
 );
 
 // =====================================
-//  15. Send reminder email
+//  16. Send reminder email
 // =====================================
 router.post(
   "/event-admin/events/:eventId/send-reminders",
@@ -161,7 +172,7 @@ router.post(
 );
 
  // =====================================
- //  16. Send reminder email to single user
+ //  17. Send reminder email to single user
  // =====================================
 router.post(
   "/event-admin/events/:eventId/send-reminder",

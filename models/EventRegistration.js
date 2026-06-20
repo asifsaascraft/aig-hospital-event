@@ -170,7 +170,7 @@ const EventRegistrationSchema = new mongoose.Schema(
     },
     registrationType: {
       type: String,
-      enum: ["Online Registration", "Offline Registration", "Sponsor Registration"],
+      enum: ["Online Registration", "Offline Registration", "Sponsor Registration", "On-Spot Registration"],
       default: "Online Registration"
     },
   },
