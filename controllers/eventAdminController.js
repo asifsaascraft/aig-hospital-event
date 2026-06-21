@@ -222,7 +222,7 @@ export const myEvents = async (req, res) => {
     }
 
     const events = assignment.assignedEvents
-      .filter(item => item.eventId)
+      .filter((item) => item.eventId)
       .map((item) => {
         const event = item.eventId.toObject({ virtuals: true });
 
@@ -280,11 +280,10 @@ export const myEventById = async (req, res) => {
     const eventAdminId = req.user._id;
     const { eventId } = req.params;
 
-    const assignment = await EventAssign.findOne({ eventAdminId })
-      .populate({
-        path: "assignedEvents.eventId",
-        select: "eventName",
-      });
+    const assignment = await EventAssign.findOne({ eventAdminId }).populate({
+      path: "assignedEvents.eventId",
+      select: "eventName",
+    });
 
     if (!assignment) {
       return res.status(404).json({
@@ -294,7 +293,7 @@ export const myEventById = async (req, res) => {
     }
 
     const assignedEvent = assignment.assignedEvents.find(
-      (item) => item.eventId._id.toString() === eventId
+      (item) => item.eventId && item.eventId._id.toString() === eventId,
     );
 
     if (!assignedEvent) {
@@ -307,10 +306,7 @@ export const myEventById = async (req, res) => {
     //  Filter only TRUE modules
     const allowedModules = {};
     Object.entries(assignedEvent.toObject()).forEach(([key, value]) => {
-      if (
-        typeof value === "boolean" &&
-        value === true
-      ) {
+      if (typeof value === "boolean" && value === true) {
         allowedModules[key] = true;
       }
     });
