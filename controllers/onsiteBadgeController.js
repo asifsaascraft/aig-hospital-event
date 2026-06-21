@@ -766,18 +766,9 @@ export const sendBulkBadgeEmails = async (req, res) => {
     for (const badge of badges) {
       try {
         // const qrCode = await QRCode.toDataURL(badge.regNum) // OLD - USING QR CODE LIBRARY
-        const qrCode = await QRCode.toDataURL(
-  badge.regNum,
-  {
-    errorCorrectionLevel: 'H',
-    margin: 6,
-    width: 600,
-    color: {
-      dark: '#000000',
-      light: '#FFFFFF',
-    },
-  },
-)
+       const qrCode = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+          badge.regNum,
+        )}`;
 
         await sendEmailWithTemplate({
           to: badge.email,
@@ -855,18 +846,9 @@ export const sendSingleBadgeEmail = async (req, res) => {
       });
     }
 
-    const qrCode = await QRCode.toDataURL(
-  badge.regNum,
-  {
-    errorCorrectionLevel: 'H',
-    margin: 6,
-    width: 600,
-    color: {
-      dark: '#000000',
-      light: '#FFFFFF',
-    },
-  },
-)
+   const qrCode = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+          badge.regNum,
+        )}`;
 
     await sendEmailWithTemplate({
       to: badge.email,
