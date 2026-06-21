@@ -427,7 +427,7 @@ export const registerForEvent = async (req, res) => {
       const updatedEvent = await Event.findByIdAndUpdate(
         event._id,
         { $inc: { regCounter: 1 } },
-        { new: true }
+        { new: true },
       );
 
       const generatedRegNum = `${event.eventCode}-${updatedEvent.regCounter}`;
@@ -719,8 +719,9 @@ export const updateRegistrationSuspension = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Registration ${isSuspended ? "suspended" : "unsuspended"
-        } successfully`,
+      message: `Registration ${
+        isSuspended ? "suspended" : "unsuspended"
+      } successfully`,
       data: registration,
     });
   } catch (error) {
@@ -1099,7 +1100,7 @@ export const registerForEventByEventAdmin = async (req, res) => {
     const updatedEvent = await Event.findByIdAndUpdate(
       event._id,
       { $inc: { regCounter: 1 } },
-      { new: true }
+      { new: true },
     );
 
     const generatedRegNum = `${event.eventCode}-${updatedEvent.regCounter}`;
@@ -1377,7 +1378,7 @@ export const bulkRegisterForEventByEventAdmin = async (req, res) => {
     const updatedEvent = await Event.findByIdAndUpdate(
       event._id,
       { $inc: { regCounter: 1 } },
-      { new: true }
+      { new: true },
     );
 
     const generatedRegNum = `${event.eventCode}-${updatedEvent.regCounter}`;
@@ -1584,7 +1585,7 @@ export const onSpotRegisterForEventByEventAdmin = async (req, res) => {
     const updatedEvent = await Event.findByIdAndUpdate(
       event._id,
       { $inc: { regCounter: 1 } },
-      { new: true }
+      { new: true },
     );
 
     const generatedRegNum = `${event.eventCode}-${updatedEvent.regCounter}`;
@@ -1791,7 +1792,6 @@ export const updateEventRegistration = async (req, res) => {
     // Validate cardProfileId
     // ===============================
     if (updateData.cardProfileId) {
-
       if (!mongoose.Types.ObjectId.isValid(updateData.cardProfileId)) {
         return res.status(400).json({
           success: false,
@@ -1829,7 +1829,6 @@ export const updateEventRegistration = async (req, res) => {
   }
 };
 
-
 /* 
 ========================================================
   13. Update Card Profile of Registration (Event Admin)
@@ -1837,31 +1836,33 @@ export const updateEventRegistration = async (req, res) => {
 */
 export const updateRegistrationCardProfile = async (req, res) => {
   try {
-
     const { eventId } = req.params;
 
-    const {
-      eventRegistrationId,
-      cardProfileId,
-    } = req.body;
+    const { eventRegistrationIds, cardProfileId } = req.body;
 
     // ===============================
-    // Validate eventRegistrationId
+    // Validate all eventRegistrationIds
     // ===============================
-    if (!eventRegistrationId) {
+    if (
+      !Array.isArray(eventRegistrationIds) ||
+      eventRegistrationIds.length === 0
+    ) {
       return res.status(400).json({
         success: false,
-        message: "eventRegistrationId is required",
+        message: "eventRegistrationIds is required",
       });
     }
 
-    if (!mongoose.Types.ObjectId.isValid(eventRegistrationId)) {
+    const invalidIds = eventRegistrationIds.filter(
+      (id) => !mongoose.Types.ObjectId.isValid(id),
+    );
+
+    if (invalidIds.length > 0) {
       return res.status(400).json({
         success: false,
-        message: "Invalid eventRegistrationId",
+        message: "One or more eventRegistrationIds are invalid",
       });
     }
-
     // ===============================
     // Validate cardProfileId
     // ===============================
@@ -1891,66 +1892,51 @@ export const updateRegistrationCardProfile = async (req, res) => {
       });
     }
 
-    // ===============================
-    // Find Registration
-    // ===============================
-    const registration = await EventRegistration.findOne({
-      _id: eventRegistrationId,
+    const registrations = await EventRegistration.find({
+      _id: { $in: eventRegistrationIds },
       eventId,
     });
 
-    if (!registration) {
+    if (registrations.length !== eventRegistrationIds.length) {
       return res.status(404).json({
         success: false,
-        message: "Registration not found",
-      });
-    }
-
-    // ===============================
-    // Prevent Same Card Profile Update
-    // ===============================
-    if (
-      registration.cardProfileId.toString() ===
-      cardProfileId
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "This card profile is already assigned",
+        message:
+          "One or more registrations not found or do not belong to this event",
       });
     }
 
     // ===============================
     // Update Card Profile
     // ===============================
-    registration.cardProfileId = cardProfileId;
+    const result = await EventRegistration.updateMany(
+      {
+        _id: { $in: eventRegistrationIds },
+        eventId,
+      },
+      {
+        $set: {
+          cardProfileId,
+          cardProfileUpdated: true,
+        },
+      },
+    );
 
-    registration.cardProfileUpdated = true;
-
-    await registration.save();
-
-    // ===============================
-    // Populate Updated Data
-    // ===============================
-    const updatedRegistration =
-      await EventRegistration.findById(
-        eventRegistrationId
-      ).populate({
-        path: "cardProfileId",
-        select: "CardProfileName",
-      });
+    const updatedRegistrations = await EventRegistration.find({
+      _id: { $in: eventRegistrationIds },
+      eventId,
+    }).populate({
+      path: "cardProfileId",
+      select: "CardProfileName",
+    });
 
     return res.status(200).json({
       success: true,
       message: "Card profile updated successfully",
-      data: updatedRegistration,
+      totalUpdated: result.modifiedCount,
+      data: updatedRegistrations,
     });
-
   } catch (error) {
-
-    console.error(
-      "Update card profile error:",
-      error
-    );
+    console.error("Update card profile error:", error);
 
     return res.status(500).json({
       success: false,
@@ -1958,7 +1944,6 @@ export const updateRegistrationCardProfile = async (req, res) => {
     });
   }
 };
-
 
 /*
 ========================================================
@@ -1995,14 +1980,11 @@ export const getEventVisitorsNotRegistered = async (req, res) => {
       isSuspended: false,
     }).select("userId");
 
-    const registeredUserIds = registrations.map((r) =>
-      r.userId.toString()
-    );
+    const registeredUserIds = registrations.map((r) => r.userId.toString());
 
     // filter non registered users
     const nonRegisteredVisitors = visitors.filter(
-      (visitor) =>
-        !registeredUserIds.includes(visitor.userId._id.toString())
+      (visitor) => !registeredUserIds.includes(visitor.userId._id.toString()),
     );
 
     return res.status(200).json({
@@ -2019,7 +2001,6 @@ export const getEventVisitorsNotRegistered = async (req, res) => {
     });
   }
 };
-
 
 /*
 ========================================================
@@ -2053,14 +2034,11 @@ export const sendReminderEmails = async (req, res) => {
       isSuspended: false,
     }).select("userId");
 
-    const registeredUserIds = registrations.map((r) =>
-      r.userId.toString()
-    );
+    const registeredUserIds = registrations.map((r) => r.userId.toString());
 
     // filter only not registered
     const pendingVisitors = visitors.filter(
-      (visitor) =>
-        !registeredUserIds.includes(visitor.userId._id.toString())
+      (visitor) => !registeredUserIds.includes(visitor.userId._id.toString()),
     );
 
     let totalSent = 0;
@@ -2074,17 +2052,14 @@ export const sendReminderEmails = async (req, res) => {
         await sendEmailWithTemplate({
           to: user.email,
           name: user.name,
-          templateKey: "2518b.554b0da719bc314.k1.e0feee90-5116-11f1-a7f9-fa912d477de9.19e3074abf9",
+          templateKey:
+            "2518b.554b0da719bc314.k1.e0feee90-5116-11f1-a7f9-fa912d477de9.19e3074abf9",
           mergeInfo: {
             name: user.name,
             eventId: event._id.toString(),
             eventName: event.eventName,
-            startDate: getIndianFormattedDateTime(
-              event.startDateTime
-            ),
-            endDate: getIndianFormattedDateTime(
-              event.endDateTime
-            ),
+            startDate: getIndianFormattedDateTime(event.startDateTime),
+            endDate: getIndianFormattedDateTime(event.endDateTime),
           },
         });
 
@@ -2097,10 +2072,7 @@ export const sendReminderEmails = async (req, res) => {
 
         totalSent++;
       } catch (emailError) {
-        console.error(
-          `Email failed for ${user.email}`,
-          emailError
-        );
+        console.error(`Email failed for ${user.email}`, emailError);
       }
     }
 
@@ -2118,7 +2090,6 @@ export const sendReminderEmails = async (req, res) => {
     });
   }
 };
-
 
 /*
 ========================================================
@@ -2207,12 +2178,8 @@ export const sendReminderEmailToSingleUser = async (req, res) => {
         name: user.name,
         eventId: event._id.toString(),
         eventName: event.eventName,
-        startDate: getIndianFormattedDateTime(
-          event.startDateTime
-        ),
-        endDate: getIndianFormattedDateTime(
-          event.endDateTime
-        ),
+        startDate: getIndianFormattedDateTime(event.startDateTime),
+        endDate: getIndianFormattedDateTime(event.endDateTime),
       },
     });
 
@@ -2237,7 +2204,6 @@ export const sendReminderEmailToSingleUser = async (req, res) => {
   }
 };
 
-
 /* 
 ========================================================
   17. Get All Card Profile Updated Registrations
@@ -2245,7 +2211,6 @@ export const sendReminderEmailToSingleUser = async (req, res) => {
 */
 export const getCardProfileUpdatedRegistrations = async (req, res) => {
   try {
-
     const { eventId } = req.params;
 
     const registrations = await EventRegistration.find({
@@ -2263,13 +2228,8 @@ export const getCardProfileUpdatedRegistrations = async (req, res) => {
       total: registrations.length,
       data: registrations,
     });
-
   } catch (error) {
-
-    console.error(
-      "Get card profile updated registrations error:",
-      error
-    );
+    console.error("Get card profile updated registrations error:", error);
 
     return res.status(500).json({
       success: false,
