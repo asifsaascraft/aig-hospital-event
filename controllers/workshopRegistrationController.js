@@ -4,6 +4,7 @@ import WorkshopRegistration from "../models/WorkshopRegistration.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
 import moment from "moment";
 import { getIndianFormattedDateTime } from "../utils/dateUtils.js";
+import User from "../models/User.js";
 
 /* 
 ========================================================
@@ -438,5 +439,146 @@ export const registerForWorkshopsByEventAdmin = async (req, res) => {
   } catch (error) {
     console.error("Register workshop error:", error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+/*
+========================================================
+  SEND WORKSHOP REMINDER EMAIL (BULK)
+========================================================
+*/
+export const sendWorkshopReminderBulk = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    const registrations = await WorkshopRegistration.find({
+      eventId,
+      paymentStatus: "Completed",
+    })
+      .populate("userId", "name email")
+      .populate("eventId", "eventName")
+      .populate("workshops.workshopIds");
+
+    let sentCount = 0;
+
+    for (const registration of registrations) {
+      if (!registration.userId?.email) continue;
+
+      const workshopList = registration.workshops
+        .filter((w) => !w.isSuspended)
+        .map((w) => ({
+          workshopName: w.workshopIds.workshopName,
+          hallName: w.workshopIds.hallName,
+          startDateTime: getIndianFormattedDateTime(
+            w.workshopIds.startDateTime,
+          ),
+          endDateTime: getIndianFormattedDateTime(w.workshopIds.endDateTime),
+        }));
+
+      try {
+        await sendEmailWithTemplate({
+          to: registration.userId.email,
+          name: registration.userId.name,
+          templateKey: "2518b.554b0da719bc314.k1.0f176a00-6d50-11f1-83eb-8e9a6c33ddc2.19ee96b9ca0",
+          mergeInfo: {
+            name: registration.userId.name,
+            eventName: registration.eventId.eventName,
+            workshopList,
+            ifMultiple: workshopList.length > 1 ? "s" : "",
+            reminderDate: getIndianFormattedDateTime(new Date()),
+          },
+        });
+
+        sentCount++;
+      } catch (err) {
+        console.error(
+          `Email failed for ${registration.userId.email}`,
+          err.message,
+        );
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `${sentCount} reminder emails sent successfully`,
+    });
+  } catch (error) {
+    console.error("SEND BULK WORKSHOP REMINDER ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send reminder emails",
+      error: error.message,
+    });
+  }
+};
+
+/*
+========================================================
+  SEND WORKSHOP REMINDER EMAIL (SINGLE)
+========================================================
+*/
+export const sendWorkshopReminderSingle = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { registrationId } = req.body;
+
+    if (!registrationId) {
+      return res.status(400).json({
+        success: false,
+        message: "registrationId is required",
+      });
+    }
+
+    const registration = await WorkshopRegistration.findOne({
+      _id: registrationId,
+      eventId,
+      paymentStatus: "Completed",
+    })
+      .populate("userId", "name email")
+      .populate("eventId", "eventName")
+      .populate("workshops.workshopIds");
+
+    if (!registration) {
+      return res.status(404).json({
+        success: false,
+        message: "Workshop registration not found",
+      });
+    }
+
+    const workshopList = registration.workshops
+      .filter((w) => !w.isSuspended)
+      .map((w) => ({
+        workshopName: w.workshopIds.workshopName,
+        hallName: w.workshopIds.hallName,
+        startDateTime: getIndianFormattedDateTime(w.workshopIds.startDateTime),
+        endDateTime: getIndianFormattedDateTime(w.workshopIds.endDateTime),
+      }));
+
+    await sendEmailWithTemplate({
+      to: registration.userId.email,
+      name: registration.userId.name,
+      templateKey: "2518b.554b0da719bc314.k1.0f176a00-6d50-11f1-83eb-8e9a6c33ddc2.19ee96b9ca0",
+      mergeInfo: {
+        name: registration.userId.name,
+        eventName: registration.eventId.eventName,
+        workshopList,
+        ifMultiple: workshopList.length > 1 ? "s" : "",
+        reminderDate: getIndianFormattedDateTime(new Date()),
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Reminder email sent successfully",
+    });
+  } catch (error) {
+    console.error("SEND SINGLE WORKSHOP REMINDER ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send reminder email",
+      error: error.message,
+    });
   }
 };

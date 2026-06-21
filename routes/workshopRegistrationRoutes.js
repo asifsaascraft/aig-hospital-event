@@ -5,6 +5,8 @@ import {
   getAllWorkshopRegistrationsByEvent,
   updateWorkshopSuspension,
   registerForWorkshopsByEventAdmin,
+  sendWorkshopReminderBulk,
+  sendWorkshopReminderSingle,
 } from "../controllers/workshopRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -49,4 +51,21 @@ router.post(
   authorizeRoles("eventAdmin"),
   registerForWorkshopsByEventAdmin
 );
+
+// SEND WORKSHOP REMINDER EMAIL (SINGLE)
+router.post(
+  "/event-admin/events/:eventId/workshop-reminder",
+  protect,
+  authorizeRoles("eventAdmin"),
+  sendWorkshopReminderSingle
+);
+
+// SEND WORKSHOP REMINDER EMAIL (BULK)
+router.post(
+  "/event-admin/events/:eventId/workshop-reminders",
+  protect,
+  authorizeRoles("eventAdmin"),
+  sendWorkshopReminderBulk
+);
+
 export default router;
