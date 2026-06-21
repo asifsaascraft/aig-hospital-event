@@ -4,6 +4,7 @@ import {
   createScanType,
   getScanTypes,
   getActiveScanTypes,
+  getSingleScanType,
   updateScanType,
   deleteScanType,
 } from "../controllers/scanTypeController.js";
@@ -39,6 +40,14 @@ router.get(
 router.get(
   "/events/:eventId/scan-types/active",
   getActiveScanTypes
+);
+
+// ======================================
+// Get Single Scan Type
+// ======================================
+router.get(
+  "/api/scan-types/:id",
+  getSingleScanType
 );
 
 // ======================================
