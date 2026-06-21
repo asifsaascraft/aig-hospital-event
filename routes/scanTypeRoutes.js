@@ -46,7 +46,7 @@ router.get(
 // Get Single Scan Type
 // ======================================
 router.get(
-  "/api/scan-types/:id",
+  "/scan-types/:id",
   getSingleScanType
 );
 
