@@ -119,10 +119,28 @@ export const addAccompanies = async (req, res) => {
       });
     }
 
+    for (const a of accompanies) {
+      if (!a.email) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is required for accompany",
+        });
+      }
+
+      if (!a.mobile) {
+        return res.status(400).json({
+          success: false,
+          message: "Mobile is required for accompany",
+        });
+      }
+    }
+
     // Add accompanies (force isSuspended=false for each)
     accompanies.forEach((a) => {
       accompanyDoc.accompanies.push({
         ...a,
+        email: a.email?.trim().toLowerCase(),
+        mobile: a.mobile?.trim(),
         cardProfileId: accompanyProfile._id,
         isSuspended: false,
       });
@@ -239,6 +257,12 @@ export const editPaidAccompanies = async (req, res) => {
       if (sub && sub.isPaid) {
         // Only update allowed fields
         if (item.fullName !== undefined) sub.fullName = item.fullName.trim();
+        if (item.email !== undefined) {
+          sub.email = item.email.trim().toLowerCase();
+        }
+        if (item.mobile !== undefined) {
+          sub.mobile = item.mobile.trim();
+        }
         if (item.relation !== undefined) sub.relation = item.relation.trim();
         if (item.gender !== undefined) sub.gender = item.gender.trim();
         if (item.age !== undefined) sub.age = Number(item.age);
@@ -526,12 +550,30 @@ export const addAccompaniesByEventAdmin = async (req, res) => {
 
     let counter = existingCount + 1;
 
+    for (const a of accompanies) {
+      if (!a.email) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is required for accompany",
+        });
+      }
+
+      if (!a.mobile) {
+        return res.status(400).json({
+          success: false,
+          message: "Mobile is required for accompany",
+        });
+      }
+    }
+
     // ==============================
     // Add accompanies as PAID
     // ==============================
     accompanies.forEach((a) => {
       accompanyDoc.accompanies.push({
         fullName: a.fullName,
+        email: a.email?.trim().toLowerCase(),
+        mobile: a.mobile?.trim(),
         relation: a.relation,
         gender: a.gender,
         age: a.age,

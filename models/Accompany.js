@@ -24,6 +24,17 @@ const AccompanySchema = new mongoose.Schema(
           required: [true, "Full Name is required"],
           trim: true,
         },
+        email: {
+          type: String,
+          required: [true, "Email is required"],
+          unique: true,
+        },
+        mobile: {
+          type: String,
+          match: [/^\d{10}$/, "Mobile number must be 10 digits"],
+          trim: true,
+          unique: true,
+        },
         relation: {
           type: String,
           required: [true, "Relation is required"],
