@@ -2,6 +2,7 @@ import express from "express";
 import {
   scanBadge,
   getScanSummary,
+  getScanHistoryByBadge,
 } from "../controllers/onsiteScanController.js";
 import { protectOnsite } from "../middlewares/onsiteAuthMiddleware.js";
 
@@ -17,6 +18,13 @@ router.post(
 // scan summary
 router.get(
   "/events/:eventId/scan-summary",getScanSummary
+);
+
+// get api by ID
+router.get(
+  "/onsite/scan-history/:badgeId",
+  protectOnsite,
+  getScanHistoryByBadge
 );
 
 export default router;

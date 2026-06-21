@@ -209,3 +209,34 @@ export const getScanSummary = async (req, res) => {
     });
   }
 };
+
+// =====================================
+// GET SCAN HISTORY BY BADGE ID
+// =====================================
+export const getScanHistoryByBadge = async (req, res) => {
+  try {
+    const { badgeId } = req.params;
+
+    const data = await BadgeScanLog.find({
+      badgeId,
+    })
+      .populate("badgeId", "regNum name badgeProfileName")
+      .populate("scanTypeId", "scanType scanCode")
+      .populate("scannedBy", "username")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      total: data.length,
+      data,
+    });
+  } catch (error) {
+    console.error("GET SCAN HISTORY ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch scan history",
+      error: error.message,
+    });
+  }
+};
