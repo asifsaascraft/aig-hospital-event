@@ -144,11 +144,12 @@ router.get(
 //  13. Update Registration (Only registrations created by logged-in eventAdmin)
 // =====================================
 router.put(
-  "/event-admin/registrations/:registrationId",
+  '/event-admin/registrations/:registrationId',
   protect,
-  authorizeRoles("eventAdmin"),
-  updateEventRegistration
-);
+  authorizeRoles('eventAdmin'),
+  eventUpload(),
+  updateEventRegistration,
+)
 
 // =====================================
 //  14. Update Registration Card Profile
