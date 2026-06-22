@@ -1777,7 +1777,23 @@ export const updateEventRegistration = async (req, res) => {
 
     // Remove restricted fields
     const updateData = { ...req.body };
+
     restrictedFields.forEach((field) => delete updateData[field]);
+
+    // ==========================================
+    // Parse JSON fields from multipart/form-data
+    // ==========================================
+    if (typeof updateData.dynamicFormAnswers === "string") {
+      updateData.dynamicFormAnswers = JSON.parse(
+        updateData.dynamicFormAnswers
+      );
+    }
+
+    if (typeof updateData.additionalAnswers === "string") {
+      updateData.additionalAnswers = JSON.parse(
+        updateData.additionalAnswers
+      );
+    }
 
     const registration = await EventRegistration.findById(registrationId);
 
@@ -1816,15 +1832,22 @@ export const updateEventRegistration = async (req, res) => {
 
     await registration.save();
 
-    res.json({
+    return res.status(200).json({
       success: true,
       message: "Registration updated successfully",
       data: registration,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("=================================");
+    console.error("UPDATE ERROR");
+    console.error(error);
+    console.error("MESSAGE:", error?.message);
+    console.error("STACK:", error?.stack);
+    console.error("=================================");
+
+    return res.status(500).json({
       success: false,
-      message: "Server error",
+      message: error?.message || "Server error",
     });
   }
 };
