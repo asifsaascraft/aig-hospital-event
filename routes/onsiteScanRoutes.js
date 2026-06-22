@@ -3,6 +3,7 @@ import {
   scanBadge,
   getScanSummary,
   getScanHistoryByBadge,
+  getDetailedScanSummary,
 } from "../controllers/onsiteScanController.js";
 import { protectOnsite } from "../middlewares/onsiteAuthMiddleware.js";
 
@@ -25,6 +26,12 @@ router.get(
   "/onsite/scan-history/:badgeId",
   protectOnsite,
   getScanHistoryByBadge
+);
+
+// detailed scan summary
+router.get(
+  "/events/:eventId/scan-summary-details",
+  getDetailedScanSummary
 );
 
 export default router;

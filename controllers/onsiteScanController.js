@@ -240,3 +240,42 @@ export const getScanHistoryByBadge = async (req, res) => {
     });
   }
 };
+
+// =====================================
+// DETAILED SCAN SUMMARY BY EVENT
+// =====================================
+export const getDetailedScanSummary = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    const data = await BadgeScanLog.find({
+      eventId,
+    })
+      .populate({
+        path: "badgeId",
+      })
+      .populate({
+        path: "scanTypeId",
+      })
+      .populate({
+        path: "scannedBy",
+      })
+      .sort({
+        createdAt: -1,
+      });
+
+    return res.status(200).json({
+      success: true,
+      total: data.length,
+      data,
+    });
+  } catch (error) {
+    console.error("DETAILED SCAN SUMMARY ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch detailed scan summary",
+      error: error.message,
+    });
+  }
+};
