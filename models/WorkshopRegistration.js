@@ -7,6 +7,10 @@ const WorkshopRegistrationSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    sponsorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Sponsor",
+    },
     eventId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Event",
@@ -14,19 +18,17 @@ const WorkshopRegistrationSchema = new mongoose.Schema(
     },
     workshops: [
       {
-        workshopIds:
-        {
+        workshopIds: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Workshop",
           required: true,
         },
-        isSuspended:
-        {
+        isSuspended: {
           type: Boolean,
           required: true,
           default: false,
         },
-      }
+      },
     ],
     registrationType: {
       type: String,
@@ -47,7 +49,7 @@ const WorkshopRegistrationSchema = new mongoose.Schema(
       default: false,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.models.WorkshopRegistration ||

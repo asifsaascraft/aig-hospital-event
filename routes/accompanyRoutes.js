@@ -70,8 +70,6 @@ router.patch(
 // Check If Email Exists in Event Registration Model (Event Admin)
 router.post(
   "/event-admin/events/:eventId/check-email",
-  protect,
-  authorizeRoles("eventAdmin"),
   checkEmailExists
 );
 

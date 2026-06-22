@@ -7,8 +7,11 @@ import {
   registerForWorkshopsByEventAdmin,
   sendWorkshopReminderBulk,
   sendWorkshopReminderSingle,
+  registerForWorkshopsBySponsor,
+  getAllWorkshopRegistrationsBySponsor,
 } from "../controllers/workshopRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
+import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
 
 const router = express.Router();
 
@@ -66,6 +69,21 @@ router.post(
   protect,
   authorizeRoles("eventAdmin"),
   sendWorkshopReminderBulk
+);
+
+
+// Register for Multiple Workshops under a Single Event (Sponsor)
+router.post(
+  "/events/:eventId/sponsor-workshop-register",
+  protectSponsor,
+  registerForWorkshopsBySponsor
+);
+
+// Get All Valid Workshop Registrations for an Event (Registered by a particular sponsor)
+router.get(
+  "/events/:eventId/sponsor-workshop-registrations",
+  protectSponsor,
+  getAllWorkshopRegistrationsBySponsor
 );
 
 export default router;

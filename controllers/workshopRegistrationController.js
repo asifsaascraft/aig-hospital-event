@@ -5,6 +5,8 @@ import sendEmailWithTemplate from "../utils/sendEmail.js";
 import moment from "moment";
 import { getIndianFormattedDateTime } from "../utils/dateUtils.js";
 import User from "../models/User.js";
+import SponsorWorkshopQuota from "../models/SponsorWorkshopQuota.js";
+import Sponsor from "../models/Sponsor.js";
 
 /* 
 ========================================================
@@ -479,7 +481,8 @@ export const sendWorkshopReminderBulk = async (req, res) => {
         await sendEmailWithTemplate({
           to: registration.userId.email,
           name: registration.userId.name,
-          templateKey: "2518b.554b0da719bc314.k1.0f176a00-6d50-11f1-83eb-8e9a6c33ddc2.19ee96b9ca0",
+          templateKey:
+            "2518b.554b0da719bc314.k1.0f176a00-6d50-11f1-83eb-8e9a6c33ddc2.19ee96b9ca0",
           mergeInfo: {
             name: registration.userId.name,
             eventName: registration.eventId.eventName,
@@ -558,7 +561,8 @@ export const sendWorkshopReminderSingle = async (req, res) => {
     await sendEmailWithTemplate({
       to: registration.userId.email,
       name: registration.userId.name,
-      templateKey: "2518b.554b0da719bc314.k1.0f176a00-6d50-11f1-83eb-8e9a6c33ddc2.19ee96b9ca0",
+      templateKey:
+        "2518b.554b0da719bc314.k1.0f176a00-6d50-11f1-83eb-8e9a6c33ddc2.19ee96b9ca0",
       mergeInfo: {
         name: registration.userId.name,
         eventName: registration.eventId.eventName,
@@ -579,6 +583,252 @@ export const sendWorkshopReminderSingle = async (req, res) => {
       success: false,
       message: "Failed to send reminder email",
       error: error.message,
+    });
+  }
+};
+
+/*
+========================================================
+  Register Workshop By Sponsor
+========================================================
+*/
+export const registerForWorkshopsBySponsor = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const sponsorId = req.sponsor._id;
+
+    const { userId, workshopIds } = req.body;
+
+    // ==========================
+    // VALIDATION
+    // ==========================
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "userId is required",
+      });
+    }
+
+    if (!Array.isArray(workshopIds) || workshopIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "workshopIds are required",
+      });
+    }
+
+    // ==========================
+    // EVENT CHECK
+    // ==========================
+    const event = await Event.findById(eventId);
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    // ==========================
+    // SPONSOR CHECK
+    // ==========================
+    const sponsor = await Sponsor.findById(sponsorId);
+
+    if (!sponsor) {
+      return res.status(404).json({
+        success: false,
+        message: "Sponsor not found",
+      });
+    }
+
+    // ==========================
+    // USER CHECK
+    // ==========================
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // ==========================
+    // FETCH WORKSHOPS
+    // ==========================
+    const workshops = await Workshop.find({
+      _id: { $in: workshopIds },
+      eventId,
+    });
+
+    if (workshops.length !== workshopIds.length) {
+      return res.status(400).json({
+        success: false,
+        message: "One or more workshops not found",
+      });
+    }
+
+    const now = new Date();
+
+    // ==========================
+    // WORKSHOP VALIDATIONS
+    // ==========================
+    for (const ws of workshops) {
+      // Active check
+      if (ws.status !== "Active") {
+        return res.status(400).json({
+          success: false,
+          message: `Workshop is inactive: ${ws.workshopName}`,
+        });
+      }
+
+      // Workshop expired
+      if (now > ws.endDateTime) {
+        return res.status(400).json({
+          success: false,
+          message: `Workshop already ended: ${ws.workshopName}`,
+        });
+      }
+
+      // ==========================
+      // QUOTA CHECK FOR THIS WORKSHOP
+      // ==========================
+      const quotaRecord = await SponsorWorkshopQuota.findOne({
+        sponsorId,
+        eventId,
+        workshopId: ws._id,
+      });
+
+      if (!quotaRecord) {
+        return res.status(400).json({
+          success: false,
+          message: `No quota assigned for workshop: ${ws.workshopName}`,
+        });
+      }
+
+
+      // ==========================
+      // SPONSOR QUOTA USED CHECK
+      // ==========================
+      const usedQuota = await WorkshopRegistration.countDocuments({
+        sponsorId,
+        eventId,
+        "workshops.workshopIds": ws._id,
+        paymentStatus: "Completed",
+      });
+
+      if (usedQuota >= quotaRecord.quota) {
+        return res.status(400).json({
+          success: false,
+          message: `Sponsor quota exhausted for workshop: ${ws.workshopName}`,
+        });
+      }
+
+      // ==========================
+      // WORKSHOP SEAT CHECK
+      // ==========================
+      const regCount = await WorkshopRegistration.countDocuments({
+        eventId,
+        "workshops.workshopIds": ws._id,
+        paymentStatus: "Completed",
+      });
+
+      if (regCount >= ws.maxRegAllowed) {
+        return res.status(400).json({
+          success: false,
+          message: `Registration limit reached for workshop: ${ws.workshopName}`,
+        });
+      }
+
+      // ==========================
+      // USER ALREADY REGISTERED CHECK
+      // ==========================
+      const alreadyRegistered = await WorkshopRegistration.findOne({
+        userId,
+        eventId,
+        "workshops.workshopIds": ws._id,
+        paymentStatus: "Completed",
+      });
+
+      if (alreadyRegistered) {
+        return res.status(400).json({
+          success: false,
+          message: `${user.name} is already registered for workshop: ${ws.workshopName}`,
+        });
+      }
+    }
+
+    // ==========================
+    // CREATE REGISTRATION
+    // ==========================
+    const registration = await WorkshopRegistration.create({
+      sponsorId,
+      userId,
+      eventId,
+      workshops: workshopIds.map((id) => ({
+        workshopIds: id,
+        isSuspended: false,
+      })),
+
+      // Sponsor never pays
+      registrationType: "Free",
+      totalAmount: 0,
+      paymentStatus: "Completed",
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Workshop registered successfully by sponsor",
+      data: registration,
+    });
+  } catch (error) {
+    console.error("REGISTER WORKSHOP BY SPONSOR ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+};
+
+/*
+========================================================
+  Get Workshop Registrations By Sponsor
+========================================================
+*/
+export const getAllWorkshopRegistrationsBySponsor = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const sponsorId = req.sponsor._id;
+
+    const registrations = await WorkshopRegistration.find({
+      eventId,
+      sponsorId,
+      paymentStatus: "Completed",
+    })
+      .populate({
+        path: "userId",
+        select: "prefix name email mobile gender",
+      })
+      .populate({
+        path: "workshops.workshopIds",
+        select: "workshopName workshopCategory hallName",
+      })
+      .sort({
+        createdAt: -1,
+      });
+
+    return res.status(200).json({
+      success: true,
+      total: registrations.length,
+      data: registrations,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
     });
   }
 };
