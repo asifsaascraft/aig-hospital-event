@@ -1,7 +1,8 @@
 import User from "../models/User.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
 import { generateStrongPassword } from "../utils/generatePassword.js";
-
+import EventRegistration from '../models/EventRegistration.js'
+import Event from '../models/Event.js'
 
 // =======================
 // (EventAdmin Authorize): Create User (signup)
@@ -139,32 +140,104 @@ export const registerUserByEventAdmin = async (req, res) => {
   }
 };
 
+
+
 // =======================
 // Admin: Get All Users
 // =======================
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({
-      role: "user",
-    })
-      .select(
-        "-password -plainPassword -passwordResetToken -passwordResetExpires"
-      )
-      .sort({ createdAt: -1 });
+    const users = await User.aggregate([
+      {
+        $match: {
+          role: 'user',
+        },
+      },
 
-    res.status(200).json({
+      // Get first registration of the user
+      {
+        $lookup: {
+          from: 'eventregistrations',
+          let: {
+            userId: '$_id',
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: ['$userId', '$$userId'],
+                },
+              },
+            },
+            {
+              $sort: {
+                createdAt: 1,
+              },
+            },
+            {
+              $limit: 1,
+            },
+          ],
+          as: 'firstRegistration',
+        },
+      },
+
+      // Get event details
+      {
+        $lookup: {
+          from: 'events',
+          localField: 'firstRegistration.eventId',
+          foreignField: '_id',
+          as: 'signupEvent',
+        },
+      },
+
+      {
+        $addFields: {
+          signupEvent: {
+            $ifNull: [
+              {
+                $arrayElemAt: ['$signupEvent.eventName', 0],
+              },
+              'Self',
+            ],
+          },
+        },
+      },
+
+      {
+        $project: {
+          password: 0,
+          plainPassword: 0,
+          passwordResetToken: 0,
+          passwordResetExpires: 0,
+          otp: 0,
+          otpExpires: 0,
+          firstRegistration: 0,
+        },
+      },
+
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+    ])
+
+    return res.status(200).json({
       success: true,
       count: users.length,
       users,
-    });
+    })
   } catch (error) {
-    console.error("Get all users error:", error);
-    res.status(500).json({
+    console.error('Get all users error:', error)
+
+    return res.status(500).json({
       success: false,
-      message: "Internal Server Error",
-    });
+      message: 'Internal Server Error',
+    })
   }
-};
+}
 
 // =======================
 // EventAdmin: Get ONLY EventAdmin Created Users
