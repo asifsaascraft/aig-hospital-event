@@ -34,7 +34,7 @@ export const checkEmailExists = async (req, res) => {
     const normalizedEmail = email.trim().toLowerCase();
 
     // ===============================
-    // 1️ CHECK EVENT REGISTRATION (PAID)
+    // CHECK EVENT REGISTRATION
     // ===============================
     const existingRegistration = await EventRegistration.findOne({
       eventId,
@@ -43,35 +43,34 @@ export const checkEmailExists = async (req, res) => {
       isSuspended: false,
     });
 
-    if (existingRegistration) {
-      return res.status(200).json({
-        success: false,
-        message: "This email is already registered for this event",
-      });
-    }
-
     // ===============================
-    // 2️ CHECK USER MODEL
+    // CHECK USER
     // ===============================
     const user = await User.findOne({
       email: normalizedEmail,
       role: "user",
     }).select(
-      "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires",
+      "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires"
     );
 
     // ===============================
-    // 3️ RESPONSE
+    // RESPONSE
     // ===============================
     return res.status(200).json({
       success: true,
-      message: user
-        ? "User exist but not registered for this event"
+      isUserFound: !!user,
+      isRegisteredForEvent: !!existingRegistration,
+      message: existingRegistration
+        ? "User already registered for this event"
+        : user
+        ? "User found but not registered for this event"
         : "User not found",
       data: user || null,
+      registration: existingRegistration || null,
     });
   } catch (error) {
     console.error("Error checking email:", error);
+
     return res.status(500).json({
       success: false,
       message: "Server error while checking email",
