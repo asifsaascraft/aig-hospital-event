@@ -60,6 +60,15 @@ const eventFileFilter = (req, file, cb) => {
   }
 };
 
+// Message Images Filter
+const messageImageFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith("image/")) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only image files are allowed."));
+  }
+};
+
 
 //  Event uploader (Image + Brochure)
 export const uploadEventFiles = createUploader(
@@ -69,6 +78,11 @@ export const uploadEventFiles = createUploader(
 
 
 // Other uploaders
+// Message Images Upload
+export const uploadMessageImages = createUploader(
+  "messages",
+  messageImageFilter
+);
 export const uploadVenueImage = createUploader("venues");
 export const uploadHotelImage = createUploader("hotels");
 export const uploadProfileImage = createUploader("profile-pictures");
@@ -175,3 +189,6 @@ export const uploadSponsorExcel =
     'sponsor-excel',
     excelFileFilter,
   )
+
+
+
