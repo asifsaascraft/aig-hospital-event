@@ -8,9 +8,24 @@ const CommitteeMemberSchema = new mongoose.Schema(
       required: true,
     },
 
-    committeeType: {
+    name: {
       type: String,
-      required: [true, "Committee Type is required"],
+      required: [true, "Name is required"],
+    },
+
+    designation: {
+      type: String,
+      required: [true, "Designation is required"],
+    },
+
+    committeeTypeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CommitteeType",
+      required: true,
+    },
+
+    images: {  // optional
+      type: String, // store file path or URL
     },
 
     status: {
