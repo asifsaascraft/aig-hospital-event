@@ -39,7 +39,7 @@ export const assignEvent = async (req, res) => {
     const {
       eventAdminId,
       eventId,
-      modules = {}, // dashboard, registration, bulk, sponsor, travel, accomodation, accounting, onsite
+      modules = {}, // dashboard, registration, bulk, sponsor, travel, accomodation, accounting, onsite, eventApp
     } = req.body;
 
     if (!eventAdminId || !eventId) {

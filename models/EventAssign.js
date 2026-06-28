@@ -46,6 +46,10 @@ const EventAssignSchema = new mongoose.Schema(
           type: Boolean,
           default: false,
         },
+        eventApp: {
+          type: Boolean,
+          default: false,
+        },
       }
     ],
   },
