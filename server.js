@@ -74,6 +74,7 @@ import badgeProfilePrivilegeRoutes from './routes/badgeProfilePrivilegeRoutes.js
 import loginGenerateTokenRoutes from "./routes/loginGenerateTokenRoutes.js";
 import onsiteScanRoutes from "./routes/onsiteScanRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
+import committeeTypeRoutes from "./routes/committeeTypeRoutes.js";
 
 
 await connectDB();
@@ -181,6 +182,7 @@ app.use('/api', badgeProfilePrivilegeRoutes)
 app.use('/api', loginGenerateTokenRoutes)
 app.use('/api', onsiteScanRoutes)
 app.use('/api', messageRoutes)
+app.use('/api', committeeTypeRoutes)
 
 
 // =======================
