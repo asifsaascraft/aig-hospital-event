@@ -78,6 +78,16 @@ const committeeMemberImageFilter = (req, file, cb) => {
   }
 };
 
+// Speaker Image Filter
+const speakerImageFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith("image/")) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only image files are allowed."));
+  }
+};
+
+
 
 //  Event uploader (Image + Brochure)
 export const uploadEventFiles = createUploader(
@@ -95,6 +105,10 @@ export const uploadMessageImages = createUploader(
 export const uploadCommitteeMemberImage = createUploader(
   "committee-members",
   committeeMemberImageFilter
+);
+export const uploadSpeakerImage = createUploader(
+  "speakers",
+  speakerImageFilter
 );
 export const uploadVenueImage = createUploader("venues");
 export const uploadHotelImage = createUploader("hotels");

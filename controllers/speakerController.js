@@ -1,18 +1,19 @@
-import CommitteeMember from "../models/CommitteeMember.js";
-import CommitteeType from "../models/CommitteeType.js";
+import Speaker from "../models/Speaker.js";
+import SpeakerType from "../models/SpeakerType.js";
 import Event from "../models/Event.js";
 
 // =======================
-// Create Committee Member (EventAdmin)
+// Create Speaker (EventAdmin)
 // =======================
-export const createCommitteeMember = async (req, res) => {
+export const createSpeaker = async (req, res) => {
   try {
     const { eventId } = req.params;
 
     const {
       name,
+      description,
       designation,
-      committeeTypeId,
+      speakerTypeId,
       status,
     } = req.body;
 
@@ -25,14 +26,14 @@ export const createCommitteeMember = async (req, res) => {
       });
     }
 
-    // Validate Committee Type
-    const committeeType = await CommitteeType.findById(
-      committeeTypeId
+    // Validate Speaker Type
+    const speakerType = await SpeakerType.findById(
+      speakerTypeId
     );
 
-    if (!committeeType) {
+    if (!speakerType) {
       return res.status(404).json({
-        message: "Committee Type not found",
+        message: "Speaker Type not found",
       });
     }
 
@@ -42,22 +43,23 @@ export const createCommitteeMember = async (req, res) => {
       image = req.file.location;
     }
 
-    const member = await CommitteeMember.create({
+    const speaker = await Speaker.create({
       eventId,
       name,
+      description,
       designation,
-      committeeTypeId,
       image,
+      speakerTypeId,
       status,
     });
 
     return res.status(201).json({
       success: true,
-      message: "Committee Member created successfully",
-      data: member,
+      message: "Speaker created successfully",
+      data: speaker,
     });
   } catch (error) {
-    console.error("Create Committee Member Error:", error);
+    console.error("Create Speaker Error:", error);
 
     if (error.name === "ValidationError") {
       const errors = Object.values(error.errors).map(
@@ -76,21 +78,21 @@ export const createCommitteeMember = async (req, res) => {
 };
 
 // =======================
-// Get All Committee Members By Event
+// Get All Speakers By Event
 // =======================
-export const getCommitteeMembersByEvent = async (
+export const getSpeakersByEvent = async (
   req,
   res
 ) => {
   try {
     const { eventId } = req.params;
 
-    const members = await CommitteeMember.find({
+    const speakers = await Speaker.find({
       eventId,
     })
       .populate(
-        "committeeTypeId",
-        "committeeType status"
+        "speakerTypeId",
+        "speakerType status"
       )
       .sort({
         createdAt: -1,
@@ -99,8 +101,8 @@ export const getCommitteeMembersByEvent = async (
     return res.status(200).json({
       success: true,
       message:
-        "Committee Members fetched successfully",
-      data: members,
+        "Speakers fetched successfully",
+      data: speakers,
     });
   } catch (error) {
     console.error(error);
@@ -112,20 +114,20 @@ export const getCommitteeMembersByEvent = async (
 };
 
 // =======================
-// Get Active Committee Members
+// Get Active Speakers
 // =======================
-export const getActiveCommitteeMembersByEvent =
+export const getActiveSpeakersByEvent =
   async (req, res) => {
     try {
       const { eventId } = req.params;
 
-      const members = await CommitteeMember.find({
+      const speakers = await Speaker.find({
         eventId,
         status: "Active",
       })
         .populate(
-          "committeeTypeId",
-          "committeeType status"
+          "speakerTypeId",
+          "speakerType status"
         )
         .sort({
           createdAt: -1,
@@ -134,8 +136,8 @@ export const getActiveCommitteeMembersByEvent =
       return res.status(200).json({
         success: true,
         message:
-          "Active Committee Members fetched successfully",
-        data: members,
+          "Active Speakers fetched successfully",
+        data: speakers,
       });
     } catch (error) {
       console.error(error);
@@ -146,33 +148,32 @@ export const getActiveCommitteeMembersByEvent =
     }
   };
 
+  // =======================
+// Get Speaker By Id
 // =======================
-// Get Committee Member By Id
-// =======================
-export const getCommitteeMemberById = async (
+export const getSpeakerById = async (
   req,
   res
 ) => {
   try {
     const { id } = req.params;
 
-    const member =
-      await CommitteeMember.findById(id).populate(
-        "committeeTypeId",
-        "committeeType status"
+    const speaker =
+      await Speaker.findById(id).populate(
+        "speakerTypeId",
+        "speakerType status"
       );
 
-    if (!member) {
+    if (!speaker) {
       return res.status(404).json({
-        message: "Committee Member not found",
+        message: "Speaker not found",
       });
     }
 
     return res.status(200).json({
       success: true,
-      message:
-        "Committee Member fetched successfully",
-      data: member,
+      message: "Speaker fetched successfully",
+      data: speaker,
     });
   } catch (error) {
     console.error(error);
@@ -184,9 +185,9 @@ export const getCommitteeMemberById = async (
 };
 
 // =======================
-// Update Committee Member
+// Update Speaker
 // =======================
-export const updateCommitteeMember = async (
+export const updateSpeaker = async (
   req,
   res
 ) => {
@@ -195,61 +196,75 @@ export const updateCommitteeMember = async (
 
     const {
       name,
+      description,
       designation,
-      committeeTypeId,
+      speakerTypeId,
       status,
     } = req.body;
 
-    const member =
-      await CommitteeMember.findById(id);
+    const speaker =
+      await Speaker.findById(id);
 
-    if (!member) {
+    if (!speaker) {
       return res.status(404).json({
-        message: "Committee Member not found",
+        message: "Speaker not found",
       });
     }
 
-    if (committeeTypeId) {
-      const committeeType =
-        await CommitteeType.findById(
-          committeeTypeId
+    if (speakerTypeId) {
+      const speakerType =
+        await SpeakerType.findById(
+          speakerTypeId
         );
 
-      if (!committeeType) {
+      if (!speakerType) {
         return res.status(404).json({
-          message: "Committee Type not found",
+          message: "Speaker Type not found",
         });
       }
 
-      member.committeeTypeId = committeeTypeId;
+      speaker.speakerTypeId =
+        speakerTypeId;
     }
 
-    if (name) member.name = name;
+    if (name) {
+      speaker.name = name;
+    }
 
-    if (designation)
-      member.designation = designation;
+    if (description) {
+      speaker.description =
+        description;
+    }
 
-    if (status) member.status = status;
+    if (designation) {
+      speaker.designation =
+        designation;
+    }
+
+    if (status) {
+      speaker.status = status;
+    }
 
     if (req.file) {
-      member.image = req.file.location;
+      speaker.image =
+        req.file.location;
     }
 
-    await member.save();
+    await speaker.save();
 
     return res.status(200).json({
       success: true,
       message:
-        "Committee Member updated successfully",
-      data: member,
+        "Speaker updated successfully",
+      data: speaker,
     });
   } catch (error) {
     console.error(error);
 
     if (error.name === "ValidationError") {
-      const errors = Object.values(error.errors).map(
-        (err) => err.message
-      );
+      const errors = Object.values(
+        error.errors
+      ).map((err) => err.message);
 
       return res.status(400).json({
         message: errors.join(", "),
@@ -263,30 +278,30 @@ export const updateCommitteeMember = async (
 };
 
 // =======================
-// Delete Committee Member
+// Delete Speaker
 // =======================
-export const deleteCommitteeMember = async (
+export const deleteSpeaker = async (
   req,
   res
 ) => {
   try {
     const { id } = req.params;
 
-    const member =
-      await CommitteeMember.findById(id);
+    const speaker =
+      await Speaker.findById(id);
 
-    if (!member) {
+    if (!speaker) {
       return res.status(404).json({
-        message: "Committee Member not found",
+        message: "Speaker not found",
       });
     }
 
-    await member.deleteOne();
+    await speaker.deleteOne();
 
     return res.status(200).json({
       success: true,
       message:
-        "Committee Member deleted successfully",
+        "Speaker deleted successfully",
     });
   } catch (error) {
     console.error(error);

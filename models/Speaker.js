@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const CommitteeMemberSchema = new mongoose.Schema(
+const SpeakerSchema = new mongoose.Schema(
   {
     eventId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -10,22 +10,27 @@ const CommitteeMemberSchema = new mongoose.Schema(
 
     name: {
       type: String,
-      required: [true, "Name is required"],
+      required: [true, "Speaker Name is required"],
     },
 
-    designation: {
+    description: {
       type: String,
-      required: [true, "Designation is required"],
+      required: [true, "Description is required"],
     },
 
-    committeeTypeId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "CommitteeType",
-      required: true,
+    designation : {
+      type: String,
+      required: [true, "Designation  is required"],
     },
 
     image: {  // optional
       type: String, // store file path or URL
+    },
+
+    speakerTypeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "SpeakerType",
+      required: true,
     },
 
     status: {
@@ -38,5 +43,5 @@ const CommitteeMemberSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-export default mongoose.models.CommitteeMember ||
-  mongoose.model("CommitteeMember", CommitteeMemberSchema);
+export default mongoose.models.Speaker ||
+  mongoose.model("Speaker", SpeakerSchema);

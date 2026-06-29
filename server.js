@@ -76,6 +76,11 @@ import onsiteScanRoutes from "./routes/onsiteScanRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import committeeTypeRoutes from "./routes/committeeTypeRoutes.js";
 import committeeMemberRoutes from "./routes/committeeMemberRoutes.js";
+import sessionHallRoutes from "./routes/sessionHallRoutes.js";
+import sessionTrackRoutes from "./routes/sessionTrackRoutes.js";
+import speakerTypeRoutes from "./routes/speakerTypeRoutes.js";
+import sessionRoutes from "./routes/sessionRoutes.js";
+import speakerRoutes from "./routes/speakerRoutes.js";
 
 
 await connectDB();
@@ -185,6 +190,11 @@ app.use('/api', onsiteScanRoutes)
 app.use('/api', messageRoutes)
 app.use('/api', committeeTypeRoutes)
 app.use('/api', committeeMemberRoutes)
+app.use('/api', sessionHallRoutes)
+app.use('/api', sessionTrackRoutes)
+app.use('/api', speakerTypeRoutes)
+app.use('/api', sessionRoutes)
+app.use('/api', speakerRoutes)
 
 
 // =======================
