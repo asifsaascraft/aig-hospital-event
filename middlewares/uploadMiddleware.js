@@ -87,6 +87,15 @@ const speakerImageFilter = (req, file, cb) => {
   }
 };
 
+// Exhibitor Image Filter
+const exhibitorImageFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith("image/")) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only image files are allowed."));
+  }
+};
+
 //  Event uploader (Image + Brochure)
 export const uploadEventFiles = createUploader(
   "events",
@@ -107,6 +116,10 @@ export const uploadCommitteeMemberImage = createUploader(
 export const uploadSpeakerImage = createUploader(
   "speakers",
   speakerImageFilter
+);
+export const uploadExhibitorImage = createUploader(
+  "exhibitors",
+  exhibitorImageFilter
 );
 export const uploadDownloadFile = createUploader(
   "downloads"
