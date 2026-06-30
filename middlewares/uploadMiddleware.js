@@ -87,8 +87,6 @@ const speakerImageFilter = (req, file, cb) => {
   }
 };
 
-
-
 //  Event uploader (Image + Brochure)
 export const uploadEventFiles = createUploader(
   "events",
@@ -109,6 +107,9 @@ export const uploadCommitteeMemberImage = createUploader(
 export const uploadSpeakerImage = createUploader(
   "speakers",
   speakerImageFilter
+);
+export const uploadDownloadFile = createUploader(
+  "downloads"
 );
 export const uploadVenueImage = createUploader("venues");
 export const uploadHotelImage = createUploader("hotels");

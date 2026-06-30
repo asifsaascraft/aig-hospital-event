@@ -81,6 +81,7 @@ import sessionTrackRoutes from "./routes/sessionTrackRoutes.js";
 import speakerTypeRoutes from "./routes/speakerTypeRoutes.js";
 import sessionRoutes from "./routes/sessionRoutes.js";
 import speakerRoutes from "./routes/speakerRoutes.js";
+import downloadRoutes from "./routes/downloadRoutes.js";
 
 
 await connectDB();
@@ -195,6 +196,7 @@ app.use('/api', sessionTrackRoutes)
 app.use('/api', speakerTypeRoutes)
 app.use('/api', sessionRoutes)
 app.use('/api', speakerRoutes)
+app.use('/api', downloadRoutes)
 
 
 // =======================
