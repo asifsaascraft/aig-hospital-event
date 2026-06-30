@@ -85,6 +85,7 @@ import downloadRoutes from "./routes/downloadRoutes.js";
 import quickLinkRoutes from "./routes/quickLinkRoutes.js";
 import exhibitorTypeRoutes from "./routes/exhibitorTypeRoutes.js";
 import exhibitorRoutes from "./routes/exhibitorRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
 
 
 
@@ -204,6 +205,7 @@ app.use('/api', downloadRoutes)
 app.use('/api', quickLinkRoutes)
 app.use('/api', exhibitorTypeRoutes)
 app.use('/api', exhibitorRoutes)
+app.use('/api', contactRoutes)
 
 
 // =======================
