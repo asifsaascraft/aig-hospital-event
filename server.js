@@ -86,6 +86,7 @@ import quickLinkRoutes from "./routes/quickLinkRoutes.js";
 import exhibitorTypeRoutes from "./routes/exhibitorTypeRoutes.js";
 import exhibitorRoutes from "./routes/exhibitorRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
+import pollRoutes from "./routes/pollRoutes.js";
 
 
 
@@ -206,6 +207,7 @@ app.use('/api', quickLinkRoutes)
 app.use('/api', exhibitorTypeRoutes)
 app.use('/api', exhibitorRoutes)
 app.use('/api', contactRoutes)
+app.use('/api', pollRoutes)
 
 
 // =======================
