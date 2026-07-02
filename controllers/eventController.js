@@ -3,6 +3,44 @@ import Event from "../models/Event.js";
 import EventVisitor from "../models/EventVisitor.js";
 import EventRegistration from "../models/EventRegistration.js";
 
+
+// =======================
+// Get Event Cards (Public)
+// =======================
+export const getEventCards = async (req, res) => {
+  try {
+    const events = await Event.find(
+      { isActive: true },
+      {
+        eventName: 1,
+        eventImage: 1,
+        startDateTime: 1,
+        endDateTime: 1,
+      }
+    ).sort({ startDateTime: 1 });
+
+    const data = events.map((event) => ({
+      _id: event._id,
+      eventName: event.eventName,
+      eventImage: event.eventImage,
+      startDateTime: event.startDateTime,
+      endDateTime: event.endDateTime,
+      dynamicStatus: event.dynamicStatus,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      count: data.length,
+      data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch events",
+      error: error.message,
+    });
+  }
+};
 // =======================
 // Get all events (public)
 // =======================

@@ -1,6 +1,7 @@
 // routes/eventRoutes.js
 import express from "express";
 import {
+  getEventCards,
   getEvents,
   getActiveEvents,
   getEventById,
@@ -14,6 +15,9 @@ import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 import { uploadEventFiles } from "../middlewares/uploadMiddleware.js";
 
 const router = express.Router();
+
+// Public: anyone can view all events (mobile app)
+router.get("/event-cards", getEventCards);
 
 // Public: anyone can view all events
 router.get("/events", getEvents);
