@@ -87,7 +87,7 @@ import exhibitorTypeRoutes from "./routes/exhibitorTypeRoutes.js";
 import exhibitorRoutes from "./routes/exhibitorRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
 import pollRoutes from "./routes/pollRoutes.js";
-
+import pollResponseRoutes from "./routes/pollResponseRoutes.js";
 
 
 await connectDB();
@@ -208,6 +208,7 @@ app.use('/api', exhibitorTypeRoutes)
 app.use('/api', exhibitorRoutes)
 app.use('/api', contactRoutes)
 app.use('/api', pollRoutes)
+app.use('/api', pollResponseRoutes)
 
 
 // =======================

@@ -1,6 +1,7 @@
 import Poll from "../models/Poll.js";
 import Event from "../models/Event.js";
 
+
 // =======================
 // Create Poll (EventAdmin)
 // =======================
@@ -8,7 +9,7 @@ export const createPoll = async (req, res) => {
   try {
     const { eventId } = req.params;
 
-    const { pollQuestions } = req.body;
+    const { poll } = req.body;
 
     // Validate Event
     const event = await Event.findById(eventId);
@@ -19,15 +20,70 @@ export const createPoll = async (req, res) => {
       });
     }
 
-    const poll = await Poll.create({
+    const pollData = {
       eventId,
-      pollQuestions,
-    });
+      poll,
+    };
+
+    // =======================
+    // Date Validation
+    // =======================
+
+    if (
+      pollData.poll.startDateTime &&
+      isNaN(new Date(pollData.poll.startDateTime))
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid startDateTime format",
+      });
+    }
+
+    if (
+      pollData.poll.endDateTime &&
+      isNaN(new Date(pollData.poll.endDateTime))
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid endDateTime format",
+      });
+    }
+
+    // Convert Dates
+
+    if (pollData.poll.startDateTime) {
+      pollData.poll.startDateTime = new Date(
+        pollData.poll.startDateTime
+      );
+    }
+
+    if (pollData.poll.endDateTime) {
+      pollData.poll.endDateTime = new Date(
+        pollData.poll.endDateTime
+      );
+    }
+
+    // Validate Range
+
+    if (
+      pollData.poll.startDateTime &&
+      pollData.poll.endDateTime &&
+      pollData.poll.endDateTime <
+        pollData.poll.startDateTime
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "End date time must be greater than start date time",
+      });
+    }
+
+    const newPoll = await Poll.create(pollData);
 
     return res.status(201).json({
       success: true,
       message: "Poll created successfully",
-      data: poll,
+      data: newPoll,
     });
   } catch (error) {
     console.error("Create Poll Error:", error);
@@ -111,29 +167,72 @@ export const updatePoll = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { pollQuestions } = req.body;
+    const { poll } = req.body;
 
-    const poll = await Poll.findById(id);
+    const existingPoll = await Poll.findById(id);
 
-    if (!poll) {
+    if (!existingPoll) {
       return res.status(404).json({
         message: "Poll not found",
       });
     }
 
-    if (pollQuestions) {
-      poll.pollQuestions = pollQuestions;
+    if (poll) {
+      // Validate Dates
+
+      if (
+        poll.startDateTime &&
+        isNaN(new Date(poll.startDateTime))
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid startDateTime format",
+        });
+      }
+
+      if (
+        poll.endDateTime &&
+        isNaN(new Date(poll.endDateTime))
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid endDateTime format",
+        });
+      }
+
+      const finalStartDateTime = poll.startDateTime
+        ? new Date(poll.startDateTime)
+        : existingPoll.poll.startDateTime;
+
+      const finalEndDateTime = poll.endDateTime
+        ? new Date(poll.endDateTime)
+        : existingPoll.poll.endDateTime;
+
+      if (finalEndDateTime < finalStartDateTime) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "End date time must be greater than start date time",
+        });
+      }
+
+      existingPoll.poll = {
+        ...existingPoll.poll.toObject(),
+        ...poll,
+        startDateTime: finalStartDateTime,
+        endDateTime: finalEndDateTime,
+      };
     }
 
-    await poll.save();
+    await existingPoll.save();
 
     return res.status(200).json({
       success: true,
       message: "Poll updated successfully",
-      data: poll,
+      data: existingPoll,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Update Poll Error:", error);
 
     if (error.name === "ValidationError") {
       const errors = Object.values(error.errors).map(
