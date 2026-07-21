@@ -1,3 +1,6 @@
+// Configure DNS first
+import "./config/dns.js";
+
 import dotenv from "dotenv";
 dotenv.config();
 import multer from "multer";
@@ -24,6 +27,7 @@ import venueRoutes from "./routes/venueRoutes.js";
 import teamRoutes from "./routes/teamRoutes.js";
 import eventRoutes from "./routes/eventRoutes.js";
 import hotelRoutes from "./routes/hotelRoutes.js";
+import roomCategoryRoutes from "./routes/roomCategoryRoutes.js";
 import supplierRoutes from "./routes/supplierRoutes.js";
 import addRoomRoutes from "./routes/addRoomRoutes.js";
 import eventAssignRoutes from "./routes/eventAssignRoutes.js";
@@ -145,6 +149,7 @@ app.use("/api", venueRoutes);
 app.use("/api", teamRoutes);
 app.use("/api", eventRoutes);
 app.use("/api", hotelRoutes);
+app.use("/api", roomCategoryRoutes);
 app.use("/api", supplierRoutes);
 app.use("/api", addRoomRoutes);
 app.use("/api", eventAssignRoutes);
