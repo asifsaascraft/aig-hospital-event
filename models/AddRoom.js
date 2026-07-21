@@ -12,6 +12,11 @@ const AddRoomSchema = new mongoose.Schema(
       ref: "Hotel",
       required: [true, "Hotel is required"],
     },
+    roomCategoryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "RoomCategory",
+      required: [true, "Room category is required"],
+    },
     numberOfRooms: {
       type: Number,
       required: [true, "Number of room is required"],

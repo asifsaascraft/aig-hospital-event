@@ -1,6 +1,7 @@
 import AddRoom from "../models/AddRoom.js";
 import Event from "../models/Event.js";
 import Hotel from "../models/Hotel.js";
+import RoomCategory from "../models/RoomCategory.js";
 
 // =======================
 // Create AddRoom (EventAdmin only)
@@ -11,6 +12,7 @@ export const createAddRoom = async (req, res) => {
 
     const {
       hotelId,
+      roomCategoryId,
       numberOfRooms,
       checkinDateTime,
       checkoutDateTime,
@@ -25,6 +27,12 @@ export const createAddRoom = async (req, res) => {
       });
     }
 
+    if (!hotelId || !roomCategoryId) {
+      return res.status(400).json({
+        success: false,
+        message: "Hotel and Room Category are required",
+      });
+    }
     // ===============================
     // Required check
     // ===============================
@@ -37,10 +45,7 @@ export const createAddRoom = async (req, res) => {
     // ===============================
     // Validate datetime format
     // ===============================
-    if (
-      isNaN(new Date(checkinDateTime)) ||
-      isNaN(new Date(checkoutDateTime))
-    ) {
+    if (isNaN(new Date(checkinDateTime)) || isNaN(new Date(checkoutDateTime))) {
       return res.status(400).json({
         message: "Invalid date time format",
       });
@@ -57,8 +62,7 @@ export const createAddRoom = async (req, res) => {
     // ===============================
     if (parsedCheckoutDateTime <= parsedCheckinDateTime) {
       return res.status(400).json({
-        message:
-          "Checkout date time must be greater than checkin date time",
+        message: "Checkout date time must be greater than checkin date time",
       });
     }
 
@@ -85,11 +89,31 @@ export const createAddRoom = async (req, res) => {
     }
 
     // ===============================
+    // Validate Room Category
+    // ===============================
+    const roomCategory = await RoomCategory.findById(roomCategoryId);
+
+    if (!roomCategory) {
+      return res.status(404).json({
+        success: false,
+        message: "Room category not found",
+      });
+    }
+
+    // Room Category should belong to selected Hotel
+    if (roomCategory.hotelId.toString() !== hotelId) {
+      return res.status(400).json({
+        success: false,
+        message: "Selected room category does not belong to selected hotel",
+      });
+    }
+    // ===============================
     // Prevent duplicate
     // ===============================
     const existingRoom = await AddRoom.findOne({
       eventId,
       hotelId,
+      roomCategoryId,
       checkinDateTime: parsedCheckinDateTime,
     });
 
@@ -107,6 +131,7 @@ export const createAddRoom = async (req, res) => {
     const newAddRoom = await AddRoom.create({
       eventId,
       hotelId,
+      roomCategoryId,
       numberOfRooms,
       availableRooms: numberOfRooms,
       checkinDateTime: parsedCheckinDateTime,
@@ -118,7 +143,6 @@ export const createAddRoom = async (req, res) => {
       message: "Room added successfully",
       data: newAddRoom,
     });
-
   } catch (error) {
     console.error("Create AddRoom error:", error);
 
@@ -136,10 +160,8 @@ export const getAddRoomsByEvent = async (req, res) => {
     const { eventId } = req.params;
 
     const rooms = await AddRoom.find({ eventId })
-      .populate(
-        "hotelId",
-        "hotelName checkinTime checkoutTime"
-      )
+      .populate("hotelId", "hotelName checkinTime checkoutTime")
+      .populate("roomCategoryId", "roomCategoryName")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -147,7 +169,6 @@ export const getAddRoomsByEvent = async (req, res) => {
       message: "Rooms fetched successfully",
       data: rooms,
     });
-
   } catch (error) {
     console.error("Get AddRooms error:", error);
 
@@ -165,10 +186,8 @@ export const getAddRoomById = async (req, res) => {
     const { id } = req.params;
 
     const room = await AddRoom.findById(id)
-      .populate(
-        "hotelId",
-        "hotelName checkinTime checkoutTime"
-      );
+      .populate("hotelId", "hotelName checkinTime checkoutTime")
+      .populate("roomCategoryId", "roomCategoryName");
 
     if (!room) {
       return res.status(404).json({
@@ -180,7 +199,6 @@ export const getAddRoomById = async (req, res) => {
       success: true,
       data: room,
     });
-
   } catch (error) {
     console.error("Get AddRoom By ID error:", error);
 
@@ -199,6 +217,7 @@ export const updateAddRoom = async (req, res) => {
 
     const {
       hotelId,
+      roomCategoryId,
       numberOfRooms,
       checkinDateTime,
       checkoutDateTime,
@@ -228,10 +247,8 @@ export const updateAddRoom = async (req, res) => {
     // Validate datetime format
     // ===============================
     if (
-      (checkinDateTime &&
-        isNaN(new Date(checkinDateTime))) ||
-      (checkoutDateTime &&
-        isNaN(new Date(checkoutDateTime)))
+      (checkinDateTime && isNaN(new Date(checkinDateTime))) ||
+      (checkoutDateTime && isNaN(new Date(checkoutDateTime)))
     ) {
       return res.status(400).json({
         message: "Invalid date time format",
@@ -254,13 +271,13 @@ export const updateAddRoom = async (req, res) => {
     // ===============================
     if (finalCheckoutDateTime <= finalCheckinDateTime) {
       return res.status(400).json({
-        message:
-          "Checkout date time must be greater than checkin date time",
+        message: "Checkout date time must be greater than checkin date time",
       });
     }
 
-    const finalHotelId =
-      hotelId || existingRoom.hotelId;
+    const finalHotelId = hotelId || existingRoom.hotelId;
+
+    const finalRoomCategoryId = roomCategoryId || existingRoom.roomCategoryId;
 
     // ===============================
     // Validate Hotel
@@ -273,6 +290,22 @@ export const updateAddRoom = async (req, res) => {
       });
     }
 
+    const roomCategory = await RoomCategory.findById(finalRoomCategoryId);
+
+    if (!roomCategory) {
+      return res.status(404).json({
+        success: false,
+        message: "Room category not found",
+      });
+    }
+
+    if (roomCategory.hotelId.toString() !== finalHotelId.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: "Selected room category does not belong to selected hotel",
+      });
+    }
+
     // ===============================
     // Prevent duplicate
     // ===============================
@@ -280,6 +313,7 @@ export const updateAddRoom = async (req, res) => {
       _id: { $ne: id },
       eventId: existingRoom.eventId,
       hotelId: finalHotelId,
+      roomCategoryId: finalRoomCategoryId,
       checkinDateTime: finalCheckinDateTime,
     });
 
@@ -295,11 +329,11 @@ export const updateAddRoom = async (req, res) => {
     // Update fields
     // ===============================
     existingRoom.hotelId = finalHotelId;
+    existingRoom.roomCategoryId = finalRoomCategoryId;
 
     if (numberOfRooms !== undefined) {
       const allocated =
-        existingRoom.numberOfRooms -
-        existingRoom.availableRooms;
+        existingRoom.numberOfRooms - existingRoom.availableRooms;
 
       // Prevent reducing below allocated
       if (numberOfRooms < allocated) {
@@ -308,21 +342,16 @@ export const updateAddRoom = async (req, res) => {
         });
       }
 
-      const diff =
-        numberOfRooms -
-        existingRoom.numberOfRooms;
+      const diff = numberOfRooms - existingRoom.numberOfRooms;
 
       existingRoom.numberOfRooms = numberOfRooms;
 
-      existingRoom.availableRooms =
-        (existingRoom.availableRooms || 0) + diff;
+      existingRoom.availableRooms = (existingRoom.availableRooms || 0) + diff;
     }
 
-    existingRoom.checkinDateTime =
-      finalCheckinDateTime;
+    existingRoom.checkinDateTime = finalCheckinDateTime;
 
-    existingRoom.checkoutDateTime =
-      finalCheckoutDateTime;
+    existingRoom.checkoutDateTime = finalCheckoutDateTime;
 
     // ===============================
     // Save
@@ -334,7 +363,6 @@ export const updateAddRoom = async (req, res) => {
       message: "Room updated successfully",
       data: existingRoom,
     });
-
   } catch (error) {
     console.error("Update AddRoom error:", error);
 
@@ -365,7 +393,6 @@ export const deleteAddRoom = async (req, res) => {
       success: true,
       message: "Room deleted successfully",
     });
-
   } catch (error) {
     console.error("Delete AddRoom error:", error);
 
