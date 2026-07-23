@@ -6,6 +6,10 @@ const QuestionSchema = new mongoose.Schema(
       type: String,
       required: [true, "Question is required"],
     },
+    name: {
+      type: String,
+      required: [true, "Name is required"],
+    },
     status: {
       type: String,
       enum: ["Active", "Inactive"], //  restricts to these values

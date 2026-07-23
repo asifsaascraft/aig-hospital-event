@@ -5,17 +5,18 @@ import Question from "../models/Question.js";
 // ==========================
 export const createQuestion = async (req, res) => {
   try {
-    const { questionName } = req.body;
+    const { questionName, name } = req.body;
 
-    if (!questionName) {
+    if (!questionName || !name) {
       return res.status(400).json({
         success: false,
-        message: "Question is required",
+        message: "Question and name are required",
       });
     }
 
     const question = await Question.create({
       questionName,
+      name,
     });
 
     res.status(201).json({
@@ -82,7 +83,7 @@ export const getQuestionById = async (req, res) => {
 // ==========================
 export const updateQuestion = async (req, res) => {
   try {
-    const { questionName, status } = req.body;
+    const { questionName, name, status } = req.body;
 
     const question = await Question.findById(req.params.id);
 
@@ -94,6 +95,7 @@ export const updateQuestion = async (req, res) => {
     }
 
     if (questionName !== undefined) question.questionName = questionName;
+    if (name !== undefined) question.name = name;
     if (status !== undefined) question.status = status;
 
     await question.save();
