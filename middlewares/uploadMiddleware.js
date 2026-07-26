@@ -232,4 +232,5 @@ export const uploadSponsorExcel =
   )
 
 
-
+export const uploadSupportAttachments =
+  createUploader("support-tickets");

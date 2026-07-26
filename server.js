@@ -95,7 +95,7 @@ import exhibitorRoutes from "./routes/exhibitorRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
 import pollRoutes from "./routes/pollRoutes.js";
 import pollResponseRoutes from "./routes/pollResponseRoutes.js";
-
+import supportTicketRoutes from "./routes/supportTicketRoutes.js";
 
 await connectDB();
 
@@ -219,7 +219,7 @@ app.use('/api', exhibitorRoutes)
 app.use('/api', contactRoutes)
 app.use('/api', pollRoutes)
 app.use('/api', pollResponseRoutes)
-
+app.use("/api", supportTicketRoutes);
 
 // =======================
 // Multer & File Upload Error Handler
