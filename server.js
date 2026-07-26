@@ -13,6 +13,7 @@ import connectDB from "./config/db.js";
 // Routes
 import adminRoutes from "./routes/adminRoutes.js";
 import eventAdminRoutes from "./routes/eventAdminRoutes.js";
+import supportAdminRoutes from "./routes/supportAdminRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import sponsorAuthRoutes from "./routes/sponsorAuthRoutes.js";
 import onsiteAuthRoutes from "./routes/onsiteAuthRoutes.js";
@@ -137,6 +138,7 @@ app.get("/", (req, res) => {
 // =======================
 app.use("/api/admin", adminRoutes);
 app.use("/api/event-admin", eventAdminRoutes);
+app.use("/api/support-admin", supportAdminRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/sponsors", sponsorAuthRoutes);
 app.use("/api/onsite", onsiteAuthRoutes);
