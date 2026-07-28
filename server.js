@@ -17,7 +17,6 @@ import supportAdminRoutes from "./routes/supportAdminRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import sponsorAuthRoutes from "./routes/sponsorAuthRoutes.js";
 import onsiteAuthRoutes from "./routes/onsiteAuthRoutes.js";
-import questionRoutes from "./routes/questionRoutes.js";
 
 
 import announcementRoutes from "./routes/announcementRoutes.js";
@@ -142,7 +141,6 @@ app.use("/api/support-admin", supportAdminRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/sponsors", sponsorAuthRoutes);
 app.use("/api/onsite", onsiteAuthRoutes);
-app.use("/api/questions", questionRoutes);
 
 app.use("/api", announcementRoutes);
 app.use("/api", departmentRoutes);
