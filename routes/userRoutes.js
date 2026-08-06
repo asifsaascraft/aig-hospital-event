@@ -9,7 +9,9 @@ import {
   resetPasswordUser,
   getUserProfile,
   updateUserProfile,
-} from "../controllers/userController.js";
+  getSupportAdmins,
+} from '../controllers/userController.js'
+
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 import { uploadProfileImage } from "../middlewares/uploadMiddleware.js";
 
@@ -60,6 +62,15 @@ router.put(
   authorizeRoles("user"), // user-only
   uploadProfileImage.single("profilePicture"), // handles profile image upload
   updateUserProfile
+);
+
+
+// Get Active Support Admins
+router.get(
+  "/support-admin",
+  protect,
+  authorizeRoles("supportAdmin"),
+  getSupportAdmins
 );
 
 

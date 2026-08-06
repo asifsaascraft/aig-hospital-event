@@ -93,20 +93,20 @@ const MessageSchema = new mongoose.Schema(
 
 const ActivitySchema = new mongoose.Schema(
   {
-  
     action: {
-  type: String,
-  enum: [
-    "Ticket Created",
-    "Reply Added",
-    "Assigned",
-    "Status Changed",
-    "Internal Note Added",
-    "Reopened",
-    "Closed",
-    "Resolved",
-  ],
-},
+      type: String,
+      enum: [
+        'Ticket Created',
+        'Reply Added',
+        'Assigned',
+        'Status Changed',
+        'Internal Note Added',
+        'Reopened',
+        'Closed',
+        'Resolved',
+        'Feedback Submitted',
+      ],
+    },
 
     performedBy: {
       userId: mongoose.Schema.Types.ObjectId,
@@ -336,6 +336,15 @@ const SupportTicketSchema = new mongoose.Schema(
   },
 )
 
+/* ============================================================
+    INDEXES
+
+    Existing indexes kept as-is.
+    Added below: indexes needed for query patterns that were
+    previously doing collection scans (assigned-to-me, deleted
+    filtering combined with eventId/status, raisedBy lookups).
+============================================================ */
+
 SupportTicketSchema.index({
   eventId: 1,
   status: 1,
@@ -344,6 +353,26 @@ SupportTicketSchema.index({
 SupportTicketSchema.index({
   eventId: 1,
   moduleId: 1,
+})
+
+// NEW: every list query filters deleted:false first — this
+// lets Mongo use the index instead of scanning then filtering.
+SupportTicketSchema.index({
+  deleted: 1,
+  eventId: 1,
+  status: 1,
+})
+
+// NEW: supports "assigned to me" queries and assignment lookups
+SupportTicketSchema.index({
+  'assignedTo.userId': 1,
+  status: 1,
+})
+
+// NEW: supports "my tickets" (event admin) queries
+SupportTicketSchema.index({
+  'raisedBy.userId': 1,
+  status: 1,
 })
 
 export default mongoose.models.SupportTicket ||

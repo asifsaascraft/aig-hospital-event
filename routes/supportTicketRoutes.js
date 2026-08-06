@@ -4,7 +4,11 @@ import {
   createSupportTicket,
   getSupportTickets,
   getMySupportTickets,
+  getAssignedToMeTickets,
+  getTicketStats,
+  getSupportAdminList,
   getSupportTicketById,
+  getTicketTimeline,
   replySupportTicket,
   assignSupportTicket,
   updateSupportTicketStatus,
@@ -40,23 +44,6 @@ router.get(
   getMySupportTickets,
 )
 
-// Get Ticket Details
-router.get(
-  '/support-ticket/:id',
-  protect,
-  authorizeRoles('eventAdmin', 'supportAdmin'),
-  getSupportTicketById,
-)
-
-// Reply Ticket
-router.post(
-  '/support-ticket/:id/reply',
-  protect,
-  authorizeRoles('eventAdmin', 'supportAdmin'),
-  uploadSupportAttachments.array('attachments', 10),
-  replySupportTicket,
-)
-
 // Reopen Ticket
 router.patch(
   '/support-ticket/:id/reopen',
@@ -85,6 +72,32 @@ router.get(
   getSupportTickets,
 )
 
+// Tickets Assigned To Me -- NEW
+// NOTE: must stay above /support-ticket/:id so "assigned-to-me"
+// isn't swallowed as an :id param.
+router.get(
+  '/support-ticket/assigned-to-me',
+  protect,
+  authorizeRoles('supportAdmin'),
+  getAssignedToMeTickets,
+)
+
+// Ticket Stats -- NEW
+router.get(
+  '/support-ticket/stats',
+  protect,
+  authorizeRoles('supportAdmin'),
+  getTicketStats,
+)
+
+// Active Support Admin List (for assignment dropdown) -- NEW
+router.get(
+  '/support-ticket/support-admins',
+  protect,
+  authorizeRoles('supportAdmin'),
+  getSupportAdminList,
+)
+
 // Assign Ticket
 router.patch(
   '/support-ticket/:id/assign',
@@ -108,6 +121,37 @@ router.post(
   authorizeRoles('supportAdmin'),
   uploadSupportAttachments.array('attachments', 10),
   addInternalNote,
+)
+
+/* ============================================================
+    SHARED (Event Admin + Support Admin)
+============================================================ */
+
+// Get Ticket Details
+// NOTE: kept below all static /support-ticket/* routes above
+// so it doesn't intercept them as an :id param.
+router.get(
+  '/support-ticket/:id',
+  protect,
+  authorizeRoles('eventAdmin', 'supportAdmin'),
+  getSupportTicketById,
+)
+
+// Get Ticket Timeline -- NEW
+router.get(
+  '/support-ticket/:id/timeline',
+  protect,
+  authorizeRoles('eventAdmin', 'supportAdmin'),
+  getTicketTimeline,
+)
+
+// Reply Ticket
+router.post(
+  '/support-ticket/:id/reply',
+  protect,
+  authorizeRoles('eventAdmin', 'supportAdmin'),
+  uploadSupportAttachments.array('attachments', 10),
+  replySupportTicket,
 )
 
 export default router

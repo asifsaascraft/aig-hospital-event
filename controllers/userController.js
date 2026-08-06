@@ -396,3 +396,33 @@ export const updateUserProfile = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
+
+
+
+
+// =======================
+// Get Support Admins
+// =======================
+export const getSupportAdmins = async (req, res) => {
+  try {
+    const supportAdmins = await User.find({
+      role: "supportAdmin",
+      status: "Active",
+    })
+      .select("_id name email")
+      .sort({ name: 1 });
+
+    return res.status(200).json({
+      success: true,
+      data: supportAdmins,
+    });
+  } catch (error) {
+    console.error("Get support admins error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
