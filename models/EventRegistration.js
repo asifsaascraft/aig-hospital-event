@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 // FOR EVENT DYNAMIC FORM ANSWERS
 const DynamicFormAnswerSchema = new mongoose.Schema(
   {
-    id: { type: String },      // DynamicRegForm id is STRING
+    id: { type: String }, // DynamicRegForm id is STRING
     label: String,
     type: String,
     required: Boolean,
@@ -14,7 +14,7 @@ const DynamicFormAnswerSchema = new mongoose.Schema(
     minSelected: Number,
     maxSelected: Number,
   },
-  { _id: false }
+  { _id: false },
 );
 
 const AdditionalAnswerSchema = new mongoose.Schema(
@@ -25,7 +25,7 @@ const AdditionalAnswerSchema = new mongoose.Schema(
     value: mongoose.Schema.Types.Mixed,
     fileUrl: String,
   },
-  { _id: false }
+  { _id: false },
 );
 
 const EventRegistrationSchema = new mongoose.Schema(
@@ -170,18 +170,29 @@ const EventRegistrationSchema = new mongoose.Schema(
     },
     registrationType: {
       type: String,
-      enum: ["Online Registration", "Offline Registration", "Sponsor Registration", "On-Spot Registration"],
-      default: "Online Registration"
+      enum: [
+        "Online Registration",
+        "Offline Registration",
+        "Sponsor Registration",
+        "On-Spot Registration",
+      ],
+      default: "Online Registration",
+    },
+    registrationSuccessEmailSentByAdmin: {
+      type: Boolean,
+      default: false,
+    },
+    registrationSuccessEmailSentAt: {
+      type: Date,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 EventRegistrationSchema.index(
   { eventId: 1, regNum: 1 },
-  { unique: true, sparse: true }
+  { unique: true, sparse: true },
 );
-
 
 // Avoid model overwrite during hot-reload
 export default mongoose.models.EventRegistration ||

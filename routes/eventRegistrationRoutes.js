@@ -19,6 +19,8 @@ import {
   getEventVisitorsNotRegistered,
   sendReminderEmails,
   sendReminderEmailToSingleUser,
+  sendRegistrationEmailToSingleUser,
+  sendBulkRegistrationSuccessEmails,
 } from "../controllers/eventRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 import { eventUpload } from "../middlewares/eventUploadMiddleware.js";
@@ -189,6 +191,26 @@ router.post(
   protect,
   authorizeRoles("eventAdmin"),
   sendReminderEmailToSingleUser
+);
+
+// =====================================
+//  18. Send success email to single user
+// =====================================
+router.post(
+  "/event-admin/events/:eventId/registrations/:registrationId/send-registration-email",
+  protect,
+  authorizeRoles("eventAdmin"),
+  sendRegistrationEmailToSingleUser
+);
+
+// =====================================
+//  19. Send success email
+// =====================================
+router.post(
+  "/event-admin/events/:eventId/send-registration-bulk-email",
+  protect,
+  authorizeRoles("eventAdmin"),
+  sendBulkRegistrationSuccessEmails
 );
 
 export default router;

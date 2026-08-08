@@ -14,6 +14,28 @@ import Sponsor from "../models/Sponsor.js";
 import EventVisitor from "../models/EventVisitor.js";
 import CardProfile from "../models/CardProfile.js";
 
+// helper function for success email
+const sendRegistrationSuccessEmail = async (registration, event) => {
+  await sendEmailWithTemplate({
+    to: registration.email,
+    name: registration.name,
+
+    templateKey:
+      "2518b.554b0da719bc314.k1.eb0a3fd0-9198-11f1-94bd-ae9c7e0b6a9f.19fd737144d",
+
+    mergeInfo: {
+      name: registration.name,
+      eventName: event.eventName,
+      registrationNumber: registration.regNum,
+
+      startDate: getIndianFormattedDateTime(event.startDateTime),
+
+      endDate: getIndianFormattedDateTime(event.endDateTime),
+    },
+  });
+};
+
+
 /* 
 ========================================================
   1. Get Prefilled Registration Form (User)
@@ -2253,6 +2275,128 @@ export const getCardProfileUpdatedRegistrations = async (req, res) => {
     });
   } catch (error) {
     console.error("Get card profile updated registrations error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+// =====================================
+//  18. Send success email to single user
+// =====================================
+export const sendRegistrationEmailToSingleUser = async (req, res) => {
+  try {
+
+    const { eventId, registrationId } = req.params;
+    const event = await Event.findById(eventId);
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    const registration = await EventRegistration.findOne({
+      _id: registrationId,
+      eventId,
+      isPaid: true,
+    });
+    if (!registration) {
+      return res.status(404).json({
+        success: false,
+        message: "Registration not found",
+      });
+    }
+    await sendRegistrationSuccessEmail(
+      registration,
+      event
+    );
+    return res.status(200).json({
+      success: true,
+      message: "Registration success email sent successfully.",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+// =====================================
+//  19. Send Registration Success Email (Bulk)
+// =====================================
+export const sendBulkRegistrationSuccessEmails = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    const event = await Event.findById(eventId);
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    // Check if all paid registrations already received bulk email
+    const pendingCount = await EventRegistration.countDocuments({
+      eventId,
+      isPaid: true,
+      registrationSuccessEmailSentByAdmin: true,
+    });
+
+    if (pendingCount) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Registration success email has already been sent to all registrations for this event.",
+      });
+    }
+
+    const registrations = await EventRegistration.find({
+      eventId,
+      isPaid: true,
+    });
+
+    let success = 0;
+    let failed = 0;
+
+    for (const registration of registrations) {
+      try {
+        await sendRegistrationSuccessEmail(
+          registration,
+          event
+        );
+
+        registration.registrationSuccessEmailSentByAdmin = true;
+        registration.registrationSuccessEmailSentAt = new Date();
+
+        await registration.save();
+
+        success++;
+      } catch (err) {
+        failed++;
+        console.error(
+          `Failed to send email to ${registration.email}:`,
+          err
+        );
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Registration success emails sent successfully.",
+      total: registrations.length,
+      successCount: success,
+      failedCount: failed,
+    });
+  } catch (error) {
+    console.error(error);
 
     return res.status(500).json({
       success: false,
