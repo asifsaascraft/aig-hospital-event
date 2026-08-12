@@ -5,6 +5,7 @@ import {
   getAllUsersCreatedByEventAdmin,
   getAllUsersCreatedBySponsor,
   updateUser,
+  updateUserByAdmin,
   deleteUser,
   checkUserEmailExists,
   registerUserBySponsor,
@@ -70,6 +71,16 @@ router.put(
   protect,
   authorizeRoles("eventAdmin"),
   updateUser
+);
+
+// =======================
+// Admin: Update Any User
+// =======================
+router.put(
+  "/admin/update-user/:userId",
+  protect,
+  authorizeRoles("admin"),
+  updateUserByAdmin,
 );
 
 // =======================

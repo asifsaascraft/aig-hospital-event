@@ -3,7 +3,6 @@ import mongoose from "mongoose";
 import XLSX from "xlsx";
 import OnsiteBadge from "../models/OnsiteBadge.js";
 import CardProfile from "../models/CardProfile.js";
-import { generateOnsiteRegNum } from "../utils/generateOnsiteRegNum.js";
 import QRCode from "qrcode";
 import Event from "../models/Event.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
@@ -357,24 +356,6 @@ export const importSponsorExcel = async (req, res) => {
 
     const localDuplicateSet = new Set();
 
-    const lastSponsorBadge = await OnsiteBadge.findOne({
-      eventId,
-      regNum: {
-        $regex: "^SPONSOR-",
-      },
-    })
-      .sort({ createdAt: -1 })
-      .select("regNum");
-
-    let sponsorCounter = 1;
-
-    if (lastSponsorBadge?.regNum) {
-      const match = lastSponsorBadge.regNum.match(/(\d+)$/);
-      if (match?.[1]) {
-        sponsorCounter = parseInt(match[1], 10) + 1;
-      }
-    }
-
     for (let index = 0; index < rows.length; index++) {
       const row = rows[index];
       const name = String(row.name || "").trim();
@@ -388,6 +369,7 @@ export const importSponsorExcel = async (req, res) => {
       const city = String(row.city || "").trim();
       const state = String(row.state || "").trim();
       const country = String(row.country || "").trim();
+      const regNum = String(row.regNum || "").trim();
 
       if (!name) {
         invalidRows.push({
@@ -403,6 +385,16 @@ export const importSponsorExcel = async (req, res) => {
           row: index + 2,
           reason: "Email or mobile is required",
         });
+        skipped++;
+        continue;
+      }
+      
+      if (!regNum) {
+        invalidRows.push({
+          row: index + 2,
+          reason: "Reg number is required",
+        });
+
         skipped++;
         continue;
       }
@@ -427,13 +419,6 @@ export const importSponsorExcel = async (req, res) => {
 
       const uniqueCompositeKey = `${eventId}-sponsor_csv-${email}-${mobile}`;
 
-      let regNum = existingRecord?.regNum;
-
-      if (!regNum) {
-        regNum = `SPONSOR-${String(sponsorCounter).padStart(4, "0")}`;
-        sponsorCounter++;
-      }
-
       const transformedData = {
         eventId,
         sourceType: "sponsor_csv",
@@ -441,6 +426,7 @@ export const importSponsorExcel = async (req, res) => {
         name,
         email,
         mobile,
+        // REG NUM FROM EXCEL
         regNum,
         designation,
         affiliation,
@@ -512,6 +498,7 @@ export const importSponsorExcel = async (req, res) => {
 export const createManualBadge = async (req, res) => {
   try {
     const { eventId } = req.params;
+
     const { prefix, name, gender, cardProfileId, email, mobile } = req.body;
 
     if (!name) {
@@ -528,6 +515,30 @@ export const createManualBadge = async (req, res) => {
       });
     }
 
+    // =====================================
+    // FETCH EVENT
+    // =====================================
+
+    const event = await Event.findById(eventId).select("_id eventCode");
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    if (!event.eventCode) {
+      return res.status(400).json({
+        success: false,
+        message: "Event code is not configured for this event",
+      });
+    }
+
+    // =====================================
+    // BADGE PROFILE
+    // =====================================
+
     let badgeProfile = await CardProfile.findById(cardProfileId).select(
       "_id CardProfileName",
     );
@@ -537,6 +548,10 @@ export const createManualBadge = async (req, res) => {
         CardProfileName: "Delegate",
       }).select("_id CardProfileName");
     }
+
+    // =====================================
+    // CHECK DUPLICATE EMAIL / MOBILE
+    // =====================================
 
     const existingRecord = await OnsiteBadge.findOne({
       eventId,
@@ -550,29 +565,77 @@ export const createManualBadge = async (req, res) => {
       });
     }
 
-    const uniqueCompositeKey = `${eventId}-manual-${email}-${mobile}`;
+    // =====================================
+    // UNIQUE COMPOSITE KEY
+    // =====================================
 
-    const regNum = await generateOnsiteRegNum({
+    const uniqueCompositeKey = `${eventId}-manual-${email || ""}-${mobile || ""}`;
+
+    // =====================================
+    // GENERATE MANUAL REG NUM
+    //
+    // FORMAT:
+    // EVENTCODE-SPOT-001
+    // EVENTCODE-SPOT-002
+    // EVENTCODE-SPOT-003
+    // =====================================
+
+    const eventCode = event.eventCode.trim();
+
+    const escapedEventCode = eventCode.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    const lastSpotBadge = await OnsiteBadge.findOne({
       eventId,
-      type: "SPOT",
-    });
+      sourceType: "manual",
+      regNum: {
+        $regex: `^${escapedEventCode}-SPOT-\\d+$`,
+      },
+    })
+      .sort({ createdAt: -1 })
+      .select("regNum");
+
+    let nextNumber = 1;
+
+    if (lastSpotBadge?.regNum) {
+      const match = lastSpotBadge.regNum.match(/(\d+)$/);
+
+      if (match?.[1]) {
+        nextNumber = parseInt(match[1], 10) + 1;
+      }
+    }
+
+    const regNum = `${eventCode}-SPOT-${String(nextNumber).padStart(3, "0")}`;
+
+    // =====================================
+    // CREATE BADGE
+    // =====================================
 
     const newBadge = await OnsiteBadge.create({
       eventId,
+
       sourceType: "manual",
       sourceId: uniqueCompositeKey,
+
       prefix: prefix || "Dr",
+
       name,
       gender,
+
       email: email || "",
       mobile: mobile || "",
+
+      // NEW FORMAT
       regNum,
+
       badgeProfileId: badgeProfile?._id || null,
       badgeProfileName: badgeProfile?.CardProfileName || "Delegate",
+
       badgePrinted: false,
       printCount: 0,
+
       isPaid: true,
       isSuspended: false,
+
       uniqueCompositeKey,
     });
 
@@ -583,6 +646,7 @@ export const createManualBadge = async (req, res) => {
     });
   } catch (error) {
     console.error("CREATE MANUAL BADGE ERROR:", error);
+
     return res.status(500).json({
       success: false,
       message: "Failed to create manual badge",
@@ -766,7 +830,7 @@ export const sendBulkBadgeEmails = async (req, res) => {
     for (const badge of badges) {
       try {
         // const qrCode = await QRCode.toDataURL(badge.regNum) // OLD - USING QR CODE LIBRARY
-       const qrCode = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+        const qrCode = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
           badge.regNum,
         )}`;
 
@@ -846,9 +910,9 @@ export const sendSingleBadgeEmail = async (req, res) => {
       });
     }
 
-   const qrCode = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
-          badge.regNum,
-        )}`;
+    const qrCode = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+      badge.regNum,
+    )}`;
 
     await sendEmailWithTemplate({
       to: badge.email,
@@ -883,200 +947,6 @@ export const sendSingleBadgeEmail = async (req, res) => {
     });
   }
 };
-
-// //======== Onsite Badge Search Controller ======
-// export const searchOnsiteBadges = async (req, res) => {
-//   try {
-//     const { eventId } = req.params
-
-//     const {
-//       search = '',
-//       page = 1,
-//       limit = 20,
-//       badgePrinted,
-//       badgeProfileName,
-//       sourceType,
-//     } = req.query
-
-//     /**
-//      * PAGINATION
-//      */
-
-//     const currentPage = parseInt(page)
-
-//     const pageLimit = parseInt(limit)
-
-//     const skip = (currentPage - 1) * pageLimit
-
-//     /**
-//      * FILTER
-//      */
-
-//     const filter = {
-//       eventId,
-
-//       isDeleted: false,
-//     }
-
-//     /**
-//      * SEARCH
-//      */
-
-//     if (search) {
-//       filter.$or = [
-//         {
-//           regNum: {
-//             $regex: search,
-//             $options: 'i',
-//           },
-//         },
-
-//         {
-//           name: {
-//             $regex: search,
-//             $options: 'i',
-//           },
-//         },
-
-//         {
-//           email: {
-//             $regex: search,
-//             $options: 'i',
-//           },
-//         },
-
-//         {
-//           mobile: {
-//             $regex: search,
-//             $options: 'i',
-//           },
-//         },
-//       ]
-//     }
-
-//     /**
-//      * FILTERS
-//      */
-
-//     if (badgePrinted !== undefined) {
-//       filter.badgePrinted = badgePrinted === 'true'
-//     }
-
-//     if (badgeProfileName) {
-//       filter.badgeProfileName = badgeProfileName
-//     }
-
-//     if (sourceType) {
-//       filter.sourceType = sourceType
-//     }
-
-//     /**
-//      * FETCH
-//      */
-
-//     const data = await OnsiteBadge.find(filter)
-//       .sort({
-//         createdAt: -1,
-//       })
-//       .skip(skip)
-//       .limit(pageLimit)
-
-//     /**
-//      * TOTAL
-//      */
-
-//     const total = await OnsiteBadge.countDocuments(filter)
-
-//     return res.status(200).json({
-//       success: true,
-
-//       total,
-
-//       currentPage,
-
-//       totalPages: Math.ceil(total / pageLimit),
-
-//       data,
-//     })
-//   } catch (error) {
-//     console.error('SEARCH ONSITE BADGES ERROR:', error)
-
-//     return res.status(500).json({
-//       success: false,
-
-//       message: 'Failed to search badges',
-
-//       error: error.message,
-//     })
-//   }
-// }
-
-// //========= Badge Print Controller ======//
-
-// export const printBadge = async (req, res) => {
-//   try {
-//     const { badgeId } = req.params
-
-//     /**
-//      * FIND BADGE
-//      */
-
-//     const badge = await OnsiteBadge.findById(badgeId)
-
-//     if (!badge) {
-//       return res.status(404).json({
-//         success: false,
-
-//         message: 'Badge not found',
-//       })
-//     }
-
-//     /**
-//      * UPDATE
-//      */
-
-//     badge.badgePrinted = true
-
-//     badge.printCount = (badge.printCount || 0) + 1
-
-//     badge.lastPrintedAt = new Date()
-
-//     /**
-//      * PRINT LOG
-//      */
-
-//     badge.printLogs.push({
-//       printedAt: new Date(),
-
-//       printedBy: req.user?._id || null,
-
-//       reprint: badge.printCount > 1,
-//     })
-
-//     await badge.save()
-
-//     return res.status(200).json({
-//       success: true,
-
-//       message:
-//         badge.printCount > 1
-//           ? 'Badge reprinted successfully'
-//           : 'Badge printed successfully',
-
-//       data: badge,
-//     })
-//   } catch (error) {
-//     console.error('PRINT BADGE ERROR:', error)
-
-//     return res.status(500).json({
-//       success: false,
-
-//       message: 'Failed to print badge',
-
-//       error: error.message,
-//     })
-//   }
-// }
 
 // ======================================================
 // SEARCH BADGES

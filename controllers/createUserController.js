@@ -382,6 +382,102 @@ export const updateUser = async (req, res) => {
 };
 
 // =======================
+// Admin: Update Any User
+// =======================
+export const updateUserByAdmin = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const updateFields = { ...req.body };
+
+    // =======================
+    // Check if user exists
+    // =======================
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // =======================
+    // BLOCK EMAIL UPDATE
+    // =======================
+    if (updateFields.email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email cannot be updated",
+      });
+    }
+
+    // =======================
+    // Mobile duplicate check
+    // =======================
+    if (
+      updateFields.mobile &&
+      updateFields.mobile !== user.mobile
+    ) {
+      const mobileExists = await User.findOne({
+        mobile: updateFields.mobile,
+        _id: { $ne: userId },
+      });
+
+      if (mobileExists) {
+        return res.status(400).json({
+          success: false,
+          message: "Mobile already exists",
+        });
+      }
+    }
+
+    // =======================
+    // Remove restricted fields
+    // =======================
+    delete updateFields.password;
+    delete updateFields.plainPassword;
+    delete updateFields.passwordResetToken;
+    delete updateFields.passwordResetExpires;
+
+    // Keep role and status protected
+    delete updateFields.role;
+    delete updateFields.status;
+
+    // =======================
+    // Update user
+    // =======================
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      updateFields,
+      {
+        new: true,
+        runValidators: true,
+      },
+    ).select(
+      "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires",
+    );
+
+    // =======================
+    // Response
+    // =======================
+    return res.status(200).json({
+      success: true,
+      message: "User updated successfully by Admin",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("Admin update user error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+// =======================
 // Delete User (Only eventAdmin)
 // =======================
 export const deleteUser = async (req, res) => {
