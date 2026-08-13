@@ -119,8 +119,16 @@ const corsOptions = {
   credentials: true,
 };
 
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      if (req.originalUrl === "/api/payments/webhook") {
+        req.rawBody = buf;
+      }
+    },
+  }),
+);
 
-app.use(express.json());
 app.use(cors(corsOptions));
 app.use(cookieParser()); // Needed to read cookies (refresh token)
 app.use(morgan("dev"));

@@ -19,6 +19,375 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_SECRET,
 });
 
+// ========================================================
+// COMPLETE EVENT REGISTRATION PAYMENT
+// Used by:
+// 1. Mobile verifyPayment API
+// 2. Razorpay payment.captured webhook
+// ========================================================
+const completeEventRegistrationPayment = async ({
+  payment,
+  razorpayPaymentId,
+  razorpaySignature = null,
+  verificationSource = "api",
+}) => {
+  // ==========================================
+  // Already completed
+  // ==========================================
+
+  if (payment.status === "paid") {
+    const existingRegistration = await EventRegistration.findById(
+      payment.eventRegistrationId,
+    );
+
+    return {
+      alreadyCompleted: true,
+      payment,
+      registration: existingRegistration,
+    };
+  }
+
+  // ==========================================
+  // Get registration
+  // ==========================================
+
+  const registration = await EventRegistration.findById(
+    payment.eventRegistrationId,
+  ).populate("registrationSlabId", "slabName");
+
+  if (!registration) {
+    throw new Error("Event registration not found");
+  }
+
+  // ==========================================
+  // Get event
+  // ==========================================
+
+  const event = await Event.findById(registration.eventId);
+
+  if (!event) {
+    throw new Error("Event not found");
+  }
+
+  if (!event.eventCode) {
+    throw new Error("Event code is not configured");
+  }
+
+  // ==========================================
+  // IMPORTANT:
+  // Registration may already have been completed
+  // by webhook/API.
+  // ==========================================
+
+  if (
+    registration.isPaid === true &&
+    registration.regNumGenerated === true &&
+    registration.regNum
+  ) {
+    payment.razorpayPaymentId = razorpayPaymentId || payment.razorpayPaymentId;
+
+    if (razorpaySignature) {
+      payment.razorpaySignature = razorpaySignature;
+    }
+
+    payment.status = "paid";
+
+    await payment.save();
+
+    return {
+      alreadyCompleted: true,
+      payment,
+      registration,
+    };
+  }
+
+  // ==========================================
+  // Generate registration number atomically
+  // ==========================================
+
+  const updatedEvent = await Event.findOneAndUpdate(
+    {
+      _id: event._id,
+    },
+    {
+      $inc: {
+        regCounter: 1,
+      },
+    },
+    {
+      new: true,
+    },
+  );
+
+  if (!updatedEvent) {
+    throw new Error("Unable to update event registration counter");
+  }
+
+  const generatedRegNum = `${updatedEvent.eventCode}-${updatedEvent.regCounter}`;
+
+  // ==========================================
+  // Update registration
+  // ==========================================
+
+  registration.isPaid = true;
+  registration.regNumGenerated = true;
+  registration.regNum = generatedRegNum;
+
+  await registration.save();
+
+  // ==========================================
+  // Update payment
+  // ==========================================
+
+  payment.razorpayPaymentId = razorpayPaymentId || payment.razorpayPaymentId;
+
+  if (razorpaySignature) {
+    payment.razorpaySignature = razorpaySignature;
+  }
+
+  payment.status = "paid";
+
+  await payment.save();
+
+  return {
+    alreadyCompleted: false,
+    payment,
+    registration,
+  };
+};
+
+// ========================================================
+// RAZORPAY WEBHOOK
+// Handles payment.captured
+// ========================================================
+export const razorpayWebhook = async (req, res) => {
+  try {
+    // ==========================================
+    // Razorpay webhook signature
+    // ==========================================
+
+    const webhookSignature = req.headers["x-razorpay-signature"];
+
+    if (!webhookSignature) {
+      return res.status(400).json({
+        success: false,
+        message: "Webhook signature missing",
+      });
+    }
+
+    // req.rawBody MUST be available
+    const rawBody = req.rawBody;
+
+    if (!rawBody) {
+      console.error("Razorpay webhook raw body is missing");
+
+      return res.status(400).json({
+        success: false,
+        message: "Raw webhook body is required",
+      });
+    }
+
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET)
+      .update(rawBody)
+      .digest("hex");
+
+    if (expectedSignature !== webhookSignature) {
+      console.error("Invalid Razorpay webhook signature");
+
+      return res.status(400).json({
+        success: false,
+        message: "Invalid webhook signature",
+      });
+    }
+
+    // ==========================================
+    // Parse webhook body
+    // ==========================================
+
+    const payload =
+      typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+
+    const event = payload.event;
+
+    console.log("Razorpay webhook received:", event);
+
+    // ==========================================
+    // We only need payment.captured
+    // ==========================================
+
+    if (event !== "payment.captured") {
+      return res.status(200).json({
+        success: true,
+        message: "Webhook ignored",
+      });
+    }
+
+    // ==========================================
+    // Extract Razorpay payment
+    // ==========================================
+
+    const razorpayPayment = payload.payload?.payment?.entity;
+
+    if (!razorpayPayment) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment data missing",
+      });
+    }
+
+    const razorpayPaymentId = razorpayPayment.id;
+
+    const razorpayOrderId = razorpayPayment.order_id;
+
+    // ==========================================
+    // Payment must be captured
+    // ==========================================
+
+    if (razorpayPayment.status !== "captured") {
+      return res.status(200).json({
+        success: true,
+        message: "Payment is not captured",
+      });
+    }
+
+    if (!razorpayOrderId) {
+      console.error("Razorpay order ID missing in webhook");
+
+      return res.status(400).json({
+        success: false,
+        message: "Order ID missing",
+      });
+    }
+
+    // ==========================================
+    // Find our Payment using Razorpay order ID
+    // ==========================================
+
+    const payment = await Payment.findOne({
+      razorpayOrderId,
+    });
+
+    if (!payment) {
+      console.error(
+        "Payment record not found for Razorpay order:",
+        razorpayOrderId,
+      );
+
+      // Return 200 so Razorpay doesn't continuously retry
+      // for an order that doesn't exist in our DB.
+      return res.status(200).json({
+        success: true,
+        message: "Payment record not found",
+      });
+    }
+
+    // ==========================================
+    // Verify that this is Event Registration
+    // ==========================================
+
+    if (payment.paymentCategory !== "Event Registration") {
+      return res.status(200).json({
+        success: true,
+        message: "Webhook is not for Event Registration",
+      });
+    }
+
+    // ==========================================
+    // Already processed
+    // ==========================================
+
+    if (payment.status === "paid") {
+      console.log("Payment already processed:", payment._id.toString());
+
+      return res.status(200).json({
+        success: true,
+        message: "Payment already processed",
+      });
+    }
+
+    // ==========================================
+    // Complete registration
+    // ==========================================
+
+    const result = await completeEventRegistrationPayment({
+      payment,
+      razorpayPaymentId,
+      verificationSource: "webhook",
+    });
+
+    // ==========================================
+    // Send registration/payment emails
+    // ==========================================
+
+    if (!result.alreadyCompleted) {
+      try {
+        const registration = result.registration;
+
+        const eventData = await Event.findById(registration.eventId);
+
+        const slabName = registration.registrationSlabId?.slabName || "N/A";
+
+        await Promise.allSettled([
+          sendEmailWithTemplate({
+            to: registration.email,
+            name: registration.name,
+            templateKey:
+              "2518b.554b0da719bc314.k1.f7c9f490-a7f1-11f0-8b9c-8e9a6c33ddc2.199dbf3d259",
+            mergeInfo: {
+              name: registration.name,
+              eventName: eventData.eventName,
+              registrationNumber: registration.regNum,
+              registrationSlabName: slabName,
+              startDate: getIndianFormattedDateTime(eventData.startDateTime),
+              endDate: getIndianFormattedDateTime(eventData.endDateTime),
+              designation: registration.designation || "N/A",
+              affiliation: registration.affiliation || "N/A",
+              country: registration.country || "N/A",
+              city: registration.city || "N/A",
+            },
+          }),
+
+          sendEmailWithTemplate({
+            to: registration.email,
+            name: registration.name,
+            templateKey:
+              "2518b.554b0da719bc314.k1.2f2232e0-a7f2-11f0-8b9c-8e9a6c33ddc2.199dbf53d0e",
+            mergeInfo: {
+              name: registration.name,
+              eventName: eventData.eventName,
+              registrationNumber: registration.regNum,
+              paymentAmount: result.payment.amount,
+              razorpayPaymentId: result.payment.razorpayPaymentId,
+              razorpayOrderId: result.payment.razorpayOrderId,
+              paymentStatus: result.payment.status,
+            },
+          }),
+        ]);
+      } catch (emailError) {
+        console.error("Webhook email error:", emailError);
+      }
+    }
+
+    // ==========================================
+    // IMPORTANT:
+    // Always return 200 after successful processing
+    // ==========================================
+
+    return res.status(200).json({
+      success: true,
+      message: "Razorpay payment webhook processed successfully",
+    });
+  } catch (error) {
+    console.error("Razorpay webhook error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Webhook processing failed",
+    });
+  }
+};
+
 /* ========================================================
    1. Create Razorpay Order
 ======================================================== */
@@ -32,17 +401,38 @@ export const createOrder = async (req, res) => {
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ message: "Event not found" });
 
-    const registration = await EventRegistration.findById(eventRegistrationId);
-    if (!registration)
-      return res.status(404).json({ message: "Event registration not found" });
+    const registration = await EventRegistration.findOne({
+      _id: eventRegistrationId,
+      userId,
+    });
+
+    if (!registration) {
+      return res.status(404).json({
+        success: false,
+        message: "Event registration not found",
+      });
+    }
+
+    if (registration.isPaid === true && registration.regNumGenerated === true) {
+      return res.status(400).json({
+        success: false,
+        message: "Event registration payment already completed",
+        regNum: registration.regNum,
+      });
+    }
 
     const existingPayment = await Payment.findOne({
       userId,
       eventRegistrationId,
       status: "paid",
     });
-    if (existingPayment)
-      return res.status(400).json({ message: "Payment already completed" });
+
+    if (existingPayment) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment already completed",
+      });
+    }
 
     const options = {
       amount: Math.round(amount * 100),
@@ -85,113 +475,180 @@ export const createOrder = async (req, res) => {
   }
 };
 
-/* ========================================================
-   2. Verify Payment
-======================================================== */
+// ========================================================
+// 2. Verify Event Registration Payment
+// ========================================================
+
 export const verifyPayment = async (req, res) => {
   try {
     const { razorpayOrderId, razorpayPaymentId, razorpaySignature, paymentId } =
       req.body;
 
-    // Verify Razorpay signature
-    const body = razorpayOrderId + "|" + razorpayPaymentId;
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_SECRET)
-      .update(body.toString())
-      .digest("hex");
+    // ==========================================
+    // Validate required fields
+    // ==========================================
 
-    if (expectedSignature !== razorpaySignature)
-      return res.status(400).json({ message: "Invalid payment signature" });
-
-    const payment = await Payment.findById(paymentId);
-    if (!payment)
-      return res.status(404).json({ message: "Payment record not found" });
-
-    const registration = await EventRegistration.findById(
-      payment.eventRegistrationId,
-    ).populate("registrationSlabId", "slabName");
-    if (!registration)
-      return res.status(404).json({ message: "Event registration not found" });
-
-    const event = await Event.findById(registration.eventId);
-    if (!event) return res.status(404).json({ message: "Event not found" });
-
-    // Atomic counter increment
-    const updatedEvent = await Event.findByIdAndUpdate(
-      event._id,
-      { $inc: { regCounter: 1 } },
-      { new: true }
-    );
-
-    const generatedRegNum = `${event.eventCode}-${updatedEvent.regCounter}`;
-
-    // Update registration & payment
-    registration.isPaid = true;
-    registration.regNumGenerated = true;
-    registration.regNum = generatedRegNum;
-    await registration.save();
-
-    payment.razorpayPaymentId = razorpayPaymentId;
-    payment.razorpaySignature = razorpaySignature;
-    payment.status = "paid";
-    await payment.save();
-
-    // ==============================================
-    //  Send Emails (2 templates)
-    // ==============================================
-    try {
-      const slabName = registration.registrationSlabId?.slabName || "N/A";
-
-      const [registrationEmail, paymentEmail] = await Promise.allSettled([
-        sendEmailWithTemplate({
-          to: registration.email,
-          name: registration.name,
-          templateKey:
-            "2518b.554b0da719bc314.k1.f7c9f490-a7f1-11f0-8b9c-8e9a6c33ddc2.199dbf3d259",
-          mergeInfo: {
-            name: registration.name,
-            eventName: event.eventName,
-            registrationNumber: registration.regNum,
-            registrationSlabName: slabName,
-
-            startDate: getIndianFormattedDateTime(event.startDateTime),
-
-            endDate: getIndianFormattedDateTime(event.endDateTime),
-
-            designation: registration.designation || "N/A",
-            affiliation: registration.affiliation || "N/A",
-            country: registration.country || "N/A",
-            city: registration.city || "N/A",
-          },
-        }),
-        sendEmailWithTemplate({
-          to: registration.email,
-          name: registration.name,
-          templateKey:
-            "2518b.554b0da719bc314.k1.2f2232e0-a7f2-11f0-8b9c-8e9a6c33ddc2.199dbf53d0e",
-          mergeInfo: {
-            name: registration.name,
-            eventName: event.eventName,
-            registrationNumber: registration.regNum,
-            paymentAmount: payment.amount,
-            razorpayPaymentId: payment.razorpayPaymentId,
-            razorpayOrderId: payment.razorpayOrderId,
-            paymentStatus: payment.status,
-          },
-        }),
-      ]);
-    } catch (err) {
-      console.error("Email sending exception:", err);
+    if (
+      !razorpayOrderId ||
+      !razorpayPaymentId ||
+      !razorpaySignature ||
+      !paymentId
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment verification data is incomplete",
+      });
     }
 
-    res.status(200).json({
+    // ==========================================
+    // Find our Payment record
+    // ==========================================
+
+    const payment = await Payment.findById(paymentId);
+
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        message: "Payment record not found",
+      });
+    }
+
+    // ==========================================
+    // IMPORTANT:
+    // Never trust order ID from mobile app.
+    // Compare it with our DB record.
+    // ==========================================
+
+    if (payment.razorpayOrderId !== razorpayOrderId) {
+      return res.status(400).json({
+        success: false,
+        message: "Razorpay order ID mismatch",
+      });
+    }
+
+    // ==========================================
+    // Verify Razorpay signature
+    // ==========================================
+
+    const body = payment.razorpayOrderId + "|" + razorpayPaymentId;
+
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_SECRET)
+      .update(body)
+      .digest("hex");
+
+    if (expectedSignature !== razorpaySignature) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payment signature",
+      });
+    }
+
+    // ==========================================
+    // VERIFY PAYMENT DIRECTLY WITH RAZORPAY
+    // ==========================================
+
+    const razorpayPayment = await razorpay.payments.fetch(razorpayPaymentId);
+
+    if (!razorpayPayment) {
+      return res.status(400).json({
+        success: false,
+        message: "Unable to fetch Razorpay payment",
+      });
+    }
+
+    // Payment must actually be captured
+    if (razorpayPayment.status !== "captured") {
+      return res.status(400).json({
+        success: false,
+        message: `Payment is not captured. Current status: ${razorpayPayment.status}`,
+      });
+    }
+
+    // ==========================================
+    // COMPLETE PAYMENT
+    // ==========================================
+
+    const result = await completeEventRegistrationPayment({
+      payment,
+      razorpayPaymentId,
+      razorpaySignature,
+      verificationSource: "api",
+    });
+
+    // ==========================================
+    // SEND EMAIL ONLY WHEN FIRST COMPLETED
+    // ==========================================
+
+    if (!result.alreadyCompleted) {
+      try {
+        const registration = result.registration;
+        const event = await Event.findById(registration.eventId);
+
+        const slabName = registration.registrationSlabId?.slabName || "N/A";
+
+        await Promise.allSettled([
+          sendEmailWithTemplate({
+            to: registration.email,
+            name: registration.name,
+            templateKey:
+              "2518b.554b0da719bc314.k1.f7c9f490-a7f1-11f0-8b9c-8e9a6c33ddc2.199dbf3d259",
+            mergeInfo: {
+              name: registration.name,
+              eventName: event.eventName,
+              registrationNumber: registration.regNum,
+              registrationSlabName: slabName,
+              startDate: getIndianFormattedDateTime(event.startDateTime),
+              endDate: getIndianFormattedDateTime(event.endDateTime),
+              designation: registration.designation || "N/A",
+              affiliation: registration.affiliation || "N/A",
+              country: registration.country || "N/A",
+              city: registration.city || "N/A",
+            },
+          }),
+
+          sendEmailWithTemplate({
+            to: registration.email,
+            name: registration.name,
+            templateKey:
+              "2518b.554b0da719bc314.k1.2f2232e0-a7f2-11f0-8b9c-8e9a6c33ddc2.199dbf53d0e",
+            mergeInfo: {
+              name: registration.name,
+              eventName: event.eventName,
+              registrationNumber: registration.regNum,
+              paymentAmount: result.payment.amount,
+              razorpayPaymentId: result.payment.razorpayPaymentId,
+              razorpayOrderId: result.payment.razorpayOrderId,
+              paymentStatus: result.payment.status,
+            },
+          }),
+        ]);
+      } catch (emailError) {
+        console.error("Registration payment email error:", emailError);
+      }
+    }
+
+    // ==========================================
+    // RESPONSE
+    // ==========================================
+
+    return res.status(200).json({
       success: true,
-      message: "Payment verified and emails sent successfully",
-      data: { payment, registration },
+      message: result.alreadyCompleted
+        ? "Payment already verified"
+        : "Payment verified successfully",
+      data: {
+        payment: result.payment,
+        registration: result.registration,
+      },
     });
   } catch (error) {
     console.error("Verify payment error:", error);
-    res.status(500).json({ message: "Server Error" });
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Server Error",
+    });
   }
 };
 

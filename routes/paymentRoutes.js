@@ -1,6 +1,7 @@
 // routes/paymentRoutes.js
 import express from "express";
 import {
+  razorpayWebhook,
   createOrder,
   verifyPayment,
   getMyPayments,
@@ -16,6 +17,15 @@ import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
+// ========================================================
+// Razorpay Webhook
+// IMPORTANT: Do NOT protect this with JWT/auth middleware
+// ========================================================
+
+router.post(
+  "/payments/webhook",
+  razorpayWebhook,
+);
 
 // Create Razorpay Order
 router.post(
