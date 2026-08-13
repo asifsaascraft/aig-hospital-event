@@ -381,6 +381,7 @@ export const updateUser = async (req, res) => {
   }
 };
 
+
 // =======================
 // Admin: Update Any User
 // =======================
@@ -403,13 +404,23 @@ export const updateUserByAdmin = async (req, res) => {
     }
 
     // =======================
-    // BLOCK EMAIL UPDATE
+    // Email duplicate check
     // =======================
-    if (updateFields.email) {
-      return res.status(400).json({
-        success: false,
-        message: "Email cannot be updated",
+    if (
+      updateFields.email &&
+      updateFields.email !== user.email
+    ) {
+      const emailExists = await User.findOne({
+        email: updateFields.email,
+        _id: { $ne: userId },
       });
+
+      if (emailExists) {
+        return res.status(400).json({
+          success: false,
+          message: "Email already exists",
+        });
+      }
     }
 
     // =======================
@@ -440,7 +451,9 @@ export const updateUserByAdmin = async (req, res) => {
     delete updateFields.passwordResetToken;
     delete updateFields.passwordResetExpires;
 
+    // =======================
     // Keep role and status protected
+    // =======================
     delete updateFields.role;
     delete updateFields.status;
 
@@ -453,9 +466,9 @@ export const updateUserByAdmin = async (req, res) => {
       {
         new: true,
         runValidators: true,
-      },
+      }
     ).select(
-      "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires",
+      "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires"
     );
 
     // =======================
@@ -476,6 +489,7 @@ export const updateUserByAdmin = async (req, res) => {
     });
   }
 };
+
 
 // =======================
 // Delete User (Only eventAdmin)
