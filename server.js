@@ -80,7 +80,7 @@ import onsiteBadgeRoutes from "./routes/onsiteBadgeRoutes.js";
 import badgeProfilePrivilegeRoutes from './routes/badgeProfilePrivilegeRoutes.js'
 import loginGenerateTokenRoutes from "./routes/loginGenerateTokenRoutes.js";
 import onsiteScanRoutes from "./routes/onsiteScanRoutes.js";
-import messageRoutes from "./routes/messageRoutes.js";
+import eventInfoRoutes from './routes/eventInfoRoutes.js'
 import committeeTypeRoutes from "./routes/committeeTypeRoutes.js";
 import committeeMemberRoutes from "./routes/committeeMemberRoutes.js";
 import sessionHallRoutes from "./routes/sessionHallRoutes.js";
@@ -212,7 +212,7 @@ app.use('/api', onsiteBadgeRoutes)
 app.use('/api', badgeProfilePrivilegeRoutes)
 app.use('/api', loginGenerateTokenRoutes)
 app.use('/api', onsiteScanRoutes)
-app.use('/api', messageRoutes)
+app.use('/api', eventInfoRoutes)
 app.use('/api', committeeTypeRoutes)
 app.use('/api', committeeMemberRoutes)
 app.use('/api', sessionHallRoutes)
