@@ -48,13 +48,50 @@ export const getActiveRoomCategories = async (req, res) => {
 };
 
 // =======================
+// Get ACTIVE Room Categories By Hotel ID
+// =======================
+export const getRoomCategoriesByHotelId = async (req, res) => {
+  try {
+    const { hotelId } = req.params;
+
+    if (!hotelId) {
+      return res.status(400).json({
+        success: false,
+        message: "Hotel ID is required",
+      });
+    }
+
+    const roomCategories = await RoomCategory.find({
+      hotelId,
+      status: "Active",
+    })
+      .populate("hotelId", "hotelName")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      message: "Room categories fetched successfully",
+      data: roomCategories,
+    });
+  } catch (error) {
+    console.error("Get Room Categories By Hotel ID Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch room categories by hotel",
+      error: error.message,
+    });
+  }
+};
+
+// =======================
 // Get Room Category By ID
 // =======================
 export const getRoomCategoryById = async (req, res) => {
   try {
     const roomCategory = await RoomCategory.findById(req.params.id).populate(
       "hotelId",
-      "hotelName"
+      "hotelName",
     );
 
     if (!roomCategory) {
@@ -122,7 +159,7 @@ export const updateRoomCategory = async (req, res) => {
       {
         new: true,
         runValidators: true,
-      }
+      },
     );
 
     if (!roomCategory) {

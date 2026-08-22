@@ -19,6 +19,11 @@ const SponsorAccomodationQuotaSchema = new mongoose.Schema(
           ref: "AddRoom",
           required: true,
         },
+        roomCategoryId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "RoomCategory",
+          required: true,
+        },
         numberOfQuota: {
           type: Number,
           required: true,
@@ -26,7 +31,7 @@ const SponsorAccomodationQuotaSchema = new mongoose.Schema(
       },
     ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.models.SponsorAccomodationQuota ||

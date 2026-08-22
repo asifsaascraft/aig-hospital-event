@@ -26,6 +26,12 @@ const AccomodationSchema = new mongoose.Schema(
       required: true,
     },
 
+    roomCategoryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "RoomCategory",
+      required: true,
+    },
+
     roomType: {
       type: String,
       enum: ["Single Occupancy", "Double Occupancy", "Twin Sharing"], //  restricts to these values
@@ -69,11 +75,16 @@ const AccomodationSchema = new mongoose.Schema(
           type: mongoose.Schema.Types.ObjectId,
           ref: "Hotel",
           required: true,
-        }
-      }
+        },
+        roomCategoryId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "RoomCategory",
+          required: true,
+        },
+      },
     ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 AccomodationSchema.pre("validate", function (next) {
@@ -98,7 +109,6 @@ AccomodationSchema.pre("validate", function (next) {
   next();
 });
 
-
 AccomodationSchema.index({
   eventId: 1,
   sponsorId: 1,
@@ -119,8 +129,5 @@ AccomodationSchema.index({
   otherEventRegistrationId: 1,
 });
 
-
 export default mongoose.models.Accomodation ||
   mongoose.model("Accomodation", AccomodationSchema);
-
-

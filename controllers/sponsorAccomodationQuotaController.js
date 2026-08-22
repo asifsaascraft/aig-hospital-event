@@ -2,6 +2,7 @@ import SponsorAccomodationQuota from "../models/SponsorAccomodationQuota.js";
 import AddRoom from "../models/AddRoom.js";
 import Event from "../models/Event.js";
 import Sponsor from "../models/Sponsor.js";
+import RoomCategory from "../models/RoomCategory.js";
 
 // =======================
 // Create Sponsor Accommodation Quota
@@ -10,7 +11,7 @@ import Sponsor from "../models/Sponsor.js";
 export const createSponsorAccomodationQuota = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { sponsorId, quotaId, numberOfQuota } = req.body;
+    const { sponsorId, quotaId, roomCategoryId, numberOfQuota } = req.body;
 
     // ===============================
     // VALIDATION
@@ -63,6 +64,24 @@ export const createSponsorAccomodationQuota = async (req, res) => {
       });
     }
 
+    // ===============================
+    // Validate Room Category
+    // ===============================
+    if (!roomCategoryId) {
+      return res.status(400).json({
+        success: false,
+        message: "Room category is required",
+      });
+    }
+
+    if (room.roomCategoryId.toString() !== roomCategoryId.toString()) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Selected room category does not belong to selected accommodation quota",
+      });
+    }
+
     if (room.eventId.toString() !== eventId) {
       return res.status(400).json({
         success: false,
@@ -92,7 +111,13 @@ export const createSponsorAccomodationQuota = async (req, res) => {
       const newRecord = await SponsorAccomodationQuota.create({
         eventId,
         sponsorId,
-        quotas: [{ quotaId, numberOfQuota }],
+        quotas: [
+          {
+            quotaId,
+            roomCategoryId,
+            numberOfQuota,
+          },
+        ],
       });
 
       return res.status(201).json({
@@ -103,20 +128,25 @@ export const createSponsorAccomodationQuota = async (req, res) => {
     }
 
     const existingQuota = record.quotas.find(
-      (q) => q.quotaId.toString() === quotaId
+      (q) => q.quotaId.toString() === quotaId,
     );
 
     if (existingQuota) {
       return res.status(400).json({
         success: false,
-        message: "This Accomodation quota is already assigned to this sponsor. You can update",
+        message:
+          "This Accomodation quota is already assigned to this sponsor. You can update",
       });
     }
 
     room.availableRooms -= numberOfQuota;
     await room.save();
 
-    record.quotas.push({ quotaId, numberOfQuota });
+    record.quotas.push({
+      quotaId,
+      roomCategoryId,
+      numberOfQuota,
+    });
     await record.save();
 
     return res.status(200).json({
@@ -124,7 +154,6 @@ export const createSponsorAccomodationQuota = async (req, res) => {
       message: "New accomodation quota added to existing sponsor successfully",
       data: record,
     });
-
   } catch (error) {
     console.error("Create Quota Error:", error);
     return res.status(500).json({
@@ -134,7 +163,6 @@ export const createSponsorAccomodationQuota = async (req, res) => {
     });
   }
 };
-
 
 // =======================
 // Get All by Event
@@ -147,19 +175,25 @@ export const getSponsorAccomodationQuotasByEvent = async (req, res) => {
       .populate("sponsorId")
       .populate({
         path: "quotas.quotaId",
-        select: "checkinDateTime checkoutDateTime hotelId",
-        populate: {
-          path: "hotelId",
-          select: "hotelName",
-        },
+        select: "checkinDateTime checkoutDateTime hotelId roomCategoryId",
+        populate: [
+          {
+            path: "hotelId",
+            select: "hotelName",
+          },
+          {
+            path: "roomCategoryId",
+            select: "roomCategoryName",
+          },
+        ],
       })
+      .populate("quotas.roomCategoryId", "roomCategoryName")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
       data: quotas,
     });
-
   } catch (error) {
     res.status(500).json({ message: "Server Error" });
   }
@@ -179,12 +213,19 @@ export const getMyAccomodationQuotas = async (req, res) => {
     })
       .populate({
         path: "quotas.quotaId",
-        select: "checkinDateTime checkoutDateTime hotelId",
-        populate: {
-          path: "hotelId",
-          select: "hotelName hotelImage checkinTime checkoutTime",
-        },
-      });
+        select: "checkinDateTime checkoutDateTime hotelId roomCategoryId",
+        populate: [
+          {
+            path: "hotelId",
+            select: "hotelName hotelImage checkinTime checkoutTime",
+          },
+          {
+            path: "roomCategoryId",
+            select: "roomCategoryName",
+          },
+        ],
+      })
+      .populate("quotas.roomCategoryId", "roomCategoryName");
 
     if (!quota) {
       return res.status(404).json({
@@ -219,6 +260,13 @@ export const getMyAccomodationQuotas = async (req, res) => {
 
       hotelMap[hotelId].dates.push({
         quotaId: room._id,
+
+        roomCategoryId: q.roomCategoryId?._id || room.roomCategoryId?._id,
+
+        roomCategoryName:
+          q.roomCategoryId?.roomCategoryName ||
+          room.roomCategoryId?.roomCategoryName,
+
         checkinDateTime: room.checkinDateTime,
         checkoutDateTime: room.checkoutDateTime,
         numberOfQuota: q.numberOfQuota,
@@ -233,8 +281,7 @@ export const getMyAccomodationQuotas = async (req, res) => {
     // ===============================
     result.forEach((hotel) => {
       hotel.dates.sort(
-        (a, b) =>
-          new Date(a.checkinDate) - new Date(b.checkinDate)
+        (a, b) => new Date(a.checkinDateTime) - new Date(b.checkinDateTime),
       );
     });
 
@@ -242,7 +289,6 @@ export const getMyAccomodationQuotas = async (req, res) => {
       success: true,
       data: result,
     });
-
   } catch (error) {
     console.error("Get My Quota Error:", error);
     return res.status(500).json({
@@ -258,7 +304,7 @@ export const getMyAccomodationQuotas = async (req, res) => {
 export const updateSponsorAccomodationQuota = async (req, res) => {
   try {
     const { id } = req.params;
-    const { quotaId, numberOfQuota } = req.body;
+    const { quotaId, roomCategoryId, numberOfQuota } = req.body;
 
     if (!quotaId) {
       return res.status(400).json({
@@ -283,13 +329,14 @@ export const updateSponsorAccomodationQuota = async (req, res) => {
     }
 
     const quotaItem = record.quotas.find(
-      (q) => q.quotaId.toString() === quotaId
+      (q) => q.quotaId.toString() === quotaId,
     );
 
     if (!quotaItem) {
       return res.status(404).json({
         success: false,
-        message: "Specified accomodation quota not found in this sponsor record",
+        message:
+          "Specified accomodation quota not found in this sponsor record",
       });
     }
 
@@ -298,6 +345,27 @@ export const updateSponsorAccomodationQuota = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Room not found",
+      });
+    }
+    if (!roomCategoryId) {
+      return res.status(400).json({
+        success: false,
+        message: "Room category is required",
+      });
+    }
+
+    if (room.roomCategoryId.toString() !== roomCategoryId.toString()) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Selected room category does not belong to selected accommodation quota",
+      });
+    }
+
+    if (room.eventId.toString() !== record.eventId.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: "Selected accommodation quota does not belong to this event",
       });
     }
 
@@ -315,6 +383,7 @@ export const updateSponsorAccomodationQuota = async (req, res) => {
       room.availableRooms += Math.abs(diff);
     }
 
+    quotaItem.roomCategoryId = roomCategoryId;
     quotaItem.numberOfQuota = numberOfQuota;
 
     await room.save();
@@ -325,7 +394,6 @@ export const updateSponsorAccomodationQuota = async (req, res) => {
       message: "Quota updated successfully",
       data: record,
     });
-
   } catch (error) {
     console.error("Update Quota Error:", error);
     return res.status(500).json({
@@ -343,7 +411,6 @@ export const deleteSponsorAccomodationQuota = async (req, res) => {
   try {
     const { id, quotaId } = req.params;
 
-
     const record = await SponsorAccomodationQuota.findById(id);
     if (!record) {
       return res.status(404).json({
@@ -353,7 +420,7 @@ export const deleteSponsorAccomodationQuota = async (req, res) => {
     }
 
     const index = record.quotas.findIndex(
-      (q) => q.quotaId.toString() === quotaId
+      (q) => q.quotaId.toString() === quotaId,
     );
 
     if (index === -1) {
@@ -388,7 +455,6 @@ export const deleteSponsorAccomodationQuota = async (req, res) => {
       success: true,
       message: "Quota removed successfully",
     });
-
   } catch (error) {
     console.error("Delete Quota Error:", error);
     return res.status(500).json({

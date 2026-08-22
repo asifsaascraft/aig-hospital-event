@@ -3,6 +3,7 @@ import express from "express";
 import {
   getRoomCategories,
   getActiveRoomCategories,
+  getRoomCategoriesByHotelId,
   getRoomCategoryById,
   createRoomCategory,
   updateRoomCategory,
@@ -26,6 +27,13 @@ router.get(
   protect,
   getActiveRoomCategories
 );
+
+router.get(
+  "/hotels/:hotelId/room-categories",
+  protect,
+  getRoomCategoriesByHotelId
+);
+
 
 router.get(
   "/room-categories/:id",
