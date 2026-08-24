@@ -192,7 +192,13 @@ export const createAccomodation = async (req, res) => {
     // ===============================
     // LOAD ROOMS OF THIS HOTEL ONLY
     // ===============================
-    const roomIds = quotaRecord.quotas.map((q) => q.quotaId);
+    const roomIds = quotaRecord.quotas
+      .filter(
+        (q) =>
+          q.roomCategoryId &&
+          q.roomCategoryId.toString() === roomCategoryId.toString(),
+      )
+      .map((q) => q.quotaId);
 
     const rooms = await AddRoom.find({
       _id: { $in: roomIds },
@@ -230,7 +236,8 @@ export const createAccomodation = async (req, res) => {
     const checkinDayRoom = rooms.find(
       (r) =>
         getDateKey(r.checkinDateTime) === getDateKey(startDate) &&
-        r.hotelId._id.toString() === hotelId.toString(),
+        r.hotelId._id.toString() === hotelId.toString() &&
+        r.roomCategoryId._id.toString() === roomCategoryId.toString(),
     );
 
     if (!checkinDayRoom) {
@@ -263,7 +270,8 @@ export const createAccomodation = async (req, res) => {
       const previousDayRoom = rooms.find(
         (r) =>
           getDateKey(r.checkinDateTime) === getDateKey(previousDate) &&
-          r.hotelId._id.toString() === hotelId.toString(),
+          r.hotelId._id.toString() === hotelId.toString() &&
+          r.roomCategoryId._id.toString() === roomCategoryId.toString(),
       );
 
       // No previous day quota
@@ -288,7 +296,8 @@ export const createAccomodation = async (req, res) => {
     const checkoutDayRoom = rooms.find(
       (r) =>
         getDateKey(r.checkinDateTime) === getDateKey(endDate) &&
-        r.hotelId._id.toString() === hotelId.toString(),
+        r.hotelId._id.toString() === hotelId.toString() &&
+        r.roomCategoryId._id.toString() === roomCategoryId.toString(),
     );
 
     if (!checkoutDayRoom) {
@@ -320,7 +329,8 @@ export const createAccomodation = async (req, res) => {
       const extraCheckoutRoom = rooms.find(
         (r) =>
           getDateKey(r.checkinDateTime) === getDateKey(endDate) &&
-          r.hotelId._id.toString() === hotelId.toString(),
+          r.hotelId._id.toString() === hotelId.toString() &&
+          r.roomCategoryId._id.toString() === roomCategoryId.toString(),
       );
 
       if (!extraCheckoutRoom) {
@@ -351,7 +361,8 @@ export const createAccomodation = async (req, res) => {
       const room = rooms.find(
         (r) =>
           getDateKey(r.checkinDateTime) === getDateKey(date) &&
-          r.hotelId._id.toString() === hotelId.toString(),
+          r.hotelId._id.toString() === hotelId.toString() &&
+          r.roomCategoryId._id.toString() === roomCategoryId.toString(),
       );
 
       if (!room) {
