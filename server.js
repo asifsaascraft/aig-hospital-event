@@ -106,6 +106,8 @@ const app = express();
 // =======================
 const allowedOrigins = [
   "http://localhost:3000",
+  "exp://192.168.1.5:8081",
+  "http://localhost:8081",
   process.env.ADMIN_FRONTEND_URL,
   process.env.EVENT_ADMIN_FRONTEND_URL,
   process.env.USER_FRONTEND_URL,
