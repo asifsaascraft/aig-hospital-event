@@ -1,7 +1,8 @@
 import Speaker from "../models/Speaker.js";
 import SpeakerType from "../models/SpeakerType.js";
 import Event from "../models/Event.js";
-
+import { getPagination, buildPaginationMeta } from '../utils/pagination.js'
+import buildSearchQuery from '../utils/search.js'
 // =======================
 // Create Speaker (EventAdmin)
 // =======================
@@ -116,38 +117,65 @@ export const getSpeakersByEvent = async (
 // =======================
 // Get Active Speakers
 // =======================
-export const getActiveSpeakersByEvent =
-  async (req, res) => {
-    try {
-      const { eventId } = req.params;
 
-      const speakers = await Speaker.find({
-        eventId,
-        status: "Active",
-      })
+// =======================
+// Get Active Speakers
+// =======================
+export const getActiveSpeakersByEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    // Pagination
+    const { page, limit, skip } = getPagination(req);
+
+    // Search
+    const searchQuery = buildSearchQuery(req, [
+      "name",
+      "designation",
+    ]);
+
+    // Final Query
+    const query = {
+      eventId,
+      status: "Active",
+      ...searchQuery,
+    };
+
+    // MongoDB
+    const [speakers, total] = await Promise.all([
+      Speaker.find(query)
         .populate(
           "speakerTypeId",
-          "speakerType status"
+          "speakerType status",
         )
-        .sort({
-          createdAt: -1,
-        });
+        .skip(skip)
+        .limit(limit),
 
-      return res.status(200).json({
-        success: true,
-        message:
-          "Active Speakers fetched successfully",
-        data: speakers,
-      });
-    } catch (error) {
-      console.error(error);
+      Speaker.countDocuments(query),
+    ]);
 
-      return res.status(500).json({
-        message: "Server Error",
-      });
-    }
-  };
+    // Pagination
+    const pagination = buildPaginationMeta(
+      total,
+      page,
+      limit,
+    );
 
+    return res.status(200).json({
+      success: true,
+      message: "Active Speakers fetched successfully",
+      data: speakers,
+      pagination,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
   // =======================
 // Get Speaker By Id
 // =======================
