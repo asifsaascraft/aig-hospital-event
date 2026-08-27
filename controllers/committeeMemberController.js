@@ -1,6 +1,8 @@
 import CommitteeMember from "../models/CommitteeMember.js";
 import CommitteeType from "../models/CommitteeType.js";
 import Event from "../models/Event.js";
+import { getPagination, buildPaginationMeta } from '../utils/pagination.js'
+import buildSearchQuery from '../utils/search.js'
 
 // =======================
 // Create Committee Member (EventAdmin)
@@ -111,40 +113,65 @@ export const getCommitteeMembersByEvent = async (
   }
 };
 
-// =======================
-// Get Active Committee Members
-// =======================
-export const getActiveCommitteeMembersByEvent =
-  async (req, res) => {
-    try {
-      const { eventId } = req.params;
+ // =======================
+ // Get Active Committee Members
+ // =======================
+ export const getActiveCommitteeMembersByEvent = async (req, res) => {
+   try {
+     const { eventId } = req.params;
 
-      const members = await CommitteeMember.find({
-        eventId,
-        status: "Active",
-      })
-        .populate(
-          "committeeTypeId",
-          "committeeType status"
-        )
-        .sort({
-          createdAt: -1,
-        });
+     // Pagination
+     const { page, limit, skip } = getPagination(req);
 
-      return res.status(200).json({
-        success: true,
-        message:
-          "Active Committee Members fetched successfully",
-        data: members,
-      });
-    } catch (error) {
-      console.error(error);
+     // Search
+     const searchQuery = buildSearchQuery(req, [
+       "name",
+       "designation",
+     ]);
 
-      return res.status(500).json({
-        message: "Server Error",
-      });
-    }
-  };
+     // Final Query
+     const query = {
+       eventId,
+       status: "Active",
+       ...searchQuery,
+     };
+
+     // MongoDB
+     const [members, total] = await Promise.all([
+       CommitteeMember.find(query)
+         .populate(
+           "committeeTypeId",
+           "committeeType status",
+         )
+         .skip(skip)
+         .limit(limit),
+
+       CommitteeMember.countDocuments(query),
+     ]);
+
+     // Pagination
+     const pagination = buildPaginationMeta(
+       total,
+       page,
+       limit,
+     );
+
+     return res.status(200).json({
+       success: true,
+       message:
+         "Active Committee Members fetched successfully",
+       data: members,
+       pagination,
+     });
+   } catch (error) {
+     console.error(error);
+
+     return res.status(500).json({
+       success: false,
+       message: "Server Error",
+     });
+   }
+ };
 
 // =======================
 // Get Committee Member By Id

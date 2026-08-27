@@ -1,6 +1,7 @@
 import Download from "../models/Download.js";
 import Event from "../models/Event.js";
-
+import { getPagination, buildPaginationMeta } from '../utils/pagination.js'
+import buildSearchQuery from '../utils/search.js'
 // =======================
 // Create Download (EventAdmin)
 // =======================
@@ -54,35 +55,58 @@ export const createDownload = async (req, res) => {
   }
 };
 
-// =======================
-// Get All Downloads By Event
-// =======================
-export const getDownloadsByEvent = async (
-  req,
-  res
-) => {
-  try {
-    const { eventId } = req.params;
+ // =======================
+ // Get All Downloads By Event
+ // =======================
+ export const getDownloadsByEvent = async (req, res) => {
+   try {
+     const { eventId } = req.params;
 
-    const downloads = await Download.find({
-      eventId,
-    }).sort({
-      createdAt: -1,
-    });
+     // Pagination
+     const { page, limit, skip } = getPagination(req);
 
-    return res.status(200).json({
-      success: true,
-      message: "Downloads fetched successfully",
-      data: downloads,
-    });
-  } catch (error) {
-    console.error(error);
+     // Search
+     const searchQuery = buildSearchQuery(req, [
+       "title",
+     ]);
 
-    return res.status(500).json({
-      message: "Server Error",
-    });
-  }
-};
+     // Final Query
+     const query = {
+       eventId,
+       ...searchQuery,
+     };
+
+     // MongoDB
+     const [downloads, total] = await Promise.all([
+       Download.find(query)
+         .skip(skip)
+         .limit(limit),
+
+       Download.countDocuments(query),
+     ]);
+
+     // Pagination
+     const pagination = buildPaginationMeta(
+       total,
+       page,
+       limit,
+     );
+
+     return res.status(200).json({
+       success: true,
+       message: "Downloads fetched successfully",
+       data: downloads,
+       pagination,
+     });
+   } catch (error) {
+     console.error(error);
+
+     return res.status(500).json({
+       success: false,
+       message: "Server Error",
+     });
+   }
+ };
 
 // =======================
 // Get Download By Id

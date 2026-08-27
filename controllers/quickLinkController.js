@@ -1,6 +1,7 @@
 import QuickLink from "../models/QuickLink.js";
 import Event from "../models/Event.js";
-
+import { getPagination, buildPaginationMeta } from '../utils/pagination.js'
+import buildSearchQuery from '../utils/search.js'
 // =======================
 // Create Quick Link (EventAdmin)
 // =======================
@@ -84,35 +85,60 @@ export const getQuickLinksByEvent = async (
   }
 };
 
-// =======================
-// Get Active Quick Links
-// =======================
-export const getActiveQuickLinksByEvent =
-  async (req, res) => {
-    try {
-      const { eventId } = req.params;
+ // =======================
+ // Get Active Quick Links
+ // =======================
+ export const getActiveQuickLinksByEvent = async (req, res) => {
+   try {
+     const { eventId } = req.params;
 
-      const links = await QuickLink.find({
-        eventId,
-        status: "Active",
-      }).sort({
-        createdAt: -1,
-      });
+     // Pagination
+     const { page, limit, skip } = getPagination(req);
 
-      return res.status(200).json({
-        success: true,
-        message:
-          "Active Quick Links fetched successfully",
-        data: links,
-      });
-    } catch (error) {
-      console.error(error);
+     // Search
+     const searchQuery = buildSearchQuery(req, [
+       "title",
+     ]);
 
-      return res.status(500).json({
-        message: "Server Error",
-      });
-    }
-  };
+     // Final Query
+     const query = {
+       eventId,
+       status: "Active",
+       ...searchQuery,
+     };
+
+     // MongoDB
+     const [links, total] = await Promise.all([
+       QuickLink.find(query)
+         .skip(skip)
+         .limit(limit),
+
+       QuickLink.countDocuments(query),
+     ]);
+
+     // Pagination
+     const pagination = buildPaginationMeta(
+       total,
+       page,
+       limit,
+     );
+
+     return res.status(200).json({
+       success: true,
+       message:
+         "Active Quick Links fetched successfully",
+       data: links,
+       pagination,
+     });
+   } catch (error) {
+     console.error(error);
+
+     return res.status(500).json({
+       success: false,
+       message: "Server Error",
+     });
+   }
+ };
 
 // =======================
 // Get Quick Link By Id

@@ -1,6 +1,7 @@
 import Contact from "../models/Contact.js";
 import Event from "../models/Event.js";
-
+import { getPagination, buildPaginationMeta } from '../utils/pagination.js'
+import buildSearchQuery from '../utils/search.js'
 // =======================
 // Create Contact (EventAdmin)
 // =======================
@@ -56,32 +57,61 @@ export const createContact = async (req, res) => {
   }
 };
 
-// =======================
-// Get All Contacts By Event
-// =======================
-export const getContactsByEvent = async (req, res) => {
-  try {
-    const { eventId } = req.params;
+ // =======================
+ // Get All Contacts By Event
+ // =======================
+ export const getContactsByEvent = async (req, res) => {
+   try {
+     const { eventId } = req.params;
 
-    const contacts = await Contact.find({
-      eventId,
-    }).sort({
-      createdAt: -1,
-    });
+     // Pagination
+     const { page, limit, skip } = getPagination(req);
 
-    return res.status(200).json({
-      success: true,
-      message: "Contacts fetched successfully",
-      data: contacts,
-    });
-  } catch (error) {
-    console.error(error);
+     // Search
+     const searchQuery = buildSearchQuery(req, [
+       "name",
+       "role",
+       "email",
+       "mobile",
+     ]);
 
-    return res.status(500).json({
-      message: "Server Error",
-    });
-  }
-};
+     // Final Query
+     const query = {
+       eventId,
+       ...searchQuery,
+     };
+
+     // MongoDB
+     const [contacts, total] = await Promise.all([
+       Contact.find(query)
+         .skip(skip)
+         .limit(limit),
+
+       Contact.countDocuments(query),
+     ]);
+
+     // Pagination
+     const pagination = buildPaginationMeta(
+       total,
+       page,
+       limit,
+     );
+
+     return res.status(200).json({
+       success: true,
+       message: "Contacts fetched successfully",
+       data: contacts,
+       pagination,
+     });
+   } catch (error) {
+     console.error(error);
+
+     return res.status(500).json({
+       success: false,
+       message: "Server Error",
+     });
+   }
+ };
 
 // =======================
 // Get Contact By Id

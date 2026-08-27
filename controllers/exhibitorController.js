@@ -1,7 +1,8 @@
 import Exhibitor from "../models/Exhibitor.js";
 import ExhibitorType from "../models/ExhibitorType.js";
 import Event from "../models/Event.js";
-
+import { getPagination, buildPaginationMeta } from '../utils/pagination.js'
+import buildSearchQuery from '../utils/search.js'
 // =======================
 // Create Exhibitor (EventAdmin)
 // =======================
@@ -120,41 +121,64 @@ export const getExhibitorsByEvent =
     }
   };
 
-// =======================
-// Get Active Exhibitors
-// =======================
-export const getActiveExhibitorsByEvent =
-  async (req, res) => {
-    try {
-      const { eventId } = req.params;
+ // =======================
+ // Get Active Exhibitors
+ // =======================
+ export const getActiveExhibitorsByEvent = async (req, res) => {
+   try {
+     const { eventId } = req.params;
 
-      const exhibitors =
-        await Exhibitor.find({
-          eventId,
-          status: "Active",
-        })
-          .populate(
-            "exhibitorTypeId",
-            "exhibitorType status"
-          )
-          .sort({
-            createdAt: -1,
-          });
+     // Pagination
+     const { page, limit, skip } = getPagination(req);
 
-      return res.status(200).json({
-        success: true,
-        message:
-          "Active Exhibitors fetched successfully",
-        data: exhibitors,
-      });
-    } catch (error) {
-      console.error(error);
+     // Search
+     const searchQuery = buildSearchQuery(req, [
+       "name",
+     ]);
 
-      return res.status(500).json({
-        message: "Server Error",
-      });
-    }
-  };
+     // Final Query
+     const query = {
+       eventId,
+       status: "Active",
+       ...searchQuery,
+     };
+
+     // MongoDB
+     const [exhibitors, total] = await Promise.all([
+       Exhibitor.find(query)
+         .populate(
+           "exhibitorTypeId",
+           "exhibitorType status",
+         )
+         .skip(skip)
+         .limit(limit),
+
+       Exhibitor.countDocuments(query),
+     ]);
+
+     // Pagination
+     const pagination = buildPaginationMeta(
+       total,
+       page,
+       limit,
+     );
+
+     return res.status(200).json({
+       success: true,
+       message:
+         "Active Exhibitors fetched successfully",
+       data: exhibitors,
+       pagination,
+     });
+   } catch (error) {
+     console.error(error);
+
+     return res.status(500).json({
+       success: false,
+       message: "Server Error",
+     });
+   }
+ };
 
 // =======================
 // Get Exhibitor By Id
