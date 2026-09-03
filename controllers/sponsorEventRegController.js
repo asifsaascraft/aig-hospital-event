@@ -7,6 +7,7 @@ import sendEmailWithTemplate from "../utils/sendEmail.js";
 import moment from "moment";
 import { getIndianFormattedDateTime } from "../utils/dateUtils.js";
 import CardProfile from "../models/CardProfile.js";
+import { generateRegistrationNumber } from "../utils/eventRegistrationNumber.js";
 
 // =====================================
 //  1. CHECK EMAIL EXISTS FOR EVENT REGISTRATION (Protected)
@@ -50,7 +51,7 @@ export const checkEmailExists = async (req, res) => {
       email: normalizedEmail,
       role: "user",
     }).select(
-      "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires"
+      "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires",
     );
 
     // ===============================
@@ -63,8 +64,8 @@ export const checkEmailExists = async (req, res) => {
       message: existingRegistration
         ? "User already registered for this event"
         : user
-        ? "User found but not registered for this event"
-        : "User not found",
+          ? "User found but not registered for this event"
+          : "User not found",
       data: user || null,
       registration: existingRegistration || null,
     });
@@ -240,44 +241,52 @@ export const sponsorRegisterForEvent = async (req, res) => {
       });
     }
 
-    const updatedEvent = await Event.findByIdAndUpdate(
-      event._id,
-      { $inc: { regCounter: 1 } },
-      { new: true }
-    );
+    const session = await mongoose.startSession();
 
-    const generatedRegNum = `${event.eventCode}-${updatedEvent.regCounter}`;
+    let registration;
 
-    // ===============================
-    // Create Registration
-    // ===============================
-    const registration = await EventRegistration.create({
-      userId,
-      sponsorId,
-      eventId,
-      prefix,
-      cardProfileId,
-      name,
-      gender,
-      email,
-      mobile,
-      designation,
-      affiliation,
-      mciNumber,
-      mciState,
-      department,
-      alternateEmail,
-      alternateMobile,
-      country,
-      city,
-      state,
-      address,
-      pincode,
-      isPaid: true,
-      regNumGenerated: true,
-      regNum: generatedRegNum,
-      registrationType: "Sponsor Registration",
-    });
+    try {
+      await session.withTransaction(async () => {
+        const generatedRegNum = await generateRegistrationNumber(
+          event._id,
+          session,
+        );
+
+        registration = new EventRegistration({
+          sponsorId,
+          userId,
+          eventId,
+          prefix,
+          cardProfileId,
+          name,
+          gender,
+          email,
+          mobile,
+          designation,
+          affiliation,
+          mciNumber,
+          mciState,
+          department,
+          alternateEmail,
+          alternateMobile,
+          country,
+          city,
+          state,
+          address,
+          pincode,
+
+          isPaid: true,
+          regNumGenerated: true,
+          regNum: generatedRegNum,
+          isSuspended: false,
+          registrationType: "Sponsor Registration",
+        });
+
+        await registration.save({ session });
+      });
+    } finally {
+      await session.endSession();
+    }
 
     // -----------------------------
     // SAFE FALLBACKS (IMPORTANT)
@@ -496,7 +505,6 @@ export const updateSponsorEventRegistration = async (req, res) => {
     // Validate cardProfileId
     // ===============================
     if (req.body.cardProfileId) {
-
       if (!mongoose.Types.ObjectId.isValid(req.body.cardProfileId)) {
         return res.status(400).json({
           success: false,

@@ -13,6 +13,7 @@ import {
 import Sponsor from "../models/Sponsor.js";
 import EventVisitor from "../models/EventVisitor.js";
 import CardProfile from "../models/CardProfile.js";
+import { generateRegistrationNumber } from "../utils/eventRegistrationNumber.js";
 
 // helper function for success email
 const sendRegistrationSuccessEmail = async (registration, event) => {
@@ -34,7 +35,6 @@ const sendRegistrationSuccessEmail = async (registration, event) => {
     },
   });
 };
-
 
 /* 
 ========================================================
@@ -446,46 +446,62 @@ export const registerForEvent = async (req, res) => {
     // FREE SLAB FLOW (AUTO COMPLETE REGISTRATION)
     // ======================================================
     if (Number(slab.amount) === 0) {
-      const updatedEvent = await Event.findByIdAndUpdate(
-        event._id,
-        { $inc: { regCounter: 1 } },
-        { new: true },
-      );
+      const session = await mongoose.startSession();
 
-      const generatedRegNum = `${event.eventCode}-${updatedEvent.regCounter}`;
+      let registration;
 
-      const registration = await EventRegistration.create({
-        userId,
-        eventId,
-        registrationSlabId,
-        prefix,
-        cardProfileId,
-        name,
-        gender,
-        email,
-        mobile,
-        designation,
-        affiliation,
-        mciNumber,
-        mciState,
-        department,
-        alternateEmail,
-        alternateMobile,
-        country,
-        city,
-        state,
-        address,
-        pincode,
-        dynamicFormAnswers: validatedDynamicFormAnswers,
-        additionalAnswers: validatedAdditionalAnswers,
+      try {
+        await session.withTransaction(async () => {
+          // ==========================================
+          // Generate registration number INSIDE transaction
+          // ==========================================
+          const generatedRegNum = await generateRegistrationNumber(
+            event._id,
+            session,
+          );
 
-        spotRegistration: false,
-        isPaid: true,
-        regNumGenerated: true,
-        regNum: generatedRegNum,
-        isSuspended: false,
-        registrationType: "Online Registration",
-      });
+          // ==========================================
+          // Create registration INSIDE same transaction
+          // ==========================================
+          registration = new EventRegistration({
+            userId,
+            eventId,
+            registrationSlabId,
+            prefix,
+            cardProfileId,
+            name,
+            gender,
+            email,
+            mobile,
+            designation,
+            affiliation,
+            mciNumber,
+            mciState,
+            department,
+            alternateEmail,
+            alternateMobile,
+            country,
+            city,
+            state,
+            address,
+            pincode,
+
+            dynamicFormAnswers: validatedDynamicFormAnswers,
+            additionalAnswers: validatedAdditionalAnswers,
+
+            spotRegistration: false,
+            isPaid: true,
+            regNumGenerated: true,
+            regNum: generatedRegNum,
+            isSuspended: false,
+            registrationType: "Online Registration",
+          });
+
+          await registration.save({ session });
+        });
+      } finally {
+        await session.endSession();
+      }
 
       // ==============================================
       // SEND ONLY REGISTRATION EMAIL (NO PAYMENT EMAIL)
@@ -1119,46 +1135,55 @@ export const registerForEventByEventAdmin = async (req, res) => {
       }
     }
 
-    const updatedEvent = await Event.findByIdAndUpdate(
-      event._id,
-      { $inc: { regCounter: 1 } },
-      { new: true },
-    );
+    const session = await mongoose.startSession();
 
-    const generatedRegNum = `${event.eventCode}-${updatedEvent.regCounter}`;
+    let registration;
 
-    // Create Registration
-    const registration = await EventRegistration.create({
-      userId,
-      eventId,
-      registrationSlabId,
-      prefix,
-      cardProfileId,
-      name,
-      gender,
-      email,
-      mobile,
-      designation,
-      affiliation,
-      mciNumber,
-      mciState,
-      department,
-      alternateEmail,
-      alternateMobile,
-      country,
-      city,
-      state,
-      address,
-      pincode,
-      amount,
-      dynamicFormAnswers: validatedDynamicFormAnswers,
-      additionalAnswers: validatedAdditionalAnswers,
-      isPaid: true,
-      regNumGenerated: true,
-      isSuspended: false,
-      regNum: generatedRegNum,
-      registrationType: "Offline Registration",
-    });
+    try {
+      await session.withTransaction(async () => {
+        const generatedRegNum = await generateRegistrationNumber(
+          event._id,
+          session,
+        );
+
+        registration = new EventRegistration({
+          eventAdminId: req.user._id,
+          userId,
+          eventId,
+          registrationSlabId,
+          prefix,
+          cardProfileId,
+          name,
+          gender,
+          email,
+          mobile,
+          designation,
+          affiliation,
+          mciNumber,
+          mciState,
+          department,
+          alternateEmail,
+          alternateMobile,
+          country,
+          city,
+          state,
+          address,
+          pincode,
+          amount,
+          additionalAnswers,
+
+          isPaid: true,
+          regNumGenerated: true,
+          regNum: generatedRegNum,
+          isSuspended: false,
+          registrationType: "Offline Registration",
+        });
+
+        await registration.save({ session });
+      });
+    } finally {
+      await session.endSession();
+    }
 
     // -----------------------------
     // SAFE FALLBACKS (IMPORTANT)
@@ -1397,44 +1422,51 @@ export const bulkRegisterForEventByEventAdmin = async (req, res) => {
       });
     }
 
-    const updatedEvent = await Event.findByIdAndUpdate(
-      event._id,
-      { $inc: { regCounter: 1 } },
-      { new: true },
-    );
+    const session = await mongoose.startSession();
 
-    const generatedRegNum = `${event.eventCode}-${updatedEvent.regCounter}`;
+    let registration;
 
-    // ===============================
-    // Create Registration
-    // ===============================
-    const registration = await EventRegistration.create({
-      eventAdminId,
-      userId,
-      eventId,
-      prefix,
-      cardProfileId,
-      name,
-      gender,
-      email,
-      mobile,
-      designation,
-      affiliation,
-      mciNumber,
-      mciState,
-      department,
-      alternateEmail,
-      alternateMobile,
-      country,
-      city,
-      state,
-      address,
-      pincode,
-      isPaid: true,
-      regNumGenerated: true,
-      regNum: generatedRegNum,
-      registrationType: "Offline Registration",
-    });
+    try {
+      await session.withTransaction(async () => {
+        const generatedRegNum = await generateRegistrationNumber(
+          event._id,
+          session,
+        );
+
+        registration = new EventRegistration({
+          eventAdminId,
+          userId,
+          eventId,
+          prefix,
+          cardProfileId,
+          name,
+          gender,
+          email,
+          mobile,
+          designation,
+          affiliation,
+          mciNumber,
+          mciState,
+          department,
+          alternateEmail,
+          alternateMobile,
+          country,
+          city,
+          state,
+          address,
+          pincode,
+
+          isPaid: true,
+          regNumGenerated: true,
+          regNum: generatedRegNum,
+          registrationType: "Offline Registration",
+        });
+
+        await registration.save({ session });
+      });
+    } finally {
+      await session.endSession();
+    }
 
     // -----------------------------
     // SAFE FALLBACKS (IMPORTANT)
@@ -1604,44 +1636,52 @@ export const onSpotRegisterForEventByEventAdmin = async (req, res) => {
       });
     }
 
-    const updatedEvent = await Event.findByIdAndUpdate(
-      event._id,
-      { $inc: { regCounter: 1 } },
-      { new: true },
-    );
+    const session = await mongoose.startSession();
 
-    const generatedRegNum = `${event.eventCode}-${updatedEvent.regCounter}`;
+    let registration;
 
-    // ===============================
-    // Create Registration
-    // ===============================
-    const registration = await EventRegistration.create({
-      eventAdminId,
-      userId,
-      eventId,
-      prefix,
-      cardProfileId,
-      name,
-      gender,
-      email,
-      mobile,
-      designation,
-      affiliation,
-      mciNumber,
-      mciState,
-      department,
-      alternateEmail,
-      alternateMobile,
-      country,
-      city,
-      state,
-      address,
-      pincode,
-      isPaid: true,
-      regNumGenerated: true,
-      regNum: generatedRegNum,
-      registrationType: "On-Spot Registration",
-    });
+    try {
+      await session.withTransaction(async () => {
+        const generatedRegNum = await generateRegistrationNumber(
+          event._id,
+          session,
+        );
+
+        registration = new EventRegistration({
+          eventAdminId,
+          userId,
+          eventId,
+          prefix,
+          cardProfileId,
+          name,
+          gender,
+          email,
+          mobile,
+          designation,
+          affiliation,
+          mciNumber,
+          mciState,
+          department,
+          alternateEmail,
+          alternateMobile,
+          country,
+          city,
+          state,
+          address,
+          pincode,
+
+          isPaid: true,
+          regNumGenerated: true,
+          regNum: generatedRegNum,
+          isSuspended: false,
+          registrationType: "On-Spot Registration",
+        });
+
+        await registration.save({ session });
+      });
+    } finally {
+      await session.endSession();
+    }
 
     // -----------------------------
     // SAFE FALLBACKS (IMPORTANT)
@@ -1806,15 +1846,11 @@ export const updateEventRegistration = async (req, res) => {
     // Parse JSON fields from multipart/form-data
     // ==========================================
     if (typeof updateData.dynamicFormAnswers === "string") {
-      updateData.dynamicFormAnswers = JSON.parse(
-        updateData.dynamicFormAnswers
-      );
+      updateData.dynamicFormAnswers = JSON.parse(updateData.dynamicFormAnswers);
     }
 
     if (typeof updateData.additionalAnswers === "string") {
-      updateData.additionalAnswers = JSON.parse(
-        updateData.additionalAnswers
-      );
+      updateData.additionalAnswers = JSON.parse(updateData.additionalAnswers);
     }
 
     const registration = await EventRegistration.findById(registrationId);
@@ -2288,7 +2324,6 @@ export const getCardProfileUpdatedRegistrations = async (req, res) => {
 // =====================================
 export const sendRegistrationEmailToSingleUser = async (req, res) => {
   try {
-
     const { eventId, registrationId } = req.params;
     const event = await Event.findById(eventId);
 
@@ -2310,10 +2345,7 @@ export const sendRegistrationEmailToSingleUser = async (req, res) => {
         message: "Registration not found",
       });
     }
-    await sendRegistrationSuccessEmail(
-      registration,
-      event
-    );
+    await sendRegistrationSuccessEmail(registration, event);
     return res.status(200).json({
       success: true,
       message: "Registration success email sent successfully.",
@@ -2368,10 +2400,7 @@ export const sendBulkRegistrationSuccessEmails = async (req, res) => {
 
     for (const registration of registrations) {
       try {
-        await sendRegistrationSuccessEmail(
-          registration,
-          event
-        );
+        await sendRegistrationSuccessEmail(registration, event);
 
         registration.registrationSuccessEmailSentByAdmin = true;
         registration.registrationSuccessEmailSentAt = new Date();
@@ -2381,10 +2410,7 @@ export const sendBulkRegistrationSuccessEmails = async (req, res) => {
         success++;
       } catch (err) {
         failed++;
-        console.error(
-          `Failed to send email to ${registration.email}:`,
-          err
-        );
+        console.error(`Failed to send email to ${registration.email}:`, err);
       }
     }
 

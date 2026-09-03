@@ -1,4 +1,6 @@
 // controllers/paymentController.js
+import mongoose from "mongoose";
+import { generateRegistrationNumber } from "../utils/eventRegistrationNumber.js";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import Payment from "../models/Payment.js";
@@ -31,129 +33,143 @@ const completeEventRegistrationPayment = async ({
   razorpaySignature = null,
   verificationSource = "api",
 }) => {
-  // ==========================================
-  // Already completed
-  // ==========================================
+  const session = await mongoose.startSession();
 
-  if (payment.status === "paid") {
-    const existingRegistration = await EventRegistration.findById(
-      payment.eventRegistrationId,
-    );
+  let result;
 
-    return {
-      alreadyCompleted: true,
-      payment,
-      registration: existingRegistration,
-    };
+  try {
+    await session.withTransaction(async () => {
+      // ==========================================
+      // IMPORTANT:
+      // Re-fetch payment INSIDE transaction
+      // ==========================================
+      const currentPayment = await Payment.findById(payment._id).session(
+        session,
+      );
+
+      if (!currentPayment) {
+        throw new Error("Payment record not found");
+      }
+
+      // ==========================================
+      // Already completed
+      // ==========================================
+      if (currentPayment.status === "paid") {
+        const existingRegistration = await EventRegistration.findById(
+          currentPayment.eventRegistrationId,
+        )
+          .populate("registrationSlabId", "slabName")
+          .session(session);
+
+        result = {
+          alreadyCompleted: true,
+          payment: currentPayment,
+          registration: existingRegistration,
+        };
+
+        return;
+      }
+
+      // ==========================================
+      // Get registration INSIDE transaction
+      // ==========================================
+      const registration = await EventRegistration.findById(
+        currentPayment.eventRegistrationId,
+      )
+        .populate("registrationSlabId", "slabName")
+        .session(session);
+
+      if (!registration) {
+        throw new Error("Event registration not found");
+      }
+
+      // ==========================================
+      // Already completed registration
+      // ==========================================
+      if (
+        registration.isPaid === true &&
+        registration.regNumGenerated === true &&
+        registration.regNum
+      ) {
+        currentPayment.razorpayPaymentId =
+          razorpayPaymentId || currentPayment.razorpayPaymentId;
+
+        if (razorpaySignature) {
+          currentPayment.razorpaySignature = razorpaySignature;
+        }
+
+        currentPayment.status = "paid";
+
+        await currentPayment.save({ session });
+
+        result = {
+          alreadyCompleted: true,
+          payment: currentPayment,
+          registration,
+        };
+
+        return;
+      }
+
+      // ==========================================
+      // Get event INSIDE transaction
+      // ==========================================
+      const event = await Event.findById(registration.eventId).session(session);
+
+      if (!event) {
+        throw new Error("Event not found");
+      }
+
+      if (!event.eventCode) {
+        throw new Error("Event code is not configured");
+      }
+
+      // ==========================================
+      // Generate registration number
+      // INSIDE SAME TRANSACTION
+      // ==========================================
+      const generatedRegNum = await generateRegistrationNumber(
+        event._id,
+        session,
+      );
+
+      // ==========================================
+      // Update registration
+      // ==========================================
+      registration.isPaid = true;
+      registration.regNumGenerated = true;
+      registration.regNum = generatedRegNum;
+
+      await registration.save({ session });
+
+      // ==========================================
+      // Update payment
+      // ==========================================
+      currentPayment.razorpayPaymentId =
+        razorpayPaymentId || currentPayment.razorpayPaymentId;
+
+      if (razorpaySignature) {
+        currentPayment.razorpaySignature = razorpaySignature;
+      }
+
+      currentPayment.status = "paid";
+
+      await currentPayment.save({ session });
+
+      // ==========================================
+      // Transaction successful
+      // ==========================================
+      result = {
+        alreadyCompleted: false,
+        payment: currentPayment,
+        registration,
+      };
+    });
+
+    return result;
+  } finally {
+    await session.endSession();
   }
-
-  // ==========================================
-  // Get registration
-  // ==========================================
-
-  const registration = await EventRegistration.findById(
-    payment.eventRegistrationId,
-  ).populate("registrationSlabId", "slabName");
-
-  if (!registration) {
-    throw new Error("Event registration not found");
-  }
-
-  // ==========================================
-  // Get event
-  // ==========================================
-
-  const event = await Event.findById(registration.eventId);
-
-  if (!event) {
-    throw new Error("Event not found");
-  }
-
-  if (!event.eventCode) {
-    throw new Error("Event code is not configured");
-  }
-
-  // ==========================================
-  // IMPORTANT:
-  // Registration may already have been completed
-  // by webhook/API.
-  // ==========================================
-
-  if (
-    registration.isPaid === true &&
-    registration.regNumGenerated === true &&
-    registration.regNum
-  ) {
-    payment.razorpayPaymentId = razorpayPaymentId || payment.razorpayPaymentId;
-
-    if (razorpaySignature) {
-      payment.razorpaySignature = razorpaySignature;
-    }
-
-    payment.status = "paid";
-
-    await payment.save();
-
-    return {
-      alreadyCompleted: true,
-      payment,
-      registration,
-    };
-  }
-
-  // ==========================================
-  // Generate registration number atomically
-  // ==========================================
-
-  const updatedEvent = await Event.findOneAndUpdate(
-    {
-      _id: event._id,
-    },
-    {
-      $inc: {
-        regCounter: 1,
-      },
-    },
-    {
-      new: true,
-    },
-  );
-
-  if (!updatedEvent) {
-    throw new Error("Unable to update event registration counter");
-  }
-
-  const generatedRegNum = `${updatedEvent.eventCode}-${updatedEvent.regCounter}`;
-
-  // ==========================================
-  // Update registration
-  // ==========================================
-
-  registration.isPaid = true;
-  registration.regNumGenerated = true;
-  registration.regNum = generatedRegNum;
-
-  await registration.save();
-
-  // ==========================================
-  // Update payment
-  // ==========================================
-
-  payment.razorpayPaymentId = razorpayPaymentId || payment.razorpayPaymentId;
-
-  if (razorpaySignature) {
-    payment.razorpaySignature = razorpaySignature;
-  }
-
-  payment.status = "paid";
-
-  await payment.save();
-
-  return {
-    alreadyCompleted: false,
-    payment,
-    registration,
-  };
 };
 
 // ========================================================
