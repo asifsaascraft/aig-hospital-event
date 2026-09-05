@@ -17,18 +17,22 @@ const router = express.Router()
 // =======================
 // Get Event Info By Event
 // Public
+// Returns all EventInfo records
 // =======================
+
 router.get('/events/:eventId/event-info', getEventInfoByEvent)
 
 // =======================
 // Get Event Info By Id
 // =======================
+
 router.get('/event-info/:id', getEventInfoById)
 
 // =======================
 // EventAdmin: Create Event Info
-// Only one EventInfo allowed per event
+// Unlimited EventInfo allowed per event
 // =======================
+
 router.post(
   '/event-admin/events/:eventId/event-info',
   protect,
@@ -39,9 +43,11 @@ router.post(
 
 // =======================
 // EventAdmin: Update Event Info
+// Updates one specific EventInfo
 // =======================
+
 router.put(
-  '/event-admin/events/:eventId/event-info',
+  '/event-admin/events/:eventId/event-info/:id',
   protect,
   authorizeRoles('eventAdmin'),
   uploadMessageImages.single('bannerImage'),
@@ -50,9 +56,11 @@ router.put(
 
 // =======================
 // EventAdmin: Delete Event Info
+// Deletes one specific EventInfo
 // =======================
+
 router.delete(
-  '/event-admin/events/:eventId/event-info',
+  '/event-admin/events/:eventId/event-info/:id',
   protect,
   authorizeRoles('eventAdmin'),
   deleteEventInfo,

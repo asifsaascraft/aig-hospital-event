@@ -1,36 +1,35 @@
-// routes/sponsorAuthRoutes.js
-import express from "express";
-import cookieParser from "cookie-parser";
+import express from 'express'
+
 import {
   loginSponsor,
   logoutSponsor,
   refreshAccessTokenSponsor,
-  forgotPasswordSponsor,
-  resetPasswordSponsor,
   getMyEvent,
-} from "../controllers/sponsorAuthController.js";
-import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
+} from '../controllers/sponsorAuthController.js'
 
-const router = express.Router();
+import { protectSponsor } from '../middlewares/sponsorAuthMiddleware.js'
 
-router.use(cookieParser());
+const router = express.Router()
 
-// Login
-router.post("/login", loginSponsor);
+// =======================
+// Sponsor Authentication
+// =======================
 
-// Refresh Access Token
-router.get("/refresh-token", refreshAccessTokenSponsor);
+// Login using Sponsor loginToken
+router.post('/login', loginSponsor)
 
-// Logout
-router.post("/logout", protectSponsor, logoutSponsor);
+// Refresh Sponsor access token
+router.post('/refresh-token', refreshAccessTokenSponsor)
 
-// Forgot Password
-router.post("/forgot-password", forgotPasswordSponsor);
+// Logout Sponsor
+router.post('/logout', logoutSponsor)
 
-// Reset Password
-router.post("/reset-password/:token", resetPasswordSponsor);
+// =======================
+// Protected Sponsor Routes
+// =======================
 
-// Get My Event
-router.get("/my-event", protectSponsor, getMyEvent);
+// Get the event associated with
+// the currently authenticated Sponsor
+router.get('/my-event', protectSponsor, getMyEvent)
 
-export default router;
+export default router

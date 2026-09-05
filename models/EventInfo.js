@@ -6,8 +6,13 @@ const EventInfoSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Event',
       required: true,
-      unique: true,
       index: true,
+    },
+
+    title: {
+      type: String,
+      required: [true, 'title is required'],
+      trim: true,
     },
 
     welcomeMessage: {

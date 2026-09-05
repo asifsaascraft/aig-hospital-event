@@ -302,6 +302,8 @@ export const createSupportTicket = async (req, res) => {
   }
 }
 
+
+
 /* ============================================================
     GET ALL SUPPORT TICKETS
     (Support Admin)
@@ -310,8 +312,6 @@ export const createSupportTicket = async (req, res) => {
 export const getSupportTickets = async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 10,
       search,
       status,
       priority,
@@ -339,26 +339,12 @@ export const getSupportTickets = async (req, res) => {
       ]
     }
 
-    const skip = (Number(page) - 1) * Number(limit)
-
-    const [tickets, total] = await Promise.all([
-      SupportTicket.find(query)
-        .sort({ updatedAt: -1 })
-        .skip(skip)
-        .limit(Number(limit)),
-
-      SupportTicket.countDocuments(query),
-    ])
+    const tickets = await SupportTicket.find(query)
+      .sort({ updatedAt: -1 })
 
     return res.status(200).json({
       success: true,
       data: tickets,
-      pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total,
-        totalPages: Math.ceil(total / Number(limit)),
-      },
     })
   } catch (error) {
     console.error(error)
@@ -377,7 +363,7 @@ export const getSupportTickets = async (req, res) => {
 
 export const getMySupportTickets = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search, status, priority } = req.query
+    const { search, status, priority } = req.query
 
     const query = {
       deleted: false,
@@ -395,26 +381,12 @@ export const getMySupportTickets = async (req, res) => {
       ]
     }
 
-    const skip = (Number(page) - 1) * Number(limit)
-
-    const [tickets, total] = await Promise.all([
-      SupportTicket.find(query)
-        .sort({ updatedAt: -1 })
-        .skip(skip)
-        .limit(Number(limit)),
-
-      SupportTicket.countDocuments(query),
-    ])
+    const tickets = await SupportTicket.find(query)
+      .sort({ updatedAt: -1 })
 
     return res.status(200).json({
       success: true,
       data: tickets,
-      pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total,
-        totalPages: Math.ceil(total / Number(limit)),
-      },
     })
   } catch (error) {
     console.error(error)
@@ -425,6 +397,7 @@ export const getMySupportTickets = async (req, res) => {
     })
   }
 }
+
 
 /* ============================================================
     GET TICKETS ASSIGNED TO ME
@@ -440,7 +413,7 @@ export const getAssignedToMeTickets = async (req, res) => {
       })
     }
 
-    const { page = 1, limit = 10, status, priority } = req.query
+    const { status, priority } = req.query
 
     const query = {
       deleted: false,
@@ -450,26 +423,12 @@ export const getAssignedToMeTickets = async (req, res) => {
     if (status) query.status = status
     if (priority) query.priority = priority
 
-    const skip = (Number(page) - 1) * Number(limit)
-
-    const [tickets, total] = await Promise.all([
-      SupportTicket.find(query)
-        .sort({ updatedAt: -1 })
-        .skip(skip)
-        .limit(Number(limit)),
-
-      SupportTicket.countDocuments(query),
-    ])
+    const tickets = await SupportTicket.find(query)
+      .sort({ updatedAt: -1 })
 
     return res.status(200).json({
       success: true,
       data: tickets,
-      pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total,
-        totalPages: Math.ceil(total / Number(limit)),
-      },
     })
   } catch (error) {
     console.error(error)

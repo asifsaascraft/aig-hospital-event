@@ -4,14 +4,29 @@ import Event from '../models/Event.js'
 // =======================
 // Create Event Info
 // EventAdmin
-// Only one EventInfo allowed per event
+//
+// Unlimited EventInfo allowed per event
 // =======================
 export const createEventInfo = async (req, res) => {
   try {
     const { eventId } = req.params
-    const { welcomeMessage } = req.body
+    const { title, welcomeMessage } = req.body
 
+    // =======================
+    // Validate title
+    // =======================
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Title is required',
+      })
+    }
+
+    // =======================
     // Validate welcome message
+    // =======================
+
     if (!welcomeMessage || !welcomeMessage.trim()) {
       return res.status(400).json({
         success: false,
@@ -19,7 +34,10 @@ export const createEventInfo = async (req, res) => {
       })
     }
 
+    // =======================
     // Check event exists
+    // =======================
+
     const event = await Event.findById(eventId)
 
     if (!event) {
@@ -29,23 +47,22 @@ export const createEventInfo = async (req, res) => {
       })
     }
 
-    // Only one EventInfo per event
-    const alreadyExists = await EventInfo.findOne({
-      eventId,
-    })
-
-    if (alreadyExists) {
-      return res.status(400).json({
-        success: false,
-        message: 'Event info already exists for this event. Please update it.',
-      })
-    }
-
+    // =======================
     // Uploaded banner image
+    // =======================
+
     const bannerImage = req.file?.location || null
+
+    // =======================
+    // Create EventInfo
+    //
+    // No existing-record check.
+    // Unlimited EventInfo allowed.
+    // =======================
 
     const eventInfo = await EventInfo.create({
       eventId,
+      title: title.trim(),
       welcomeMessage: welcomeMessage.trim(),
       bannerImage,
     })
@@ -67,13 +84,6 @@ export const createEventInfo = async (req, res) => {
       })
     }
 
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: 'Event info already exists for this event.',
-      })
-    }
-
     return res.status(500).json({
       success: false,
       message: 'Server Error',
@@ -84,12 +94,18 @@ export const createEventInfo = async (req, res) => {
 // =======================
 // Get Event Info By Event
 // Public
+//
+// Returns ALL EventInfo records
+// belonging to the event.
 // =======================
 export const getEventInfoByEvent = async (req, res) => {
   try {
     const { eventId } = req.params
 
-    // Optional event validation
+    // =======================
+    // Check event exists
+    // =======================
+
     const event = await Event.findById(eventId)
 
     if (!event) {
@@ -99,21 +115,20 @@ export const getEventInfoByEvent = async (req, res) => {
       })
     }
 
-    const eventInfo = await EventInfo.findOne({
-      eventId,
-    }).populate('eventId', 'eventName dynamicStatus')
+    // =======================
+    // Get ALL EventInfo records
+    // =======================
 
-    if (!eventInfo) {
-      return res.status(404).json({
-        success: false,
-        message: 'Event info not found',
-      })
-    }
+    const eventInfos = await EventInfo.find({
+      eventId,
+    })
+      .populate('eventId', 'eventName dynamicStatus')
+      .sort({ createdAt: 1 })
 
     return res.status(200).json({
       success: true,
       message: 'Event info fetched successfully',
-      data: eventInfo,
+      data: eventInfos,
     })
   } catch (error) {
     console.error('Get Event Info By Event Error:', error)
@@ -164,14 +179,19 @@ export const getEventInfoById = async (req, res) => {
 // EventAdmin
 //
 // Route:
-// PUT /event-admin/events/:eventId/event-info
+// PUT /event-admin/events/:eventId/event-info/:id
+//
+// Updates ONE specific EventInfo.
 // =======================
 export const updateEventInfo = async (req, res) => {
   try {
-    const { eventId } = req.params
-    const { welcomeMessage, removeBannerImage } = req.body
+    const { eventId, id } = req.params
+    const { title, welcomeMessage, removeBannerImage } = req.body
 
+    // =======================
     // Check event exists
+    // =======================
+
     const event = await Event.findById(eventId)
 
     if (!event) {
@@ -181,8 +201,12 @@ export const updateEventInfo = async (req, res) => {
       })
     }
 
-    // Find EventInfo ONLY for this event
+    // =======================
+    // Find specific EventInfo
+    // =======================
+
     const eventInfo = await EventInfo.findOne({
+      _id: id,
       eventId,
     })
 
@@ -191,6 +215,21 @@ export const updateEventInfo = async (req, res) => {
         success: false,
         message: 'Event info not found for this event',
       })
+    }
+
+    // =======================
+    // Update title
+    // =======================
+
+    if (title !== undefined) {
+      if (!title.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Title is required',
+        })
+      }
+
+      eventInfo.title = title.trim()
     }
 
     // =======================
@@ -255,13 +294,18 @@ export const updateEventInfo = async (req, res) => {
 // EventAdmin
 //
 // Route:
-// DELETE /event-admin/events/:eventId/event-info
+// DELETE /event-admin/events/:eventId/event-info/:id
+//
+// Deletes ONE specific EventInfo.
 // =======================
 export const deleteEventInfo = async (req, res) => {
   try {
-    const { eventId } = req.params
+    const { eventId, id } = req.params
 
+    // =======================
     // Check event exists
+    // =======================
+
     const event = await Event.findById(eventId)
 
     if (!event) {
@@ -271,8 +315,12 @@ export const deleteEventInfo = async (req, res) => {
       })
     }
 
-    // Find EventInfo ONLY for this event
+    // =======================
+    // Find specific EventInfo
+    // =======================
+
     const eventInfo = await EventInfo.findOne({
+      _id: id,
       eventId,
     })
 

@@ -1,69 +1,95 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose'
 
 const SponsorSchema = new mongoose.Schema(
   {
     eventId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Event",
+      ref: 'Event',
       required: true,
     },
+
     sponsorName: {
       type: String,
-      required: [true, "Sponsor name is required"],
+      required: [true, 'Sponsor name is required'],
       trim: true,
     },
+
     contactPersonName: {
       type: String,
-      required: [true, "Contact person name is required"],
+      required: [true, 'Contact person name is required'],
       trim: true,
     },
+
     email: {
       type: String,
-      required: [true, "Email is required"],
+      required: [true, 'Email is required'],
       trim: true,
       lowercase: true,
-      unique: true,
     },
+
     mobile: {
       type: String,
-      required: [true, "Mobile number is required"],
+      required: [true, 'Mobile number is required'],
       trim: true,
     },
+
     additionalEmail: {
       type: String,
       trim: true,
     },
-    password: {
+
+    /**
+     * Event-specific Sponsor login credential.
+     *
+     * This token is generated automatically when a Sponsor
+     * is created and is used as the Sponsor's only login credential.
+     */
+    loginToken: {
       type: String,
-      required: [true, "Password is required"],
+      required: [true, 'Login token is required'],
+      unique: true,
+      trim: true,
     },
-    plainPassword: {
-      type: String,
-    },
+
     gstNumber: {
       type: String,
       trim: true,
     },
+
     companyAddress: {
       type: String,
-      required: [true, "Company Address is required"],
+      required: [true, 'Company Address is required'],
       trim: true,
     },
+
     status: {
       type: String,
-      enum: ["Active", "Inactive"],
-      default: "Active",
-    },
-    // Add these fields for forgot/reset password functionality
-    resetPasswordToken: {
-      type: String,
-    },
-    resetPasswordExpire: {
-      type: Date,
+      enum: ['Active', 'Inactive'],
+      default: 'Active',
     },
   },
-  { timestamps: true }
-);
+  { timestamps: true },
+)
+
+/**
+ * A Sponsor's email must be unique only within the same Event.
+ *
+ * This allows:
+ *
+ * Event A + sponsor@example.com  -> allowed
+ * Event B + sponsor@example.com  -> allowed
+ *
+ * But:
+ *
+ * Event A + sponsor@example.com  -> duplicate
+ */
+SponsorSchema.index({ eventId: 1, email: 1 }, { unique: true })
+
+/**
+ * loginToken is the Sponsor's login credential and must
+ * identify only one Sponsor account.
+ */
+SponsorSchema.index({ loginToken: 1 }, { unique: true })
 
 export default mongoose.models.Sponsor ||
-  mongoose.model("Sponsor", SponsorSchema);
+  mongoose.model('Sponsor', SponsorSchema)
