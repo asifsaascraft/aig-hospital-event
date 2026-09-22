@@ -3,6 +3,19 @@ import Event from "../models/Event.js";
 import Hotel from "../models/Hotel.js";
 import RoomCategory from "../models/RoomCategory.js";
 
+const isExactlyOneDayStay = (checkin, checkout) => {
+  if (!checkin || !checkout) return false;
+
+  const nextDay = new Date(checkin);
+  nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+
+  return (
+    checkout.getUTCFullYear() === nextDay.getUTCFullYear() &&
+    checkout.getUTCMonth() === nextDay.getUTCMonth() &&
+    checkout.getUTCDate() === nextDay.getUTCDate()
+  );
+};
+
 // =======================
 // Create AddRoom (EventAdmin only)
 // =======================
@@ -60,9 +73,18 @@ export const createAddRoom = async (req, res) => {
     // ===============================
     // Validate checkout > checkin
     // ===============================
+
     if (parsedCheckoutDateTime <= parsedCheckinDateTime) {
       return res.status(400).json({
+        success: false,
         message: "Checkout date time must be greater than checkin date time",
+      });
+    }
+
+    if (!isExactlyOneDayStay(parsedCheckinDateTime, parsedCheckoutDateTime)) {
+      return res.status(400).json({
+        success: false,
+        message: "Checkout date must be exactly one day after check-in date",
       });
     }
 
@@ -272,6 +294,13 @@ export const updateAddRoom = async (req, res) => {
     if (finalCheckoutDateTime <= finalCheckinDateTime) {
       return res.status(400).json({
         message: "Checkout date time must be greater than checkin date time",
+      });
+    }
+
+    if (!isExactlyOneDayStay(finalCheckinDateTime, finalCheckoutDateTime)) {
+      return res.status(400).json({
+        success: false,
+        message: "Checkout date must be exactly one day after check-in date",
       });
     }
 
