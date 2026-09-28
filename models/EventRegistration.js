@@ -185,6 +185,38 @@ const EventRegistrationSchema = new mongoose.Schema(
     registrationSuccessEmailSentAt: {
       type: Date,
     },
+    // =====================================
+    // WhatsApp Registration Notification
+    // =====================================
+    whatsappRegistrationSent: {
+      type: Boolean,
+      default: false,
+    },
+
+    whatsappRegistrationSentAt: {
+      type: Date,
+    },
+
+    whatsappRegistrationStatus: {
+      type: String,
+      enum: ["pending", "sent", "failed"],
+      default: "pending",
+    },
+
+    whatsappRegistrationError: {
+      type: String,
+    },
+    // =====================================
+    // WhatsApp Bulk Notification Tracking
+    // =====================================
+    whatsappBulkSent: {
+      type: Boolean,
+      default: false,
+    },
+
+    whatsappBulkSentAt: {
+      type: Date,
+    },
   },
   { timestamps: true },
 );

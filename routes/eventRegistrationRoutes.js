@@ -21,6 +21,8 @@ import {
   sendReminderEmailToSingleUser,
   sendRegistrationEmailToSingleUser,
   sendBulkRegistrationSuccessEmails,
+  sendSingleRegistrationSuccessWhatsApp,
+  sendBulkRegistrationSuccessWhatsApps,
 } from "../controllers/eventRegistrationController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 import { eventUpload } from "../middlewares/eventUploadMiddleware.js";
@@ -211,6 +213,27 @@ router.post(
   protect,
   authorizeRoles("eventAdmin"),
   sendBulkRegistrationSuccessEmails
+);
+
+// =====================================
+// 20. Send Registration Success WhatsApp Single User
+// =====================================
+router.post(
+  "/event-admin/events/:eventId/registrations/:registrationId/send-registration-whatsapp",
+  protect,
+  authorizeRoles("eventAdmin"),
+  sendSingleRegistrationSuccessWhatsApp
+);
+
+
+// =====================================
+// 21. Send Registration Success WhatsApp (Bulk)
+// =====================================
+router.post(
+  "/event-admin/events/:eventId/send-registration-bulk-whatsapp",
+  protect,
+  authorizeRoles("eventAdmin"),
+  sendBulkRegistrationSuccessWhatsApps
 );
 
 export default router;

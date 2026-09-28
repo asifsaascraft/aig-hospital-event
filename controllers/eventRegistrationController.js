@@ -14,6 +14,20 @@ import Sponsor from "../models/Sponsor.js";
 import EventVisitor from "../models/EventVisitor.js";
 import CardProfile from "../models/CardProfile.js";
 import { generateRegistrationNumber } from "../utils/eventRegistrationNumber.js";
+import { sendAIGRegistrationWhatsApp } from "../utils/aisensyWhatsApp.js";
+
+// Event Date formate for whatsApp
+const formatWhatsAppEventDate = (event) => {
+  if (!event?.startDateTime || !event?.endDateTime) {
+    return "N/A";
+  }
+
+  const startDate = moment(event.startDateTime).format("DD MMM YYYY, hh:mm a");
+
+  const endDate = moment(event.endDateTime).format("DD MMM YYYY, hh:mm a");
+
+  return `${startDate} - ${endDate}`;
+};
 
 // helper function for success email
 const sendRegistrationSuccessEmail = async (registration, event) => {
@@ -2427,6 +2441,264 @@ export const sendBulkRegistrationSuccessEmails = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server Error",
+    });
+  }
+};
+
+/* ============================================
+   Send Registration Success WhatsApp Single User
+============================================ */
+export const sendSingleRegistrationSuccessWhatsApp = async (req, res) => {
+  try {
+    const { eventId, registrationId } = req.params;
+
+    // 1. Find registration
+    const registration = await EventRegistration.findOne({
+      _id: registrationId,
+      eventId,
+    });
+
+    if (!registration) {
+      return res.status(404).json({
+        success: false,
+        message: "Registration not found.",
+      });
+    }
+
+    if (!registration.isPaid) {
+      return res.status(400).json({
+        success: false,
+        message: "Registration is not paid.",
+      });
+    }
+
+    if (registration.isSuspended) {
+      return res.status(400).json({
+        success: false,
+        message: "Registration is suspended.",
+      });
+    }
+
+    // 2. Find event and populate the correct Venue field
+    const event = await Event.findById(eventId).populate({
+      path: "venueName",
+      select: "venueName venueAddress",
+    });
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found.",
+      });
+    }
+
+    if (!registration.mobile) {
+      return res.status(400).json({
+        success: false,
+        message: "Mobile number is missing.",
+      });
+    }
+
+    if (!registration.regNum) {
+      return res.status(400).json({
+        success: false,
+        message: "Registration number is missing.",
+      });
+    }
+
+    // 3. Correct venue and event date range
+    const venueName = event.venueName?.venueName || "N/A";
+
+    const eventDate = formatWhatsAppEventDate(event);
+
+    const otherInformation = "Please carry your registration badge.";
+
+    // 4. Send WhatsApp
+    const aisensyResponse = await sendAIGRegistrationWhatsApp({
+      phone: registration.mobile,
+      delegateName:
+        `${registration.prefix || ""} ${registration.name || ""}`.trim(),
+      eventName: event.eventName,
+      registrationNumber: registration.regNum,
+      eventDate,
+      venue: venueName,
+      otherInformation,
+      teamName: "AIG Hospitals, Hyderabad",
+    });
+
+    // 5. Save WhatsApp tracking
+    registration.whatsappRegistrationSent = true;
+    registration.whatsappRegistrationSentAt = new Date();
+    registration.whatsappRegistrationStatus = "sent";
+    registration.whatsappRegistrationError = undefined;
+
+    await registration.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "WhatsApp registration message sent successfully.",
+      data: {
+        registrationId: registration._id,
+        regNum: registration.regNum,
+        whatsappResponse: aisensyResponse,
+      },
+    });
+  } catch (error) {
+    console.error("Single WhatsApp registration error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send WhatsApp registration message.",
+      error: error.message,
+    });
+  }
+};
+
+/* ============================================
+   Send Registration Success WhatsApp (Bulk)
+============================================ */
+export const sendBulkRegistrationSuccessWhatsApps = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    // 1. Find event and populate correct Venue fields
+    const event = await Event.findById(eventId).populate({
+      path: "venueName",
+      select: "venueName venueAddress",
+    });
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    // 2. Correct venue and event date range
+    const venueName = event.venueName?.venueName || "N/A";
+
+    const eventDate = formatWhatsAppEventDate(event);
+
+    // 3. Find paid registrations that haven't received WhatsApp
+    const registrations = await EventRegistration.find({
+      eventId,
+      isPaid: true,
+      isSuspended: false,
+      // Only exclude registrations already processed by bulk
+      whatsappBulkSent: {
+        $ne: true,
+      },
+    });
+
+    if (registrations.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No pending WhatsApp registrations found",
+        total: 0,
+        successCount: 0,
+        failedCount: 0,
+        skippedCount: 0,
+      });
+    }
+
+    let successCount = 0;
+    let failedCount = 0;
+    let skippedCount = 0;
+
+    const results = [];
+
+    // 4. Send WhatsApp messages one by one
+    for (const registration of registrations) {
+      try {
+        if (!registration.mobile || !registration.regNum) {
+          skippedCount++;
+
+          results.push({
+            registrationId: registration._id,
+            name: registration.name,
+            status: "skipped",
+            reason: !registration.mobile
+              ? "Mobile number missing"
+              : "Registration number missing",
+          });
+
+          continue;
+        }
+
+        const result = await sendAIGRegistrationWhatsApp({
+          phone: registration.mobile,
+          delegateName:
+            `${registration.prefix || ""} ${registration.name || ""}`.trim(),
+          eventName: event.eventName,
+          registrationNumber: registration.regNum,
+          eventDate,
+          venue: venueName,
+          otherInformation: "Please carry your registration badge.",
+          teamName: "AIG Hospitals, Hyderabad",
+        });
+
+        // 5. Save successful WhatsApp status
+        registration.whatsappRegistrationSent = true;
+        registration.whatsappRegistrationSentAt = new Date();
+        registration.whatsappRegistrationStatus = "sent";
+        registration.whatsappRegistrationError = undefined;
+
+        // Separate bulk tracking
+        registration.whatsappBulkSent = true;
+        registration.whatsappBulkSentAt = new Date();
+
+        await registration.save();
+
+        successCount++;
+
+        results.push({
+          registrationId: registration._id,
+          name: registration.name,
+          status: "sent",
+          result,
+        });
+      } catch (error) {
+        failedCount++;
+
+        registration.whatsappRegistrationStatus = "failed";
+        registration.whatsappRegistrationError = String(error.message).slice(
+          0,
+          1000,
+        );
+
+        await registration.save();
+
+        console.error(
+          "WhatsApp failed for registration:",
+          registration._id,
+          error.message,
+        );
+
+        results.push({
+          registrationId: registration._id,
+          name: registration.name,
+          status: "failed",
+          reason: error.message,
+        });
+      }
+    }
+
+    // 6. Final response
+    return res.status(200).json({
+      success: true,
+      message: "Bulk WhatsApp processing completed",
+      total: registrations.length,
+      successCount,
+      failedCount,
+      skippedCount,
+      results,
+    });
+  } catch (error) {
+    console.error("Bulk WhatsApp controller error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error while sending WhatsApp messages",
     });
   }
 };
