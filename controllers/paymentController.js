@@ -13,7 +13,15 @@ import Workshop from "../models/Workshop.js";
 import WorkshopRegistration from "../models/WorkshopRegistration.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
 import moment from "moment";
-import { getIndianFormattedDateTime } from "../utils/dateUtils.js";
+import {
+  getIndianFormattedDateTime,
+  formatWhatsAppEventDate,
+} from "../utils/dateUtils.js";
+import {
+  generateRegistrationPublicToken,
+  getRegistrationPublicUrl,
+} from "../utils/registrationToken.js";
+import { sendAIGRegistrationWhatsApp } from "../utils/aisensyWhatsApp.js";
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -134,11 +142,17 @@ const completeEventRegistrationPayment = async ({
       );
 
       // ==========================================
+      // Generate permanent public registration token
+      // ==========================================
+      const publicToken = generateRegistrationPublicToken();
+
+      // ==========================================
       // Update registration
       // ==========================================
       registration.isPaid = true;
       registration.regNumGenerated = true;
       registration.regNum = generatedRegNum;
+      registration.publicToken = publicToken;
 
       await registration.save({ session });
 
@@ -165,13 +179,93 @@ const completeEventRegistrationPayment = async ({
         registration,
       };
     });
-
-    return result;
   } finally {
     await session.endSession();
   }
-};
 
+  // ========================================================
+  // SEND REGISTRATION SUCCESS WHATSAPP
+  // Only for the first successful payment completion.
+  // ========================================================
+  if (result && !result.alreadyCompleted && result.registration) {
+    const registration = result.registration;
+
+    try {
+      if (!registration.mobile || !registration.regNum) {
+        throw new Error(
+          "Registration mobile number or registration number is missing",
+        );
+      }
+
+      if (!registration.publicToken) {
+        throw new Error("Registration public token is missing");
+      }
+
+      const event = await Event.findById(registration.eventId).populate({
+        path: "venueName",
+        select: "venueName venueAddress",
+      });
+
+      if (!event) {
+        throw new Error("Event not found");
+      }
+
+      const registrationUrl = getRegistrationPublicUrl(
+        registration.publicToken,
+      );
+
+      const venueName = event.venueName?.venueName || "N/A";
+
+      const eventDate = formatWhatsAppEventDate(event);
+
+      const otherInformation = "Contact Registration Desk";
+
+      await sendAIGRegistrationWhatsApp({
+        phone: registration.mobile,
+        delegateName:
+          `${registration.prefix || ""} ${registration.name || ""}`.trim(),
+        eventName: event.eventName,
+        registrationNumber: registration.regNum,
+        eventDate,
+        venue: venueName,
+        otherInformation,
+        teamName: "AIG Hospitals, Hyderabad",
+        registrationUrl,
+      });
+
+      registration.whatsappRegistrationSent = true;
+      registration.whatsappRegistrationSentAt = new Date();
+      registration.whatsappRegistrationStatus = "sent";
+      registration.whatsappRegistrationError = undefined;
+
+      await registration.save();
+
+      console.log(
+        "Paid registration WhatsApp sent successfully:",
+        registration.regNum,
+      );
+    } catch (whatsappError) {
+      console.error(
+        "Paid registration WhatsApp sending failed:",
+        whatsappError,
+      );
+
+      try {
+        registration.whatsappRegistrationStatus = "failed";
+
+        registration.whatsappRegistrationError = String(
+          whatsappError?.message || "WhatsApp sending failed",
+        ).slice(0, 1000);
+
+        await registration.save();
+      } catch (trackingError) {
+        console.error("Failed to save WhatsApp failure status:", trackingError);
+      }
+    }
+  }
+
+  return result;
+};
 // ========================================================
 // RAZORPAY WEBHOOK
 // Handles payment.captured
@@ -333,7 +427,9 @@ export const razorpayWebhook = async (req, res) => {
     });
 
     // ==========================================
-    // Send registration/payment emails
+    // SEND REGISTRATION CONFIRMATION EMAIL
+    // SAME TEMPLATE AS ALL REGISTRATION APIS
+    // ONLY WHEN FIRST PAYMENT COMPLETED
     // ==========================================
 
     if (!result.alreadyCompleted) {
@@ -342,46 +438,43 @@ export const razorpayWebhook = async (req, res) => {
 
         const eventData = await Event.findById(registration.eventId);
 
-        const slabName = registration.registrationSlabId?.slabName || "N/A";
+        if (!eventData) {
+          throw new Error("Event not found while sending registration email");
+        }
 
-        await Promise.allSettled([
-          sendEmailWithTemplate({
-            to: registration.email,
-            name: registration.name,
-            templateKey:
-              "2518b.554b0da719bc314.k1.f7c9f490-a7f1-11f0-8b9c-8e9a6c33ddc2.199dbf3d259",
-            mergeInfo: {
-              name: registration.name,
-              eventName: eventData.eventName,
-              registrationNumber: registration.regNum,
-              registrationSlabName: slabName,
-              startDate: getIndianFormattedDateTime(eventData.startDateTime),
-              endDate: getIndianFormattedDateTime(eventData.endDateTime),
-              designation: registration.designation || "N/A",
-              affiliation: registration.affiliation || "N/A",
-              country: registration.country || "N/A",
-              city: registration.city || "N/A",
-            },
-          }),
+        await sendEmailWithTemplate({
+          to: registration.email,
+          name: registration.name,
 
-          sendEmailWithTemplate({
-            to: registration.email,
+          templateKey:
+            "2518b.554b0da719bc314.k1.f7c9f490-a7f1-11f0-8b9c-8e9a6c33ddc2.199dbf3d259",
+
+          mergeInfo: {
             name: registration.name,
-            templateKey:
-              "2518b.554b0da719bc314.k1.2f2232e0-a7f2-11f0-8b9c-8e9a6c33ddc2.199dbf53d0e",
-            mergeInfo: {
-              name: registration.name,
-              eventName: eventData.eventName,
-              registrationNumber: registration.regNum,
-              paymentAmount: result.payment.amount,
-              razorpayPaymentId: result.payment.razorpayPaymentId,
-              razorpayOrderId: result.payment.razorpayOrderId,
-              paymentStatus: result.payment.status,
-            },
-          }),
-        ]);
+
+            eventName: eventData.eventName,
+
+            startDate: getIndianFormattedDateTime(eventData.startDateTime),
+
+            endDate: getIndianFormattedDateTime(eventData.endDateTime),
+
+            registrationNumber: registration.regNum,
+
+            registrationType: registration.registrationType,
+
+            amount: result.payment.amount,
+          },
+        });
+
+        console.log(
+          "Webhook registration confirmation email sent successfully:",
+          registration.regNum,
+        );
       } catch (emailError) {
-        console.error("Webhook email error:", emailError);
+        console.error(
+          "Webhook registration confirmation email sending failed:",
+          emailError,
+        );
       }
     }
 
@@ -593,54 +686,53 @@ export const verifyPayment = async (req, res) => {
     });
 
     // ==========================================
-    // SEND EMAIL ONLY WHEN FIRST COMPLETED
+    // SEND REGISTRATION CONFIRMATION EMAIL
+    // ONLY WHEN FIRST PAYMENT COMPLETED
     // ==========================================
 
     if (!result.alreadyCompleted) {
       try {
         const registration = result.registration;
+
         const event = await Event.findById(registration.eventId);
 
-        const slabName = registration.registrationSlabId?.slabName || "N/A";
+        if (!event) {
+          throw new Error("Event not found while sending registration email");
+        }
 
-        await Promise.allSettled([
-          sendEmailWithTemplate({
-            to: registration.email,
-            name: registration.name,
-            templateKey:
-              "2518b.554b0da719bc314.k1.f7c9f490-a7f1-11f0-8b9c-8e9a6c33ddc2.199dbf3d259",
-            mergeInfo: {
-              name: registration.name,
-              eventName: event.eventName,
-              registrationNumber: registration.regNum,
-              registrationSlabName: slabName,
-              startDate: getIndianFormattedDateTime(event.startDateTime),
-              endDate: getIndianFormattedDateTime(event.endDateTime),
-              designation: registration.designation || "N/A",
-              affiliation: registration.affiliation || "N/A",
-              country: registration.country || "N/A",
-              city: registration.city || "N/A",
-            },
-          }),
+        await sendEmailWithTemplate({
+          to: registration.email,
+          name: registration.name,
 
-          sendEmailWithTemplate({
-            to: registration.email,
+          templateKey:
+            "2518b.554b0da719bc314.k1.f7c9f490-a7f1-11f0-8b9c-8e9a6c33ddc2.199dbf3d259",
+
+          mergeInfo: {
             name: registration.name,
-            templateKey:
-              "2518b.554b0da719bc314.k1.2f2232e0-a7f2-11f0-8b9c-8e9a6c33ddc2.199dbf53d0e",
-            mergeInfo: {
-              name: registration.name,
-              eventName: event.eventName,
-              registrationNumber: registration.regNum,
-              paymentAmount: result.payment.amount,
-              razorpayPaymentId: result.payment.razorpayPaymentId,
-              razorpayOrderId: result.payment.razorpayOrderId,
-              paymentStatus: result.payment.status,
-            },
-          }),
-        ]);
+
+            eventName: event.eventName,
+
+            startDate: getIndianFormattedDateTime(event.startDateTime),
+
+            endDate: getIndianFormattedDateTime(event.endDateTime),
+
+            registrationNumber: registration.regNum,
+
+            registrationType: registration.registrationType,
+
+            amount: result.payment.amount,
+          },
+        });
+
+        console.log(
+          "Paid registration confirmation email sent successfully:",
+          registration.regNum,
+        );
       } catch (emailError) {
-        console.error("Registration payment email error:", emailError);
+        console.error(
+          "Registration confirmation email sending failed:",
+          emailError,
+        );
       }
     }
 

@@ -5,9 +5,17 @@ import SponsorRegistrationQuota from "../models/SponsorRegistrationQuota.js";
 import User from "../models/User.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
 import moment from "moment";
-import { getIndianFormattedDateTime } from "../utils/dateUtils.js";
+import {
+  getIndianFormattedDateTime,
+  formatWhatsAppEventDate,
+} from "../utils/dateUtils.js";
 import CardProfile from "../models/CardProfile.js";
 import { generateRegistrationNumber } from "../utils/eventRegistrationNumber.js";
+import { sendAIGRegistrationWhatsApp } from "../utils/aisensyWhatsApp.js";
+import {
+  generateRegistrationPublicToken,
+  getRegistrationPublicUrl,
+} from "../utils/registrationToken.js";
 
 // =====================================
 //  1. CHECK EMAIL EXISTS FOR EVENT REGISTRATION (Protected)
@@ -120,6 +128,7 @@ export const sponsorRegisterForEvent = async (req, res) => {
     }
 
     const targetUser = await User.findById(userId);
+
     if (!targetUser) {
       return res.status(404).json({
         success: false,
@@ -130,8 +139,16 @@ export const sponsorRegisterForEvent = async (req, res) => {
     // ===============================
     // Validate Event
     // ===============================
-    const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ message: "Event not found" });
+    const event = await Event.findById(eventId).populate({
+      path: "venueName",
+      select: "venueName venueAddress",
+    });
+
+    if (!event) {
+      return res.status(404).json({
+        message: "Event not found",
+      });
+    }
 
     // ===============================
     // Validate Card Profile
@@ -237,20 +254,26 @@ export const sponsorRegisterForEvent = async (req, res) => {
 
     if (usedRegistrations >= quotaRecord.quota) {
       return res.status(400).json({
-        message: `Registration Quota has exceeded`,
+        message: "Registration Quota has exceeded",
       });
     }
 
     const session = await mongoose.startSession();
 
     let registration;
+    let generatedRegNum;
 
     try {
       await session.withTransaction(async () => {
-        const generatedRegNum = await generateRegistrationNumber(
-          event._id,
-          session,
-        );
+        // ==========================================
+        // Generate Registration Number
+        // ==========================================
+        generatedRegNum = await generateRegistrationNumber(event._id, session);
+
+        // ==========================================
+        // Generate Permanent Public Registration Token
+        // ==========================================
+        const publicToken = generateRegistrationPublicToken();
 
         registration = new EventRegistration({
           sponsorId,
@@ -279,6 +302,7 @@ export const sponsorRegisterForEvent = async (req, res) => {
           regNumGenerated: true,
           regNum: generatedRegNum,
           isSuspended: false,
+          publicToken,
           registrationType: "Sponsor Registration",
         });
 
@@ -288,6 +312,72 @@ export const sponsorRegisterForEvent = async (req, res) => {
       await session.endSession();
     }
 
+    // ----------------------------------------------------
+    // Send Registration Success WhatsApp
+    // ----------------------------------------------------
+    try {
+      if (!registration.mobile || !registration.regNum) {
+        throw new Error(
+          "Registration mobile number or registration number is missing",
+        );
+      }
+
+      if (!registration.publicToken) {
+        throw new Error("Registration public token is missing");
+      }
+
+      const registrationUrl = getRegistrationPublicUrl(
+        registration.publicToken,
+      );
+
+      const venueName = event.venueName?.venueName || "N/A";
+
+      const eventDate = formatWhatsAppEventDate(event);
+
+      const otherInformation = "Contact Registration Desk";
+
+      await sendAIGRegistrationWhatsApp({
+        phone: registration.mobile,
+        delegateName:
+          `${registration.prefix || ""} ${registration.name || ""}`.trim(),
+        eventName: event.eventName,
+        registrationNumber: registration.regNum,
+        eventDate,
+        venue: venueName,
+        otherInformation,
+        teamName: "AIG Hospitals, Hyderabad",
+        registrationUrl,
+      });
+
+      registration.whatsappRegistrationSent = true;
+      registration.whatsappRegistrationSentAt = new Date();
+      registration.whatsappRegistrationStatus = "sent";
+      registration.whatsappRegistrationError = undefined;
+
+      await registration.save();
+
+      console.log(
+        "Sponsor registration WhatsApp sent successfully:",
+        registration.regNum,
+      );
+    } catch (whatsappError) {
+      console.error(
+        "Sponsor registration WhatsApp sending failed:",
+        whatsappError,
+      );
+
+      try {
+        registration.whatsappRegistrationStatus = "failed";
+        registration.whatsappRegistrationError = String(
+          whatsappError?.message || "WhatsApp sending failed",
+        ).slice(0, 1000);
+
+        await registration.save();
+      } catch (trackingError) {
+        console.error("Failed to save WhatsApp failure status:", trackingError);
+      }
+    }
+
     // -----------------------------
     // SAFE FALLBACKS (IMPORTANT)
     // -----------------------------
@@ -295,37 +385,42 @@ export const sponsorRegisterForEvent = async (req, res) => {
     const finalName = name || targetUser.name;
 
     // ----------------------------------------------------
-    //  Send Email Notification to User
+    // Send Registration Confirmation Email
     // ----------------------------------------------------
     try {
       await sendEmailWithTemplate({
         to: finalEmail,
         name: finalName,
+
         templateKey:
-          "2518b.554b0da719bc314.k1.84e00a60-c384-11f0-807d-8e9a6c33ddc2.19a90a6be06",
+          "2518b.554b0da719bc314.k1.f7c9f490-a7f1-11f0-8b9c-8e9a6c33ddc2.199dbf3d259",
+
         mergeInfo: {
+          name: finalName,
+
           eventName: event.eventName,
-          registrationNumber: generatedRegNum,
 
           startDate: getIndianFormattedDateTime(event.startDateTime),
 
           endDate: getIndianFormattedDateTime(event.endDateTime),
 
-          prefix,
-          name,
-          email,
-          mobile,
-          designation,
-          affiliation,
-          country,
-          state,
-          city,
-          address,
-          pincode,
+          registrationNumber: generatedRegNum,
+
+          registrationType: registration.registrationType,
+
+          amount: "Free",
         },
       });
+
+      console.log(
+        "Sponsor registration confirmation email sent successfully:",
+        generatedRegNum,
+      );
     } catch (emailError) {
-      console.error("Email sending failed:", emailError);
+      console.error(
+        "Sponsor registration confirmation email sending failed:",
+        emailError,
+      );
     }
 
     return res.status(201).json({
@@ -335,7 +430,10 @@ export const sponsorRegisterForEvent = async (req, res) => {
     });
   } catch (error) {
     console.error("Sponsor registration error:", error);
-    res.status(500).json({ message: "Server Error" });
+
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
 

@@ -32,52 +32,52 @@ const EventRegistrationSchema = new mongoose.Schema(
   {
     eventAdminId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: 'User',
     },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: 'User',
     },
     sponsorId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Sponsor",
+      ref: 'Sponsor',
     },
     eventId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Event",
+      ref: 'Event',
       required: true,
     },
     registrationSlabId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "RegistrationSlab",
+      ref: 'RegistrationSlab',
     },
     prefix: {
       type: String,
-      required: [true, "Prefix is required"],
+      required: [true, 'Prefix is required'],
     },
     name: {
       type: String,
-      required: [true, "Name is required"],
+      required: [true, 'Name is required'],
     },
     gender: {
       type: String,
-      required: [true, "Gender is required"],
+      required: [true, 'Gender is required'],
     },
     email: {
       type: String,
-      required: [true, "Email is required"],
+      required: [true, 'Email is required'],
       trim: true,
       lowercase: true,
     },
     mobile: {
       type: String,
-      match: [/^\d{10}$/, "Mobile number must be 10 digits"],
+      match: [/^\d{10}$/, 'Mobile number must be 10 digits'],
       trim: true,
     },
     cardProfileId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "CardProfile",
-      required: [true, "Card Profile is required"],
+      ref: 'CardProfile',
+      required: [true, 'Card Profile is required'],
     },
     cardProfileUpdated: {
       type: Boolean,
@@ -85,37 +85,37 @@ const EventRegistrationSchema = new mongoose.Schema(
     },
     designation: {
       type: String,
-      required: [true, "Designation is required"],
+      required: [true, 'Designation is required'],
       trim: true,
     },
     affiliation: {
       type: String,
-      required: [true, "Affiliation is required"],
+      required: [true, 'Affiliation is required'],
       trim: true,
     },
     country: {
       type: String,
-      required: [true, "Country is required"],
+      required: [true, 'Country is required'],
       trim: true,
     },
     city: {
       type: String,
-      required: [true, "City is required"],
+      required: [true, 'City is required'],
       trim: true,
     },
     state: {
       type: String,
-      required: [true, "State is required"],
+      required: [true, 'State is required'],
       trim: true,
     },
     address: {
       type: String,
-      required: [true, "Address is required"],
+      required: [true, 'Address is required'],
       trim: true,
     },
     pincode: {
       type: String,
-      required: [true, "Pin Code is required"],
+      required: [true, 'Pin Code is required'],
       trim: true,
     },
     mciNumber: {
@@ -145,7 +145,7 @@ const EventRegistrationSchema = new mongoose.Schema(
     // this field store only, when event admin add accompany
     amount: {
       type: Number,
-      min: [0, "Amount must be a positive number"],
+      min: [0, 'Amount must be a positive number'],
     },
     spotRegistration: {
       type: Boolean,
@@ -168,15 +168,23 @@ const EventRegistrationSchema = new mongoose.Schema(
       required: true,
       default: false,
     },
+
+    publicToken: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+
     registrationType: {
       type: String,
       enum: [
-        "Online Registration",
-        "Offline Registration",
-        "Sponsor Registration",
-        "On-Spot Registration",
+        'Online Registration',
+        'Offline Registration',
+        'Sponsor Registration',
+        'On-Spot Registration',
       ],
-      default: "Online Registration",
+      default: 'Online Registration',
     },
     registrationSuccessEmailSentByAdmin: {
       type: Boolean,
@@ -185,6 +193,7 @@ const EventRegistrationSchema = new mongoose.Schema(
     registrationSuccessEmailSentAt: {
       type: Date,
     },
+
     // =====================================
     // WhatsApp Registration Notification
     // =====================================
@@ -199,13 +208,14 @@ const EventRegistrationSchema = new mongoose.Schema(
 
     whatsappRegistrationStatus: {
       type: String,
-      enum: ["pending", "sent", "failed"],
-      default: "pending",
+      enum: ['pending', 'sent', 'failed'],
+      default: 'pending',
     },
 
     whatsappRegistrationError: {
       type: String,
     },
+
     // =====================================
     // WhatsApp Bulk Notification Tracking
     // =====================================
@@ -219,7 +229,7 @@ const EventRegistrationSchema = new mongoose.Schema(
     },
   },
   { timestamps: true },
-);
+)
 
 EventRegistrationSchema.index(
   { eventId: 1, regNum: 1 },

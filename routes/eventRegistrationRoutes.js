@@ -4,6 +4,7 @@ import {
   getPrefilledRegistrationForm,
   registerForEvent,
   getMyRegistrations,
+  getRegistrationsByEventForUser,
   getRegistrationById,
   getAllRegistrationsByEvent,
   updateRegistrationSuspension,
@@ -23,7 +24,8 @@ import {
   sendBulkRegistrationSuccessEmails,
   sendSingleRegistrationSuccessWhatsApp,
   sendBulkRegistrationSuccessWhatsApps,
-} from "../controllers/eventRegistrationController.js";
+  getPublicRegistrationByToken,
+} from '../controllers/eventRegistrationController.js'
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 import { eventUpload } from "../middlewares/eventUploadMiddleware.js";
 
@@ -54,6 +56,23 @@ router.get(
   protect,
   authorizeRoles("user"),
   getMyRegistrations
+);
+
+
+// Get All Paid Registrations for an Event (Logged-in User)
+router.get(
+  "/events/:eventId/registrations",
+  protect,
+  authorizeRoles("user"),
+  getRegistrationsByEventForUser
+);
+
+// =====================================
+// Public Registration Pass
+// =====================================
+router.get(
+  "/registrations/public/:publicToken",
+  getPublicRegistrationByToken
 );
 
 // 4 Get a registration by ID
@@ -196,7 +215,7 @@ router.post(
 );
 
 // =====================================
-//  18. Send success email to single user
+//  18. Send Conference reminder email to single user
 // =====================================
 router.post(
   "/event-admin/events/:eventId/registrations/:registrationId/send-registration-email",
@@ -206,7 +225,7 @@ router.post(
 );
 
 // =====================================
-//  19. Send success email
+//  19. Send Conference reminder email
 // =====================================
 router.post(
   "/event-admin/events/:eventId/send-registration-bulk-email",
@@ -235,5 +254,6 @@ router.post(
   authorizeRoles("eventAdmin"),
   sendBulkRegistrationSuccessWhatsApps
 );
+
 
 export default router;

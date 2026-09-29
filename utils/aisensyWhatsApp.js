@@ -1,6 +1,4 @@
-
-const AISENSY_API_URL =
-  "https://backend.aisensy.com/campaign/t1/api/v2";
+const AISENSY_API_URL = "https://backend.aisensy.com/campaign/t1/api/v2";
 
 export const sendAIGRegistrationWhatsApp = async ({
   phone,
@@ -11,6 +9,7 @@ export const sendAIGRegistrationWhatsApp = async ({
   venue,
   otherInformation,
   teamName,
+  registrationUrl,
 }) => {
   const apiKey = process.env.AISENSY_API_KEY;
   const campaignName = process.env.AISENSY_CAMPAIGN_NAME;
@@ -21,6 +20,10 @@ export const sendAIGRegistrationWhatsApp = async ({
 
   if (!phone) {
     throw new Error("Delegate mobile number is missing");
+  }
+
+  if (!registrationUrl) {
+    throw new Error("Registration pass URL is missing");
   }
 
   // Normalize phone number for India.
@@ -47,6 +50,7 @@ export const sendAIGRegistrationWhatsApp = async ({
       String(venue || ""),
       String(otherInformation || ""),
       String(teamName || ""),
+      String(registrationUrl || ""),
     ],
   };
 
@@ -62,7 +66,7 @@ export const sendAIGRegistrationWhatsApp = async ({
 
   if (!response.ok) {
     throw new Error(
-      `AiSensy request failed (${response.status}): ${responseText}`
+      `AiSensy request failed (${response.status}): ${responseText}`,
     );
   }
 

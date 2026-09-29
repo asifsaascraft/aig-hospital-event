@@ -13,8 +13,6 @@ export const getIndianFormattedDate = (date = new Date()) => {
   });
 };
 
-
-
 export const getIndianFormattedDateTime = (date) => {
   if (!date) return "N/A";
 
@@ -26,5 +24,20 @@ export const getIndianFormattedDateTime = (date) => {
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,
+  });
+};
+
+// ==========================================
+// WhatsApp Event Date
+// Example: 23 Nov 2026
+// ==========================================
+export const formatWhatsAppEventDate = (date) => {
+  if (!date) return "N/A";
+
+  return new Date(date).toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
   });
 };

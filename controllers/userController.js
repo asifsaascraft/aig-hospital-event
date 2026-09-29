@@ -75,7 +75,7 @@ export const registerUser = async (req, res) => {
     });
 
     // =======================
-    // Send Welcome Email
+    // Send Signup Email
     // =======================
     try {
       await sendEmailWithTemplate({
@@ -85,9 +85,6 @@ export const registerUser = async (req, res) => {
           "2518b.554b0da719bc314.k1.4b76afb1-a361-11f0-bc12-525400c92439.199be08ce2b",
         mergeInfo: {
           name: user.name,
-          email: user.email,
-          mobile: user.mobile,
-          affiliation: user.affiliation || "N/A",
         },
       });
     } catch (emailError) {

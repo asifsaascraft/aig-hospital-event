@@ -9,27 +9,21 @@ import moment from "moment";
 import {
   getIndianFormattedDate,
   getIndianFormattedDateTime,
+  formatWhatsAppEventDate,
 } from "../utils/dateUtils.js";
-import Sponsor from "../models/Sponsor.js";
+import { sendAIGRegistrationWhatsApp } from "../utils/aisensyWhatsApp.js";
 import EventVisitor from "../models/EventVisitor.js";
 import CardProfile from "../models/CardProfile.js";
 import { generateRegistrationNumber } from "../utils/eventRegistrationNumber.js";
-import { sendAIGRegistrationWhatsApp } from "../utils/aisensyWhatsApp.js";
+import {
+  generateRegistrationPublicToken,
+  ensureRegistrationPublicToken,
+  getRegistrationPublicUrl,
+} from "../utils/registrationToken.js";
+import { getPagination, buildPaginationMeta } from "../utils/pagination.js";
+import buildSearchQuery from "../utils/search.js";
 
-// Event Date formate for whatsApp
-const formatWhatsAppEventDate = (event) => {
-  if (!event?.startDateTime || !event?.endDateTime) {
-    return "N/A";
-  }
-
-  const startDate = moment(event.startDateTime).format("DD MMM YYYY, hh:mm a");
-
-  const endDate = moment(event.endDateTime).format("DD MMM YYYY, hh:mm a");
-
-  return `${startDate} - ${endDate}`;
-};
-
-// helper function for success email
+// helper function for Conference reminder email
 const sendRegistrationSuccessEmail = async (registration, event) => {
   await sendEmailWithTemplate({
     to: registration.email,
@@ -475,6 +469,11 @@ export const registerForEvent = async (req, res) => {
           );
 
           // ==========================================
+          // Generate permanent public registration token
+          // ==========================================
+          const publicToken = generateRegistrationPublicToken();
+
+          // ==========================================
           // Create registration INSIDE same transaction
           // ==========================================
           registration = new EventRegistration({
@@ -507,6 +506,7 @@ export const registerForEvent = async (req, res) => {
             isPaid: true,
             regNumGenerated: true,
             regNum: generatedRegNum,
+            publicToken,
             isSuspended: false,
             registrationType: "Online Registration",
           });
@@ -518,11 +518,69 @@ export const registerForEvent = async (req, res) => {
       }
 
       // ==============================================
+      // SEND REGISTRATION SUCCESS WHATSAPP
+      // ==============================================
+      try {
+        if (registration.mobile && registration.regNum) {
+          const registrationUrl = getRegistrationPublicUrl(
+            registration.publicToken,
+          );
+
+          await event.populate({
+            path: "venueName",
+            select: "venueName venueAddress",
+          });
+
+          const venueName = event.venueName?.venueName || "N/A";
+
+          const eventDate = formatWhatsAppEventDate(event.startDateTime);
+
+          const otherInformation = "Contact Registration Desk";
+
+          await sendAIGRegistrationWhatsApp({
+            phone: registration.mobile,
+
+            delegateName:
+              `${registration.prefix || ""} ${registration.name || ""}`.trim(),
+
+            eventName: event.eventName,
+
+            registrationNumber: registration.regNum,
+
+            eventDate,
+
+            venue: venueName,
+
+            otherInformation,
+
+            teamName: "AIG Hospitals, Hyderabad | Registration Team",
+
+            registrationUrl,
+          });
+
+          registration.whatsappRegistrationSent = true;
+          registration.whatsappRegistrationSentAt = new Date();
+          registration.whatsappRegistrationStatus = "sent";
+          registration.whatsappRegistrationError = undefined;
+
+          await registration.save();
+        }
+      } catch (whatsappErr) {
+        console.error("Registration WhatsApp sending failed:", whatsappErr);
+
+        registration.whatsappRegistrationStatus = "failed";
+
+        registration.whatsappRegistrationError = String(
+          whatsappErr?.message || "WhatsApp sending failed",
+        ).slice(0, 1000);
+
+        await registration.save();
+      }
+
+      // ==============================================
       // SEND ONLY REGISTRATION EMAIL (NO PAYMENT EMAIL)
       // ==============================================
       try {
-        const slabName = slab?.slabName || "N/A";
-
         await sendEmailWithTemplate({
           to: registration.email,
           name: registration.name,
@@ -532,16 +590,13 @@ export const registerForEvent = async (req, res) => {
             name: registration.name,
             eventName: event.eventName,
             registrationNumber: registration.regNum,
-            registrationSlabName: slabName,
 
             startDate: getIndianFormattedDateTime(event.startDateTime),
 
             endDate: getIndianFormattedDateTime(event.endDateTime),
 
-            designation: registration.designation || "N/A",
-            affiliation: registration.affiliation || "N/A",
-            country: registration.country || "N/A",
-            city: registration.city || "N/A",
+            registrationType: registration.registrationType,
+            amount: "Free",
           },
         });
       } catch (emailErr) {
@@ -685,6 +740,92 @@ export const getRegistrationById = async (req, res) => {
   } catch (error) {
     console.error("Get registration by ID error:", error);
     res.status(500).json({ message: "Server Error" });
+  }
+};
+
+/*
+========================================================
+  Get All Paid Registrations for an Event
+  Logged-in User
+========================================================
+*/
+export const getRegistrationsByEventForUser = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    // Validate event
+    const event = await Event.findById(eventId);
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    // Pagination
+    const { page, limit, skip } = getPagination(req);
+
+    // Search
+    const searchQuery = buildSearchQuery(req, ["name", "email", "mobile"]);
+
+    // Final Query
+    const query = {
+      eventId,
+      isPaid: true,
+      ...searchQuery,
+    };
+
+    // MongoDB
+    const [registrations, total] = await Promise.all([
+      EventRegistration.find(query)
+        .populate({
+          path: "registrationSlabId",
+          select: "slabName amount",
+        })
+        .populate({
+          path: "sponsorId",
+          select: "sponsorName",
+        })
+        .populate({
+          path: "eventAdminId",
+          select: "name",
+        })
+        .populate({
+          path: "cardProfileId",
+          select: "CardProfileName",
+        })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+
+      EventRegistration.countDocuments(query),
+    ]);
+
+    // Pagination
+    const pagination = buildPaginationMeta(total, page, limit);
+
+    return res.status(200).json({
+      success: true,
+      message: "All paid registrations fetched successfully",
+      event: {
+        id: event._id,
+        name: event.eventName,
+      },
+      totalRegistrations: total,
+      data: registrations,
+      pagination,
+    });
+  } catch (error) {
+    console.error(
+      "Get registrations by event for logged-in user error:",
+      error,
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
   }
 };
 
@@ -1152,13 +1293,16 @@ export const registerForEventByEventAdmin = async (req, res) => {
     const session = await mongoose.startSession();
 
     let registration;
+    let generatedRegNum;
 
     try {
       await session.withTransaction(async () => {
-        const generatedRegNum = await generateRegistrationNumber(
-          event._id,
-          session,
-        );
+        generatedRegNum = await generateRegistrationNumber(event._id, session);
+
+        // ==========================================
+        // Generate permanent public registration token
+        // ==========================================
+        const publicToken = generateRegistrationPublicToken();
 
         registration = new EventRegistration({
           eventAdminId: req.user._id,
@@ -1189,6 +1333,7 @@ export const registerForEventByEventAdmin = async (req, res) => {
           isPaid: true,
           regNumGenerated: true,
           regNum: generatedRegNum,
+          publicToken,
           isSuspended: false,
           registrationType: "Offline Registration",
         });
@@ -1199,6 +1344,82 @@ export const registerForEventByEventAdmin = async (req, res) => {
       await session.endSession();
     }
 
+    // ----------------------------------------------------
+    // Send WhatsApp Notification to User
+    // ----------------------------------------------------
+    try {
+      if (!registration.mobile || !registration.regNum) {
+        throw new Error(
+          "Registration mobile number or registration number is missing",
+        );
+      }
+
+      if (!registration.publicToken) {
+        throw new Error("Registration public token is missing");
+      }
+
+      const whatsappEvent = await Event.findById(eventId).populate({
+        path: "venueName",
+        select: "venueName venueAddress",
+      });
+
+      if (!whatsappEvent) {
+        throw new Error("Event not found");
+      }
+
+      const registrationUrl = getRegistrationPublicUrl(
+        registration.publicToken,
+      );
+
+      const venueName = whatsappEvent.venueName?.venueName || "N/A";
+
+      const eventDate = formatWhatsAppEventDate(whatsappEvent);
+
+      const otherInformation = "Contact Registration Desk";
+
+      await sendAIGRegistrationWhatsApp({
+        phone: registration.mobile,
+        delegateName:
+          `${registration.prefix || ""} ${registration.name || ""}`.trim(),
+        eventName: whatsappEvent.eventName,
+        registrationNumber: registration.regNum,
+        eventDate,
+        venue: venueName,
+        otherInformation,
+        teamName: "AIG Hospitals, Hyderabad",
+        registrationUrl,
+      });
+
+      registration.whatsappRegistrationSent = true;
+      registration.whatsappRegistrationSentAt = new Date();
+      registration.whatsappRegistrationStatus = "sent";
+      registration.whatsappRegistrationError = undefined;
+
+      await registration.save();
+
+      console.log(
+        "Event admin registration WhatsApp sent successfully:",
+        registration.regNum,
+      );
+    } catch (whatsappError) {
+      console.error(
+        "Event admin registration WhatsApp sending failed:",
+        whatsappError,
+      );
+
+      try {
+        registration.whatsappRegistrationStatus = "failed";
+
+        registration.whatsappRegistrationError = String(
+          whatsappError?.message || "WhatsApp sending failed",
+        ).slice(0, 1000);
+
+        await registration.save();
+      } catch (trackingError) {
+        console.error("Failed to save WhatsApp failure status:", trackingError);
+      }
+    }
+
     // -----------------------------
     // SAFE FALLBACKS (IMPORTANT)
     // -----------------------------
@@ -1206,37 +1427,36 @@ export const registerForEventByEventAdmin = async (req, res) => {
     const finalName = name || targetUser.name;
 
     // ----------------------------------------------------
-    //  Send Email Notification to User
+    // Send Registration Confirmation Email to User
     // ----------------------------------------------------
     try {
       await sendEmailWithTemplate({
         to: finalEmail,
         name: finalName,
         templateKey:
-          "2518b.554b0da719bc314.k1.6e017640-d986-11f0-8c89-62d0161cbd93.19b20e123a4",
+          "2518b.554b0da719bc314.k1.f7c9f490-a7f1-11f0-8b9c-8e9a6c33ddc2.199dbf3d259",
+
         mergeInfo: {
+          name: finalName,
+
           eventName: event.eventName,
-          registrationNumber: generatedRegNum,
 
           startDate: getIndianFormattedDateTime(event.startDateTime),
 
           endDate: getIndianFormattedDateTime(event.endDateTime),
 
-          prefix,
-          name,
-          email,
-          mobile,
-          designation,
-          affiliation,
-          country,
-          state,
-          city,
-          address,
-          pincode,
+          registrationNumber: generatedRegNum,
+
+          registrationType: registration.registrationType,
+
+          amount: amount || "Free",
         },
       });
     } catch (emailError) {
-      console.error("Email sending failed:", emailError);
+      console.error(
+        "Event admin registration email sending failed:",
+        emailError,
+      );
     }
 
     res.status(201).json({
@@ -1439,13 +1659,16 @@ export const bulkRegisterForEventByEventAdmin = async (req, res) => {
     const session = await mongoose.startSession();
 
     let registration;
+    let generatedRegNum;
 
     try {
       await session.withTransaction(async () => {
-        const generatedRegNum = await generateRegistrationNumber(
-          event._id,
-          session,
-        );
+        generatedRegNum = await generateRegistrationNumber(event._id, session);
+
+        // ==========================================
+        // Generate permanent public registration token
+        // ==========================================
+        const publicToken = generateRegistrationPublicToken();
 
         registration = new EventRegistration({
           eventAdminId,
@@ -1473,6 +1696,7 @@ export const bulkRegisterForEventByEventAdmin = async (req, res) => {
           isPaid: true,
           regNumGenerated: true,
           regNum: generatedRegNum,
+          publicToken,
           registrationType: "Offline Registration",
         });
 
@@ -1482,6 +1706,82 @@ export const bulkRegisterForEventByEventAdmin = async (req, res) => {
       await session.endSession();
     }
 
+    // ----------------------------------------------------
+    // Send WhatsApp Notification to User
+    // ----------------------------------------------------
+    try {
+      if (!registration.mobile || !registration.regNum) {
+        throw new Error(
+          "Registration mobile number or registration number is missing",
+        );
+      }
+
+      if (!registration.publicToken) {
+        throw new Error("Registration public token is missing");
+      }
+
+      const whatsappEvent = await Event.findById(eventId).populate({
+        path: "venueName",
+        select: "venueName venueAddress",
+      });
+
+      if (!whatsappEvent) {
+        throw new Error("Event not found");
+      }
+
+      const registrationUrl = getRegistrationPublicUrl(
+        registration.publicToken,
+      );
+
+      const venueName = whatsappEvent.venueName?.venueName || "N/A";
+
+      const eventDate = formatWhatsAppEventDate(whatsappEvent);
+
+      const otherInformation = "Contact Registration Desk";
+
+      await sendAIGRegistrationWhatsApp({
+        phone: registration.mobile,
+        delegateName:
+          `${registration.prefix || ""} ${registration.name || ""}`.trim(),
+        eventName: whatsappEvent.eventName,
+        registrationNumber: registration.regNum,
+        eventDate,
+        venue: venueName,
+        otherInformation,
+        teamName: "AIG Hospitals, Hyderabad",
+        registrationUrl,
+      });
+
+      registration.whatsappRegistrationSent = true;
+      registration.whatsappRegistrationSentAt = new Date();
+      registration.whatsappRegistrationStatus = "sent";
+      registration.whatsappRegistrationError = undefined;
+
+      await registration.save();
+
+      console.log(
+        "Bulk admin registration WhatsApp sent successfully:",
+        registration.regNum,
+      );
+    } catch (whatsappError) {
+      console.error(
+        "Bulk admin registration WhatsApp sending failed:",
+        whatsappError,
+      );
+
+      try {
+        registration.whatsappRegistrationStatus = "failed";
+
+        registration.whatsappRegistrationError = String(
+          whatsappError?.message || "WhatsApp sending failed",
+        ).slice(0, 1000);
+
+        await registration.save();
+      } catch (trackingError) {
+        console.error("Failed to save WhatsApp failure status:", trackingError);
+      }
+    }
+
     // -----------------------------
     // SAFE FALLBACKS (IMPORTANT)
     // -----------------------------
@@ -1489,39 +1789,33 @@ export const bulkRegisterForEventByEventAdmin = async (req, res) => {
     const finalName = name || targetUser.name;
 
     // ----------------------------------------------------
-    //  Send Email Notification to User
+    // Send Registration Confirmation Email to User
     // ----------------------------------------------------
     try {
       await sendEmailWithTemplate({
         to: finalEmail,
         name: finalName,
         templateKey:
-          "2518b.554b0da719bc314.k1.6e017640-d986-11f0-8c89-62d0161cbd93.19b20e123a4",
-        mergeInfo: {
-          eventName: event.eventName,
-          registrationNumber: generatedRegNum,
-          startDate: event.startDateTime
-            ? moment(event.startDateTime).format("DD MMM YYYY, hh:mm A")
-            : "N/A",
+          "2518b.554b0da719bc314.k1.f7c9f490-a7f1-11f0-8b9c-8e9a6c33ddc2.199dbf3d259",
 
-          endDate: event.endDateTime
-            ? moment(event.endDateTime).format("DD MMM YYYY, hh:mm A")
-            : "N/A",
-          prefix,
-          name,
-          email,
-          mobile,
-          designation,
-          affiliation,
-          country,
-          state,
-          city,
-          address,
-          pincode,
+        mergeInfo: {
+          name: finalName,
+          eventName: event.eventName,
+
+          startDate: getIndianFormattedDateTime(event.startDateTime),
+
+          endDate: getIndianFormattedDateTime(event.endDateTime),
+
+          registrationNumber: generatedRegNum,
+          registrationType: registration.registrationType,
+          amount: "Free",
         },
       });
     } catch (emailError) {
-      console.error("Email sending failed:", emailError);
+      console.error(
+        "Bulk admin registration email sending failed:",
+        emailError,
+      );
     }
 
     return res.status(201).json({
@@ -1653,13 +1947,16 @@ export const onSpotRegisterForEventByEventAdmin = async (req, res) => {
     const session = await mongoose.startSession();
 
     let registration;
+    let generatedRegNum;
 
     try {
       await session.withTransaction(async () => {
-        const generatedRegNum = await generateRegistrationNumber(
-          event._id,
-          session,
-        );
+        generatedRegNum = await generateRegistrationNumber(event._id, session);
+
+        // ==========================================
+        // Generate permanent public registration token
+        // ==========================================
+        const publicToken = generateRegistrationPublicToken();
 
         registration = new EventRegistration({
           eventAdminId,
@@ -1688,6 +1985,7 @@ export const onSpotRegisterForEventByEventAdmin = async (req, res) => {
           regNumGenerated: true,
           regNum: generatedRegNum,
           isSuspended: false,
+          publicToken,
           registrationType: "On-Spot Registration",
         });
 
@@ -1697,6 +1995,72 @@ export const onSpotRegisterForEventByEventAdmin = async (req, res) => {
       await session.endSession();
     }
 
+    // ----------------------------------------------------
+    // Send Registration Success WhatsApp
+    // ----------------------------------------------------
+    try {
+      if (!registration.mobile || !registration.regNum) {
+        throw new Error(
+          "Registration mobile number or registration number is missing",
+        );
+      }
+
+      if (!registration.publicToken) {
+        throw new Error("Registration public token is missing");
+      }
+
+      const registrationUrl = getRegistrationPublicUrl(
+        registration.publicToken,
+      );
+
+      const venueName = event.venueName?.venueName || "N/A";
+
+      const eventDate = formatWhatsAppEventDate(event.startDateTime);
+
+      const otherInformation = "Contact Registration Desk";
+
+      await sendAIGRegistrationWhatsApp({
+        phone: registration.mobile,
+        delegateName:
+          `${registration.prefix || ""} ${registration.name || ""}`.trim(),
+        eventName: event.eventName,
+        registrationNumber: registration.regNum,
+        eventDate,
+        venue: venueName,
+        otherInformation,
+        teamName: "AIG Hospitals, Hyderabad",
+        registrationUrl,
+      });
+
+      registration.whatsappRegistrationSent = true;
+      registration.whatsappRegistrationSentAt = new Date();
+      registration.whatsappRegistrationStatus = "sent";
+      registration.whatsappRegistrationError = undefined;
+
+      await registration.save();
+
+      console.log(
+        "On-spot registration WhatsApp sent successfully:",
+        registration.regNum,
+      );
+    } catch (whatsappError) {
+      console.error(
+        "On-spot registration WhatsApp sending failed:",
+        whatsappError,
+      );
+
+      try {
+        registration.whatsappRegistrationStatus = "failed";
+        registration.whatsappRegistrationError = String(
+          whatsappError?.message || "WhatsApp sending failed",
+        ).slice(0, 1000);
+
+        await registration.save();
+      } catch (trackingError) {
+        console.error("Failed to save WhatsApp failure status:", trackingError);
+      }
+    }
+
     // -----------------------------
     // SAFE FALLBACKS (IMPORTANT)
     // -----------------------------
@@ -1704,39 +2068,33 @@ export const onSpotRegisterForEventByEventAdmin = async (req, res) => {
     const finalName = name || targetUser.name;
 
     // ----------------------------------------------------
-    //  Send Email Notification to User
+    // Send Registration Confirmation Email to User
     // ----------------------------------------------------
     try {
       await sendEmailWithTemplate({
         to: finalEmail,
         name: finalName,
         templateKey:
-          "2518b.554b0da719bc314.k1.6e017640-d986-11f0-8c89-62d0161cbd93.19b20e123a4",
-        mergeInfo: {
-          eventName: event.eventName,
-          registrationNumber: generatedRegNum,
-          startDate: event.startDateTime
-            ? moment(event.startDateTime).format("DD MMM YYYY, hh:mm A")
-            : "N/A",
+          "2518b.554b0da719bc314.k1.f7c9f490-a7f1-11f0-8b9c-8e9a6c33ddc2.199dbf3d259",
 
-          endDate: event.endDateTime
-            ? moment(event.endDateTime).format("DD MMM YYYY, hh:mm A")
-            : "N/A",
-          prefix,
-          name,
-          email,
-          mobile,
-          designation,
-          affiliation,
-          country,
-          state,
-          city,
-          address,
-          pincode,
+        mergeInfo: {
+          name: finalName,
+
+          eventName: event.eventName,
+
+          startDate: getIndianFormattedDateTime(event.startDateTime),
+
+          endDate: getIndianFormattedDateTime(event.endDateTime),
+
+          registrationNumber: generatedRegNum,
+
+          registrationType: registration.registrationType,
+
+          amount: "Free",
         },
       });
     } catch (emailError) {
-      console.error("Email sending failed:", emailError);
+      console.error("On-spot registration email sending failed:", emailError);
     }
 
     return res.status(201).json({
@@ -2334,7 +2692,7 @@ export const getCardProfileUpdatedRegistrations = async (req, res) => {
 };
 
 // =====================================
-//  18. Send success email to single user
+//  18. Send Conference reminder email to single user
 // =====================================
 export const sendRegistrationEmailToSingleUser = async (req, res) => {
   try {
@@ -2374,7 +2732,7 @@ export const sendRegistrationEmailToSingleUser = async (req, res) => {
 };
 
 // =====================================
-//  19. Send Registration Success Email (Bulk)
+//  19. Send Registration Conference reminder Email (Bulk)
 // =====================================
 export const sendBulkRegistrationSuccessEmails = async (req, res) => {
   try {
@@ -2452,7 +2810,6 @@ export const sendSingleRegistrationSuccessWhatsApp = async (req, res) => {
   try {
     const { eventId, registrationId } = req.params;
 
-    // 1. Find registration
     const registration = await EventRegistration.findOne({
       _id: registrationId,
       eventId,
@@ -2461,107 +2818,24 @@ export const sendSingleRegistrationSuccessWhatsApp = async (req, res) => {
     if (!registration) {
       return res.status(404).json({
         success: false,
-        message: "Registration not found.",
+        message: "Registration not found",
       });
     }
 
     if (!registration.isPaid) {
       return res.status(400).json({
         success: false,
-        message: "Registration is not paid.",
+        message: "WhatsApp can only be sent for paid registrations",
       });
     }
 
     if (registration.isSuspended) {
       return res.status(400).json({
         success: false,
-        message: "Registration is suspended.",
+        message: "Cannot send WhatsApp for a suspended registration",
       });
     }
 
-    // 2. Find event and populate the correct Venue field
-    const event = await Event.findById(eventId).populate({
-      path: "venueName",
-      select: "venueName venueAddress",
-    });
-
-    if (!event) {
-      return res.status(404).json({
-        success: false,
-        message: "Event not found.",
-      });
-    }
-
-    if (!registration.mobile) {
-      return res.status(400).json({
-        success: false,
-        message: "Mobile number is missing.",
-      });
-    }
-
-    if (!registration.regNum) {
-      return res.status(400).json({
-        success: false,
-        message: "Registration number is missing.",
-      });
-    }
-
-    // 3. Correct venue and event date range
-    const venueName = event.venueName?.venueName || "N/A";
-
-    const eventDate = formatWhatsAppEventDate(event);
-
-    const otherInformation = "Please carry your registration badge.";
-
-    // 4. Send WhatsApp
-    const aisensyResponse = await sendAIGRegistrationWhatsApp({
-      phone: registration.mobile,
-      delegateName:
-        `${registration.prefix || ""} ${registration.name || ""}`.trim(),
-      eventName: event.eventName,
-      registrationNumber: registration.regNum,
-      eventDate,
-      venue: venueName,
-      otherInformation,
-      teamName: "AIG Hospitals, Hyderabad",
-    });
-
-    // 5. Save WhatsApp tracking
-    registration.whatsappRegistrationSent = true;
-    registration.whatsappRegistrationSentAt = new Date();
-    registration.whatsappRegistrationStatus = "sent";
-    registration.whatsappRegistrationError = undefined;
-
-    await registration.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "WhatsApp registration message sent successfully.",
-      data: {
-        registrationId: registration._id,
-        regNum: registration.regNum,
-        whatsappResponse: aisensyResponse,
-      },
-    });
-  } catch (error) {
-    console.error("Single WhatsApp registration error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Failed to send WhatsApp registration message.",
-      error: error.message,
-    });
-  }
-};
-
-/* ============================================
-   Send Registration Success WhatsApp (Bulk)
-============================================ */
-export const sendBulkRegistrationSuccessWhatsApps = async (req, res) => {
-  try {
-    const { eventId } = req.params;
-
-    // 1. Find event and populate correct Venue fields
     const event = await Event.findById(eventId).populate({
       path: "venueName",
       select: "venueName venueAddress",
@@ -2574,58 +2848,143 @@ export const sendBulkRegistrationSuccessWhatsApps = async (req, res) => {
       });
     }
 
-    // 2. Correct venue and event date range
+    if (!registration.mobile) {
+      return res.status(400).json({
+        success: false,
+        message: "Delegate mobile number is missing",
+      });
+    }
+
+    if (!registration.regNum) {
+      return res.status(400).json({
+        success: false,
+        message: "Registration number is missing",
+      });
+    }
+
+    /*
+     * Reuse the existing public token.
+     *
+     * For old registrations created before the public-pass feature,
+     * generate the token once and persist it.
+     */
+    const publicToken = await ensureRegistrationPublicToken(registration);
+
+    const registrationUrl = getRegistrationPublicUrl(publicToken);
+
     const venueName = event.venueName?.venueName || "N/A";
 
     const eventDate = formatWhatsAppEventDate(event);
 
-    // 3. Find paid registrations that haven't received WhatsApp
+    const otherInformation = "Contact Registration Desk";
+
+    const aisensyResponse = await sendAIGRegistrationWhatsApp({
+      phone: registration.mobile,
+      delegateName:
+        `${registration.prefix || ""} ${registration.name || ""}`.trim(),
+      eventName: event.eventName,
+      registrationNumber: registration.regNum,
+      eventDate,
+      venue: venueName,
+      otherInformation,
+      teamName: "AIG Hospitals, Hyderabad",
+      registrationUrl,
+    });
+
+    registration.whatsappRegistrationSent = true;
+    registration.whatsappRegistrationSentAt = new Date();
+    registration.whatsappRegistrationStatus = "sent";
+    registration.whatsappRegistrationError = undefined;
+
+    await registration.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Registration WhatsApp sent successfully",
+      data: {
+        registrationId: registration._id,
+        registrationNumber: registration.regNum,
+        registrationUrl,
+        whatsappResponse: aisensyResponse,
+      },
+    });
+  } catch (error) {
+    console.error("Send single registration WhatsApp error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error?.message || "Failed to send registration WhatsApp",
+    });
+  }
+};
+
+/* ============================================
+   Send Registration Success WhatsApp (Bulk)
+============================================ */
+export const sendBulkRegistrationSuccessWhatsApps = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    const event = await Event.findById(eventId).populate({
+      path: "venueName",
+      select: "venueName venueAddress",
+    });
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
     const registrations = await EventRegistration.find({
       eventId,
       isPaid: true,
       isSuspended: false,
-      // Only exclude registrations already processed by bulk
-      whatsappBulkSent: {
-        $ne: true,
-      },
+      whatsappBulkSent: { $ne: true },
     });
 
-    if (registrations.length === 0) {
+    if (!registrations.length) {
       return res.status(200).json({
         success: true,
-        message: "No pending WhatsApp registrations found",
-        total: 0,
-        successCount: 0,
-        failedCount: 0,
-        skippedCount: 0,
+        message: "No registrations available for bulk WhatsApp",
+        data: {
+          total: 0,
+          sent: 0,
+          failed: 0,
+          skipped: 0,
+        },
       });
     }
 
-    let successCount = 0;
-    let failedCount = 0;
-    let skippedCount = 0;
+    const venueName = event.venueName?.venueName || "N/A";
 
-    const results = [];
+    const eventDate = formatWhatsAppEventDate(event);
 
-    // 4. Send WhatsApp messages one by one
+    const otherInformation = "Contact Registration Desk";
+
+    let sent = 0;
+    let failed = 0;
+    let skipped = 0;
+
     for (const registration of registrations) {
       try {
         if (!registration.mobile || !registration.regNum) {
-          skippedCount++;
-
-          results.push({
-            registrationId: registration._id,
-            name: registration.name,
-            status: "skipped",
-            reason: !registration.mobile
-              ? "Mobile number missing"
-              : "Registration number missing",
-          });
-
+          skipped += 1;
           continue;
         }
 
-        const result = await sendAIGRegistrationWhatsApp({
+        /*
+         * Reuse the existing public token.
+         *
+         * For legacy registrations without a token,
+         * create and persist one exactly once.
+         */
+        const publicToken = await ensureRegistrationPublicToken(registration);
+
+        const registrationUrl = getRegistrationPublicUrl(publicToken);
+
+        const aisensyResponse = await sendAIGRegistrationWhatsApp({
           phone: registration.mobile,
           delegateName:
             `${registration.prefix || ""} ${registration.name || ""}`.trim(),
@@ -2633,72 +2992,194 @@ export const sendBulkRegistrationSuccessWhatsApps = async (req, res) => {
           registrationNumber: registration.regNum,
           eventDate,
           venue: venueName,
-          otherInformation: "Please carry your registration badge.",
+          otherInformation,
           teamName: "AIG Hospitals, Hyderabad",
+          registrationUrl,
         });
 
-        // 5. Save successful WhatsApp status
         registration.whatsappRegistrationSent = true;
         registration.whatsappRegistrationSentAt = new Date();
         registration.whatsappRegistrationStatus = "sent";
         registration.whatsappRegistrationError = undefined;
 
-        // Separate bulk tracking
         registration.whatsappBulkSent = true;
         registration.whatsappBulkSentAt = new Date();
 
         await registration.save();
 
-        successCount++;
+        sent += 1;
 
-        results.push({
-          registrationId: registration._id,
-          name: registration.name,
-          status: "sent",
-          result,
-        });
+        console.log(
+          `Registration WhatsApp sent successfully: ${registration.regNum}`,
+        );
+
+        /*
+         * Keep the response from AiSensy available for debugging
+         * without changing the registration response structure.
+         */
+        void aisensyResponse;
       } catch (error) {
-        failedCount++;
+        failed += 1;
 
         registration.whatsappRegistrationStatus = "failed";
-        registration.whatsappRegistrationError = String(error.message).slice(
-          0,
-          1000,
-        );
+
+        registration.whatsappRegistrationError =
+          error?.message || "Failed to send WhatsApp";
 
         await registration.save();
 
         console.error(
-          "WhatsApp failed for registration:",
-          registration._id,
-          error.message,
+          `Bulk WhatsApp failed for registration ${registration._id}:`,
+          error,
         );
-
-        results.push({
-          registrationId: registration._id,
-          name: registration.name,
-          status: "failed",
-          reason: error.message,
-        });
       }
     }
 
-    // 6. Final response
     return res.status(200).json({
       success: true,
-      message: "Bulk WhatsApp processing completed",
-      total: registrations.length,
-      successCount,
-      failedCount,
-      skippedCount,
-      results,
+      message: "Bulk registration WhatsApp process completed",
+      data: {
+        total: registrations.length,
+        sent,
+        failed,
+        skipped,
+      },
     });
   } catch (error) {
-    console.error("Bulk WhatsApp controller error:", error);
+    console.error("Send bulk registration WhatsApps error:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Server error while sending WhatsApp messages",
+      message: error?.message || "Failed to send bulk registration WhatsApps",
+    });
+  }
+};
+
+// ============================================
+// Public Registration Pass
+// GET /registrations/public/:publicToken
+// ============================================
+export const getPublicRegistrationByToken = async (req, res) => {
+  try {
+    const { publicToken } = req.params;
+
+    if (!publicToken) {
+      return res.status(400).json({
+        success: false,
+        message: "Public registration token is required",
+      });
+    }
+
+    // ==========================================
+    // Find only a valid successful registration
+    // ==========================================
+    const registration = await EventRegistration.findOne({
+      publicToken,
+      isPaid: true,
+      regNumGenerated: true,
+      isSuspended: false,
+    })
+      .select(
+        [
+          "publicToken",
+          "regNum",
+          "prefix",
+          "name",
+          "email",
+          "mobile",
+          "designation",
+          "affiliation",
+          "country",
+          "city",
+          "state",
+          "cardProfileId",
+          "registrationSlabId",
+          "registrationType",
+          "createdAt",
+          "eventId",
+        ].join(" "),
+      )
+      .populate({
+        path: "eventId",
+        select:
+          "eventName shortName eventCode startDateTime endDateTime venueName",
+        populate: {
+          path: "venueName",
+          select: "venueName venueAddress",
+        },
+      })
+      .populate({
+        path: "registrationSlabId",
+        select: "slabName amount",
+      })
+      .populate({
+        path: "cardProfileId",
+        select: "CardProfileName",
+      })
+      .lean();
+
+    if (!registration) {
+      return res.status(404).json({
+        success: false,
+        message: "Registration pass not found",
+      });
+    }
+
+    // ==========================================
+    // Return only public-safe registration data
+    // ==========================================
+    return res.status(200).json({
+      success: true,
+      message: "Registration pass fetched successfully",
+      data: {
+        registration: {
+          publicToken: registration.publicToken,
+          registrationNumber: registration.regNum,
+          prefix: registration.prefix || "",
+          name: registration.name,
+          designation: registration.designation,
+          affiliation: registration.affiliation,
+          registrationType: registration.registrationType,
+          registeredAt: registration.createdAt,
+          registrationSlab: registration.registrationSlabId
+            ? {
+                id: registration.registrationSlabId._id,
+                name: registration.registrationSlabId.slabName,
+                amount: registration.registrationSlabId.amount,
+              }
+            : null,
+          cardProfile: registration.cardProfileId
+            ? {
+                id: registration.cardProfileId._id,
+                name: registration.cardProfileId.CardProfileName,
+              }
+            : null,
+        },
+
+        event: registration.eventId
+          ? {
+              id: registration.eventId._id,
+              eventName: registration.eventId.eventName,
+              shortName: registration.eventId.shortName,
+              eventCode: registration.eventId.eventCode,
+              startDateTime: registration.eventId.startDateTime,
+              endDateTime: registration.eventId.endDateTime,
+              venue: registration.eventId.venueName
+                ? {
+                    name: registration.eventId.venueName.venueName,
+                    address: registration.eventId.venueName.venueAddress,
+                  }
+                : null,
+            }
+          : null,
+      },
+    });
+  } catch (error) {
+    console.error("Get public registration pass error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
     });
   }
 };
