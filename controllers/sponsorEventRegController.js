@@ -332,7 +332,10 @@ export const sponsorRegisterForEvent = async (req, res) => {
 
       const venueName = event.venueName?.venueName || "N/A";
 
-      const eventDate = formatWhatsAppEventDate(event);
+      const eventDate = formatWhatsAppEventDate(
+        event.startDateTime,
+        event.endDateTime,
+      );
 
       const otherInformation = "Contact Registration Desk";
 
@@ -345,7 +348,6 @@ export const sponsorRegisterForEvent = async (req, res) => {
         eventDate,
         venue: venueName,
         otherInformation,
-        teamName: "AIG Hospitals, Hyderabad",
         registrationUrl,
       });
 

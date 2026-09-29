@@ -533,28 +533,22 @@ export const registerForEvent = async (req, res) => {
 
           const venueName = event.venueName?.venueName || "N/A";
 
-          const eventDate = formatWhatsAppEventDate(event.startDateTime);
+          const eventDate = formatWhatsAppEventDate(
+            event.startDateTime,
+            event.endDateTime,
+          );
 
           const otherInformation = "Contact Registration Desk";
 
           await sendAIGRegistrationWhatsApp({
             phone: registration.mobile,
-
             delegateName:
               `${registration.prefix || ""} ${registration.name || ""}`.trim(),
-
             eventName: event.eventName,
-
             registrationNumber: registration.regNum,
-
             eventDate,
-
             venue: venueName,
-
             otherInformation,
-
-            teamName: "AIG Hospitals, Hyderabad | Registration Team",
-
             registrationUrl,
           });
 
@@ -1373,7 +1367,10 @@ export const registerForEventByEventAdmin = async (req, res) => {
 
       const venueName = whatsappEvent.venueName?.venueName || "N/A";
 
-      const eventDate = formatWhatsAppEventDate(whatsappEvent);
+      const eventDate = formatWhatsAppEventDate(
+        whatsappEvent.startDateTime,
+        whatsappEvent.endDateTime,
+      );
 
       const otherInformation = "Contact Registration Desk";
 
@@ -1386,7 +1383,6 @@ export const registerForEventByEventAdmin = async (req, res) => {
         eventDate,
         venue: venueName,
         otherInformation,
-        teamName: "AIG Hospitals, Hyderabad",
         registrationUrl,
       });
 
@@ -1735,7 +1731,10 @@ export const bulkRegisterForEventByEventAdmin = async (req, res) => {
 
       const venueName = whatsappEvent.venueName?.venueName || "N/A";
 
-      const eventDate = formatWhatsAppEventDate(whatsappEvent);
+      const eventDate = formatWhatsAppEventDate(
+        whatsappEvent.startDateTime,
+        whatsappEvent.endDateTime,
+      );
 
       const otherInformation = "Contact Registration Desk";
 
@@ -1748,7 +1747,6 @@ export const bulkRegisterForEventByEventAdmin = async (req, res) => {
         eventDate,
         venue: venueName,
         otherInformation,
-        teamName: "AIG Hospitals, Hyderabad",
         registrationUrl,
       });
 
@@ -2015,7 +2013,10 @@ export const onSpotRegisterForEventByEventAdmin = async (req, res) => {
 
       const venueName = event.venueName?.venueName || "N/A";
 
-      const eventDate = formatWhatsAppEventDate(event.startDateTime);
+      const eventDate = formatWhatsAppEventDate(
+        event.startDateTime,
+        event.endDateTime,
+      );
 
       const otherInformation = "Contact Registration Desk";
 
@@ -2028,7 +2029,6 @@ export const onSpotRegisterForEventByEventAdmin = async (req, res) => {
         eventDate,
         venue: venueName,
         otherInformation,
-        teamName: "AIG Hospitals, Hyderabad",
         registrationUrl,
       });
 
@@ -2874,7 +2874,10 @@ export const sendSingleRegistrationSuccessWhatsApp = async (req, res) => {
 
     const venueName = event.venueName?.venueName || "N/A";
 
-    const eventDate = formatWhatsAppEventDate(event);
+    const eventDate = formatWhatsAppEventDate(
+      event.startDateTime,
+      event.endDateTime,
+    );
 
     const otherInformation = "Contact Registration Desk";
 
@@ -2887,7 +2890,6 @@ export const sendSingleRegistrationSuccessWhatsApp = async (req, res) => {
       eventDate,
       venue: venueName,
       otherInformation,
-      teamName: "AIG Hospitals, Hyderabad",
       registrationUrl,
     });
 
@@ -2959,7 +2961,10 @@ export const sendBulkRegistrationSuccessWhatsApps = async (req, res) => {
 
     const venueName = event.venueName?.venueName || "N/A";
 
-    const eventDate = formatWhatsAppEventDate(event);
+    const eventDate = formatWhatsAppEventDate(
+      event.startDateTime,
+      event.endDateTime,
+    );
 
     const otherInformation = "Contact Registration Desk";
 
@@ -2993,7 +2998,6 @@ export const sendBulkRegistrationSuccessWhatsApps = async (req, res) => {
           eventDate,
           venue: venueName,
           otherInformation,
-          teamName: "AIG Hospitals, Hyderabad",
           registrationUrl,
         });
 

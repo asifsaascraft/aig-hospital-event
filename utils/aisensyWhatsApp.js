@@ -8,7 +8,6 @@ export const sendAIGRegistrationWhatsApp = async ({
   eventDate,
   venue,
   otherInformation,
-  teamName,
   registrationUrl,
 }) => {
   const apiKey = process.env.AISENSY_API_KEY;
@@ -43,14 +42,13 @@ export const sendAIGRegistrationWhatsApp = async ({
     userName: delegateName,
 
     templateParams: [
-      String(delegateName || ""),
-      String(eventName || ""),
-      String(registrationNumber || ""),
-      String(eventDate || ""),
-      String(venue || ""),
-      String(otherInformation || ""),
-      String(teamName || ""),
-      String(registrationUrl || ""),
+      String(delegateName || ""), // {{1}}
+      String(eventName || ""), // {{2}}
+      String(registrationNumber || ""), // {{3}}
+      String(eventDate || ""), // {{4}}
+      String(venue || ""), // {{5}}
+      String(registrationUrl || ""), // {{6}}
+      String(otherInformation || ""), // {{7}}
     ],
   };
 

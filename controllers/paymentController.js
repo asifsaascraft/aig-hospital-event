@@ -216,7 +216,10 @@ const completeEventRegistrationPayment = async ({
 
       const venueName = event.venueName?.venueName || "N/A";
 
-      const eventDate = formatWhatsAppEventDate(event);
+      const eventDate = formatWhatsAppEventDate(
+        event.startDateTime,
+        event.endDateTime,
+      );
 
       const otherInformation = "Contact Registration Desk";
 
@@ -229,7 +232,6 @@ const completeEventRegistrationPayment = async ({
         eventDate,
         venue: venueName,
         otherInformation,
-        teamName: "AIG Hospitals, Hyderabad",
         registrationUrl,
       });
 

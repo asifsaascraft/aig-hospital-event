@@ -29,15 +29,27 @@ export const getIndianFormattedDateTime = (date) => {
 
 // ==========================================
 // WhatsApp Event Date
-// Example: 23 Nov 2026
+// Example: 21 May 2026 - 24 May 2026
 // ==========================================
-export const formatWhatsAppEventDate = (date) => {
-  if (!date) return "N/A";
+export const formatWhatsAppEventDate = (startDate, endDate) => {
+  if (!startDate) return "N/A";
 
-  return new Date(date).toLocaleDateString("en-IN", {
-    timeZone: "Asia/Kolkata",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const start = formatDate(startDate);
+
+  if (!endDate) {
+    return start;
+  }
+
+  const end = formatDate(endDate);
+
+  return `${start} - ${end}`;
 };
