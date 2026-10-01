@@ -4,6 +4,7 @@ import SponsorAccomodationQuota from "../models/SponsorAccomodationQuota.js";
 import AssignAccomodationService from "../models/AssignAccomodationService.js";
 import RoomCategory from "../models/RoomCategory.js";
 import Hotel from "../models/Hotel.js";
+import Sponsor from "../models/Sponsor.js";
 
 // =======================
 // Helper Functions
@@ -1112,6 +1113,563 @@ export const getAccomodationSummary = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+
+// =====================================================
+// EVENT ADMIN - ACCOMODATION SUMMARY
+// =====================================================
+
+export const getEventAdminAccomodationSummary = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    // =====================================================
+    // 1. GET ALL ROOMS ADDED FOR EVENT
+    // =====================================================
+
+    const addRooms = await AddRoom.find({ eventId })
+      .populate("hotelId", "hotelName")
+      .populate("roomCategoryId", "roomCategoryName")
+      .sort({ checkinDateTime: 1 });
+
+    if (!addRooms.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No accommodation rooms found for this event",
+      });
+    }
+
+    // =====================================================
+    // 2. GET ALL SPONSOR QUOTAS FOR EVENT
+    // =====================================================
+
+    const quotaRecords = await SponsorAccomodationQuota.find({
+      eventId,
+    })
+      .populate("sponsorId", "sponsorName contactPersonName email mobile")
+      .populate({
+        path: "quotas.quotaId",
+        populate: [
+          {
+            path: "hotelId",
+            select: "hotelName",
+          },
+          {
+            path: "roomCategoryId",
+            select: "roomCategoryName",
+          },
+        ],
+      });
+
+    // =====================================================
+    // MAPS
+    // =====================================================
+
+    const hotelWiseMap = {};
+    const roomCategoryWiseMap = {};
+    const sponsorWiseMap = {};
+    const dateWiseMap = {};
+
+    const quotaWise = [];
+
+    // =====================================================
+    // OVERVIEW VARIABLES
+    // =====================================================
+
+    let totalRoomsAdded = 0;
+    let totalQuotaAllocated = 0;
+    let totalBookedRooms = 0;
+
+    // =====================================================
+    // 3. PROCESS ALL ADD ROOM RECORDS
+    // =====================================================
+
+    for (const room of addRooms) {
+      if (!room.hotelId || !room.roomCategoryId) {
+        continue;
+      }
+
+      const hotelId = room.hotelId._id.toString();
+
+      const roomCategoryId = room.roomCategoryId._id.toString();
+
+      const hotelName = room.hotelId.hotelName;
+
+      const roomCategoryName = room.roomCategoryId.roomCategoryName;
+
+      const totalRooms = Number(room.numberOfRooms || 0);
+
+      const availableRooms = Number(room.availableRooms || 0);
+
+      /*
+       * Number of rooms already allocated from AddRoom
+       */
+      const allocatedRooms = Math.max(
+        totalRooms - availableRooms,
+        0
+      );
+
+      totalRoomsAdded += totalRooms;
+
+      // ===================================================
+      // HOTEL WISE
+      // ===================================================
+
+      if (!hotelWiseMap[hotelId]) {
+        hotelWiseMap[hotelId] = {
+          hotelId,
+          hotelName,
+
+          totalRooms: 0,
+          quotaAllocated: 0,
+          bookedRooms: 0,
+          remainingQuota: 0,
+          availableRooms: 0,
+        };
+      }
+
+      hotelWiseMap[hotelId].totalRooms += totalRooms;
+
+      hotelWiseMap[hotelId].availableRooms += availableRooms;
+
+      // ===================================================
+      // ROOM CATEGORY WISE
+      // ===================================================
+
+      const categoryKey = `${hotelId}_${roomCategoryId}`;
+
+      if (!roomCategoryWiseMap[categoryKey]) {
+        roomCategoryWiseMap[categoryKey] = {
+          hotelId,
+          hotelName,
+
+          roomCategoryId,
+          roomCategoryName,
+
+          totalRooms: 0,
+          quotaAllocated: 0,
+          bookedRooms: 0,
+          remainingQuota: 0,
+          availableRooms: 0,
+        };
+      }
+
+      roomCategoryWiseMap[categoryKey].totalRooms += totalRooms;
+
+      roomCategoryWiseMap[categoryKey].availableRooms += availableRooms;
+    }
+
+    // =====================================================
+    // 4. PROCESS SPONSOR QUOTAS
+    // =====================================================
+
+    for (const quotaRecord of quotaRecords) {
+      const sponsor = quotaRecord.sponsorId;
+
+      if (!sponsor) {
+        continue;
+      }
+
+      const sponsorId = sponsor._id.toString();
+
+      const sponsorName =
+        sponsor.sponsorName ||
+        sponsor.contactPersonName ||
+        "Unknown Sponsor";
+
+      // ===================================================
+      // CREATE SPONSOR ENTRY
+      // ===================================================
+
+      if (!sponsorWiseMap[sponsorId]) {
+        sponsorWiseMap[sponsorId] = {
+          sponsorId,
+          sponsorName,
+
+          contactPersonName: sponsor.contactPersonName || null,
+
+          email: sponsor.email || null,
+
+          mobile: sponsor.mobile || null,
+
+          totalQuota: 0,
+          usedQuota: 0,
+          remainingQuota: 0,
+
+          hotels: [],
+        };
+      }
+
+      // ===================================================
+      // PROCESS EACH QUOTA
+      // ===================================================
+
+      for (const q of quotaRecord.quotas) {
+        const room = q.quotaId;
+
+        if (!room || !room.hotelId || !room.roomCategoryId) {
+          continue;
+        }
+
+        const hotelId = room.hotelId._id.toString();
+
+        const hotelName = room.hotelId.hotelName;
+
+        const roomCategoryId =
+          q.roomCategoryId?._id?.toString() ||
+          q.roomCategoryId?.toString() ||
+          room.roomCategoryId?._id?.toString();
+
+        const roomCategoryName =
+          q.roomCategoryId?.roomCategoryName ||
+          room.roomCategoryId?.roomCategoryName ||
+          "Unknown";
+
+        const quota = Number(q.numberOfQuota || 0);
+
+        // =================================================
+        // DATE
+        // =================================================
+
+        const date = getDateKey(room.checkinDateTime);
+
+        // =================================================
+        // COUNT ACTUAL BOOKED ROOMS
+        // =================================================
+
+        const used = await Accomodation.countDocuments({
+          eventId,
+
+          sponsorId,
+
+          accomodationDays: {
+            $elemMatch: {
+              date,
+              quotaId: room._id,
+              roomCategoryId,
+            },
+          },
+        });
+
+        const remaining = Math.max(quota - used, 0);
+
+        // =================================================
+        // OVERVIEW
+        // =================================================
+
+        totalQuotaAllocated += quota;
+
+        totalBookedRooms += used;
+
+        // =================================================
+        // SPONSOR WISE
+        // =================================================
+
+        sponsorWiseMap[sponsorId].totalQuota += quota;
+
+        sponsorWiseMap[sponsorId].usedQuota += used;
+
+        sponsorWiseMap[sponsorId].remainingQuota += remaining;
+
+        // =================================================
+        // SPONSOR HOTEL DETAIL
+        // =================================================
+
+        sponsorWiseMap[sponsorId].hotels.push({
+          hotelId,
+          hotelName,
+
+          roomCategoryId,
+          roomCategoryName,
+
+          quota,
+          used,
+          remaining,
+
+          date,
+
+          checkinDateTime: room.checkinDateTime,
+          checkoutDateTime: room.checkoutDateTime,
+        });
+
+        // =================================================
+        // HOTEL WISE
+        // =================================================
+
+        if (!hotelWiseMap[hotelId]) {
+          hotelWiseMap[hotelId] = {
+            hotelId,
+            hotelName,
+
+            totalRooms: 0,
+            quotaAllocated: 0,
+            bookedRooms: 0,
+            remainingQuota: 0,
+            availableRooms: 0,
+          };
+        }
+
+        hotelWiseMap[hotelId].quotaAllocated += quota;
+
+        hotelWiseMap[hotelId].bookedRooms += used;
+
+        hotelWiseMap[hotelId].remainingQuota += remaining;
+
+        // =================================================
+        // ROOM CATEGORY WISE
+        // =================================================
+
+        const categoryKey = `${hotelId}_${roomCategoryId}`;
+
+        if (!roomCategoryWiseMap[categoryKey]) {
+          roomCategoryWiseMap[categoryKey] = {
+            hotelId,
+            hotelName,
+
+            roomCategoryId,
+            roomCategoryName,
+
+            totalRooms: 0,
+            quotaAllocated: 0,
+            bookedRooms: 0,
+            remainingQuota: 0,
+            availableRooms: 0,
+          };
+        }
+
+        roomCategoryWiseMap[categoryKey].quotaAllocated += quota;
+
+        roomCategoryWiseMap[categoryKey].bookedRooms += used;
+
+        roomCategoryWiseMap[categoryKey].remainingQuota += remaining;
+
+        // =================================================
+        // DATE WISE
+        // =================================================
+
+        const dateKey = `${date}_${hotelId}_${roomCategoryId}`;
+
+        if (!dateWiseMap[dateKey]) {
+          dateWiseMap[dateKey] = {
+            date,
+
+            hotelId,
+            hotelName,
+
+            roomCategoryId,
+            roomCategoryName,
+
+            totalQuota: 0,
+            used: 0,
+            remaining: 0,
+          };
+        }
+
+        dateWiseMap[dateKey].totalQuota += quota;
+
+        dateWiseMap[dateKey].used += used;
+
+        dateWiseMap[dateKey].remaining += remaining;
+
+        // =================================================
+        // QUOTA WISE DETAIL
+        // =================================================
+
+        quotaWise.push({
+          quotaId: room._id,
+
+          sponsorId,
+          sponsorName,
+
+          hotelId,
+          hotelName,
+
+          roomCategoryId,
+          roomCategoryName,
+
+          date,
+
+          checkinDateTime: room.checkinDateTime,
+
+          checkoutDateTime: room.checkoutDateTime,
+
+          totalRooms: room.numberOfRooms,
+
+          availableRooms: room.availableRooms,
+
+          quotaAllocated: quota,
+
+          bookedRooms: used,
+
+          remainingQuota: remaining,
+        });
+      }
+    }
+
+    // =====================================================
+    // 5. CALCULATE OVERVIEW
+    // =====================================================
+
+    const totalAvailableRooms = addRooms.reduce(
+      (sum, room) => sum + Number(room.availableRooms || 0),
+      0
+    );
+
+    const totalHotels = Object.keys(hotelWiseMap).length;
+
+    const totalRoomCategories =
+      Object.keys(roomCategoryWiseMap).length;
+
+    const totalSponsors =
+      Object.keys(sponsorWiseMap).length;
+
+    const totalRoomsAllocatedToSponsors = addRooms.reduce(
+      (sum, room) => {
+        const total = Number(room.numberOfRooms || 0);
+
+        const available = Number(room.availableRooms || 0);
+
+        return sum + Math.max(total - available, 0);
+      },
+      0
+    );
+
+    // =====================================================
+    // 6. CONVERT MAPS TO ARRAYS
+    // =====================================================
+
+    const hotelWise = Object.values(hotelWiseMap);
+
+    const roomCategoryWise =
+      Object.values(roomCategoryWiseMap);
+
+    const sponsorWise =
+      Object.values(sponsorWiseMap);
+
+    const dateWise =
+      Object.values(dateWiseMap);
+
+    // =====================================================
+    // 7. SORT DATA
+    // =====================================================
+
+    hotelWise.sort((a, b) =>
+      a.hotelName.localeCompare(b.hotelName)
+    );
+
+    roomCategoryWise.sort((a, b) => {
+      if (a.hotelName !== b.hotelName) {
+        return a.hotelName.localeCompare(b.hotelName);
+      }
+
+      return a.roomCategoryName.localeCompare(
+        b.roomCategoryName
+      );
+    });
+
+    sponsorWise.sort((a, b) =>
+      a.sponsorName.localeCompare(b.sponsorName)
+    );
+
+    dateWise.sort(
+      (a, b) =>
+        new Date(a.date) - new Date(b.date)
+    );
+
+    quotaWise.sort((a, b) => {
+      if (a.hotelName !== b.hotelName) {
+        return a.hotelName.localeCompare(b.hotelName);
+      }
+
+      return a.sponsorName.localeCompare(
+        b.sponsorName
+      );
+    });
+
+    // =====================================================
+    // 8. FINAL RESPONSE
+    // =====================================================
+
+    return res.status(200).json({
+      success: true,
+
+      message:
+        "Event Admin accommodation summary fetched successfully",
+
+      data: {
+        // ===============================================
+        // OVERVIEW
+        // ===============================================
+
+        overview: {
+          totalHotels,
+
+          totalRoomCategories,
+
+          totalSponsors,
+
+          totalRoomsAdded,
+
+          totalRoomsAllocatedToSponsors,
+
+          totalQuotaAllocated,
+
+          totalBookedRooms,
+
+          totalAvailableRooms,
+
+          totalQuotaRemaining: Math.max(
+            totalQuotaAllocated - totalBookedRooms,
+            0
+          ),
+        },
+
+        // ===============================================
+        // HOTEL WISE
+        // ===============================================
+
+        hotelWise,
+
+        // ===============================================
+        // ROOM CATEGORY WISE
+        // ===============================================
+
+        roomCategoryWise,
+
+        // ===============================================
+        // SPONSOR WISE
+        // ===============================================
+
+        sponsorWise,
+
+        // ===============================================
+        // DATE WISE
+        // ===============================================
+
+        dateWise,
+
+        // ===============================================
+        // DETAILED QUOTA WISE
+        // ===============================================
+
+        quotaWise,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Event Admin Accommodation Summary Error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+
+      message: "Server error",
+
       error: error.message,
     });
   }

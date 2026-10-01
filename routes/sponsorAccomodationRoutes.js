@@ -9,6 +9,7 @@ import {
   updateAccomodation,
   deleteAccomodation,
   getAccomodationSummary,
+  getEventAdminAccomodationSummary,
 } from "../controllers/sponsorAccomodationController.js";
 
 const router = express.Router();
@@ -44,6 +45,16 @@ router.get(
   protect,
   authorizeRoles("eventAdmin"),
   getAllAccomodationByEvent
+);
+
+// =======================
+// Event Admin: Accommodation Summary
+// =======================
+router.get(
+  "/event-admin/events/:eventId/accomodation-summary",
+  protect,
+  authorizeRoles("eventAdmin"),
+  getEventAdminAccomodationSummary
 );
 
 // Summary
