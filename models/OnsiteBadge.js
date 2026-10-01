@@ -1,12 +1,12 @@
-import mongoose from 'mongoose'
+import mongoose from "mongoose";
 
-const { Schema } = mongoose
+const { Schema } = mongoose;
 
 const OnsiteBadgeSchema = new Schema(
   {
     eventId: {
       type: Schema.Types.ObjectId,
-      ref: 'Event',
+      ref: "Event",
       required: true,
       index: true,
     },
@@ -14,12 +14,7 @@ const OnsiteBadgeSchema = new Schema(
     // source tracking
     sourceType: {
       type: String,
-      enum: [
-        'registration',
-        'accompany',
-        'sponsor_csv',
-        'manual',
-      ],
+      enum: ["registration", "accompany", "sponsor_csv", "manual"],
       required: true,
       index: true,
     },
@@ -118,6 +113,13 @@ const OnsiteBadgeSchema = new Schema(
       sparse: true,
     },
 
+    publicToken: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+
     registrationType: {
       type: String,
       trim: true,
@@ -126,7 +128,7 @@ const OnsiteBadgeSchema = new Schema(
     // badge profile
     badgeProfileId: {
       type: Schema.Types.ObjectId,
-      ref: 'CardProfile',
+      ref: "CardProfile",
       default: null,
     },
 
@@ -139,7 +141,7 @@ const OnsiteBadgeSchema = new Schema(
     // sponsor
     sponsorId: {
       type: Schema.Types.ObjectId,
-      ref: 'Sponsor',
+      ref: "Sponsor",
       default: null,
     },
 
@@ -152,14 +154,14 @@ const OnsiteBadgeSchema = new Schema(
     // relations
     parentRegistrationId: {
       type: Schema.Types.ObjectId,
-      ref: 'Registration',
+      ref: "EventRegistration",
       default: null,
     },
 
     // import info
     importedBy: {
       type: Schema.Types.ObjectId,
-      ref: 'Admin',
+      ref: "Admin",
       default: null,
     },
 
@@ -194,7 +196,7 @@ const OnsiteBadgeSchema = new Schema(
 
         printedBy: {
           type: Schema.Types.ObjectId,
-          ref: 'Admin',
+          ref: "Admin",
           default: null,
         },
 
@@ -252,22 +254,46 @@ const OnsiteBadgeSchema = new Schema(
       type: Date,
       default: null,
     },
+    // =====================================
+    // WhatsApp Registration Notification
+    // =====================================
+
+    whatsappSent: {
+      type: Boolean,
+      default: false,
+    },
+
+    whatsappSentAt: {
+      type: Date,
+      default: null,
+    },
+
+    whatsappStatus: {
+      type: String,
+      enum: ["pending", "sent", "failed"],
+      default: "pending",
+    },
+
+    whatsappError: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,
   },
-)
+);
 
 /**
  * SEARCH INDEX
  */
 
 OnsiteBadgeSchema.index({
-  name: 'text',
-  email: 'text',
-  mobile: 'text',
-  regNum: 'text',
-})
+  name: "text",
+  email: "text",
+  mobile: "text",
+  regNum: "text",
+});
 
 /**
  * FILTER INDEXES
@@ -276,22 +302,22 @@ OnsiteBadgeSchema.index({
 OnsiteBadgeSchema.index({
   eventId: 1,
   sourceType: 1,
-})
+});
 
 OnsiteBadgeSchema.index({
   eventId: 1,
   badgePrinted: 1,
-})
+});
 
 OnsiteBadgeSchema.index({
   eventId: 1,
   sponsorName: 1,
-})
+});
 
 OnsiteBadgeSchema.index({
   eventId: 1,
   badgeProfileName: 1,
-})
+});
 
 export default mongoose.models.OnsiteBadge ||
-  mongoose.model('OnsiteBadge', OnsiteBadgeSchema)
+  mongoose.model("OnsiteBadge", OnsiteBadgeSchema);

@@ -6,7 +6,17 @@ import CardProfile from "../models/CardProfile.js";
 import QRCode from "qrcode";
 import Event from "../models/Event.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
-import { getIndianFormattedDateTime } from "../utils/dateUtils.js";
+import {
+  getIndianFormattedDateTime,
+  formatWhatsAppEventDate,
+} from "../utils/dateUtils.js";
+import {
+  generateRegistrationPublicToken,
+  ensureRegistrationPublicToken,
+  getRegistrationPublicUrl,
+} from "../utils/registrationToken.js";
+
+import { sendAIGRegistrationWhatsApp } from "../utils/aisensyWhatsApp.js";
 
 export const importRegistrations = async (req, res) => {
   try {
@@ -57,7 +67,7 @@ export const importRegistrations = async (req, res) => {
           registration.cardProfileId.CardProfileName || "Delegate";
       } else if (registration?.cardProfileId) {
         // RAW OBJECT ID
-        const badgeProfile = await BadgeProfile.findById(
+        const badgeProfile = await CardProfile.findById(
           registration.cardProfileId,
         ).select("_id CardProfileName");
 
@@ -91,6 +101,7 @@ export const importRegistrations = async (req, res) => {
         mciNumber: registration.mciNumber || "",
         mciState: registration.mciState || "",
         regNum: registration.regNum || "",
+        publicToken: registration.publicToken || "",
         registrationType: registration.registrationType || "",
 
         badgeProfileId,
@@ -207,6 +218,16 @@ export const importAccompanies = async (req, res) => {
 
         totalAccompanies++;
         const uniqueCompositeKey = `${eventId}-accompany-${accompany._id}`;
+
+        // CHECK EXISTING
+        const alreadyExists = await OnsiteBadge.findOne({
+          uniqueCompositeKey,
+        }).select("_id publicToken");
+
+        // REUSE EXISTING TOKEN OR GENERATE NEW TOKEN
+        const publicToken =
+          alreadyExists?.publicToken || generateRegistrationPublicToken();
+
         const transformedData = {
           eventId,
           sourceType: "accompany",
@@ -225,6 +246,7 @@ export const importAccompanies = async (req, res) => {
           address: registration.address || "",
           pincode: registration.pincode || "",
           regNum: accompany.regNum || "",
+          publicToken,
           registrationType: "Accompany",
           badgeProfileId,
           badgeProfileName,
@@ -237,10 +259,6 @@ export const importAccompanies = async (req, res) => {
         };
 
         // CHECK EXISTING
-        const alreadyExists = await OnsiteBadge.findOne({
-          uniqueCompositeKey,
-        }).select("_id");
-
         if (alreadyExists) {
           updatedCount++;
         } else {
@@ -388,7 +406,7 @@ export const importSponsorExcel = async (req, res) => {
         skipped++;
         continue;
       }
-      
+
       if (!regNum) {
         invalidRows.push({
           row: index + 2,
@@ -415,9 +433,12 @@ export const importSponsorExcel = async (req, res) => {
         eventId,
         isDeleted: false,
         $or: [...(email ? [{ email }] : []), ...(mobile ? [{ mobile }] : [])],
-      }).select("_id regNum");
+      }).select("_id regNum publicToken");
 
       const uniqueCompositeKey = `${eventId}-sponsor_csv-${email}-${mobile}`;
+
+      const publicToken =
+        existingRecord?.publicToken || generateRegistrationPublicToken();
 
       const transformedData = {
         eventId,
@@ -428,6 +449,7 @@ export const importSponsorExcel = async (req, res) => {
         mobile,
         // REG NUM FROM EXCEL
         regNum,
+        publicToken,
         designation,
         affiliation,
         department,
@@ -606,6 +628,8 @@ export const createManualBadge = async (req, res) => {
 
     const regNum = `${eventCode}-SPOT-${String(nextNumber).padStart(3, "0")}`;
 
+    const publicToken = generateRegistrationPublicToken();
+
     // =====================================
     // CREATE BADGE
     // =====================================
@@ -626,6 +650,8 @@ export const createManualBadge = async (req, res) => {
 
       // NEW FORMAT
       regNum,
+
+      publicToken,
 
       badgeProfileId: badgeProfile?._id || null,
       badgeProfileName: badgeProfile?.CardProfileName || "Delegate",
@@ -1035,6 +1061,357 @@ export const printBadge = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to print badge",
+    });
+  }
+};
+
+// ============================================
+// Send Onsite Badge WhatsApp - Single
+// ============================================
+export const sendSingleOnsiteBadgeWhatsApp = async (req, res) => {
+  try {
+    const { eventId, badgeId } = req.params;
+
+    // ==========================================
+    // FIND BADGE
+    // ==========================================
+    const badge = await OnsiteBadge.findOne({
+      _id: badgeId,
+      eventId,
+      isDeleted: false,
+    });
+
+    if (!badge) {
+      return res.status(404).json({
+        success: false,
+        message: "Onsite badge not found",
+      });
+    }
+
+    // ==========================================
+    // SUSPENDED CHECK
+    // ==========================================
+    if (badge.isSuspended) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot send WhatsApp for a suspended badge",
+      });
+    }
+
+    // ==========================================
+    // MOBILE CHECK
+    // ==========================================
+    if (!badge.mobile) {
+      return res.status(400).json({
+        success: false,
+        message: "Delegate mobile number is missing",
+      });
+    }
+
+    // ==========================================
+    // REGISTRATION NUMBER CHECK
+    // ==========================================
+    if (!badge.regNum) {
+      return res.status(400).json({
+        success: false,
+        message: "Registration number is missing",
+      });
+    }
+
+    // ==========================================
+    // PUBLIC TOKEN
+    // ==========================================
+    let publicToken = badge.publicToken;
+
+    // For old onsite badges without token,
+    // generate one and save it.
+    if (!publicToken) {
+      publicToken = generateRegistrationPublicToken();
+      badge.publicToken = publicToken;
+      await badge.save();
+    }
+
+    // ==========================================
+    // PUBLIC REGISTRATION URL
+    // ==========================================
+    const registrationUrl = getRegistrationPublicUrl(publicToken);
+
+    // ==========================================
+    // FETCH EVENT
+    // ==========================================
+    const event = await Event.findById(eventId).populate({
+      path: "venueName",
+      select: "venueName venueAddress",
+    });
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    // ==========================================
+    // WHATSAPP DATA
+    // ==========================================
+    const venueName = event.venueName?.venueName || "N/A";
+
+    const eventDate = formatWhatsAppEventDate(
+      event.startDateTime,
+      event.endDateTime,
+    );
+
+    const otherInformation = "Contact Registration Desk";
+
+    // ==========================================
+    // SEND WHATSAPP
+    // ==========================================
+    const aisensyResponse = await sendAIGRegistrationWhatsApp({
+      phone: badge.mobile,
+
+      delegateName:
+        `${badge.prefix || ""} ${badge.name || ""}`.trim(),
+
+      eventName: event.eventName,
+
+      registrationNumber: badge.regNum,
+
+      eventDate,
+
+      venue: venueName,
+
+      otherInformation,
+
+      registrationUrl,
+    });
+
+    // ==========================================
+    // UPDATE WHATSAPP STATUS
+    // ==========================================
+    badge.whatsappSent = true;
+    badge.whatsappSentAt = new Date();
+    badge.whatsappStatus = "sent";
+    badge.whatsappError = null;
+
+    await badge.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Onsite badge WhatsApp sent successfully",
+
+      data: {
+        badgeId: badge._id,
+        registrationNumber: badge.regNum,
+        registrationUrl,
+        whatsappResponse: aisensyResponse,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "SEND SINGLE ONSITE BADGE WHATSAPP ERROR:",
+      error,
+    );
+
+    // Try to save failure status
+    try {
+      const { badgeId } = req.params;
+
+      const badge = await OnsiteBadge.findById(badgeId);
+
+      if (badge) {
+        badge.whatsappStatus = "failed";
+        badge.whatsappError = String(
+          error?.message || "WhatsApp sending failed",
+        ).slice(0, 1000);
+
+        await badge.save();
+      }
+    } catch (trackingError) {
+      console.error(
+        "Failed to save onsite WhatsApp failure status:",
+        trackingError,
+      );
+    }
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error?.message ||
+        "Failed to send onsite badge WhatsApp",
+    });
+  }
+};
+
+
+// ============================================
+// Send Onsite Badge WhatsApp - Bulk
+// ============================================
+export const sendBulkOnsiteBadgeWhatsApps = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    // ==========================================
+    // FETCH EVENT
+    // ==========================================
+    const event = await Event.findById(eventId).populate({
+      path: "venueName",
+      select: "venueName venueAddress",
+    });
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    // ==========================================
+    // FETCH PENDING BADGES
+    // ==========================================
+    const badges = await OnsiteBadge.find({
+      eventId,
+      isDeleted: false,
+      isSuspended: false,
+      whatsappSent: { $ne: true },
+    });
+
+    if (!badges.length) {
+      return res.status(200).json({
+        success: true,
+        message: "No onsite badges available for bulk WhatsApp",
+        data: {
+          total: 0,
+          sent: 0,
+          failed: 0,
+          skipped: 0,
+        },
+      });
+    }
+
+    // ==========================================
+    // COMMON EVENT DATA
+    // ==========================================
+    const venueName = event.venueName?.venueName || "N/A";
+
+    const eventDate = formatWhatsAppEventDate(
+      event.startDateTime,
+      event.endDateTime,
+    );
+
+    const otherInformation = "Contact Registration Desk";
+
+    let sent = 0;
+    let failed = 0;
+    let skipped = 0;
+
+    // ==========================================
+    // SEND ONE BY ONE
+    // ==========================================
+    for (const badge of badges) {
+      try {
+        // ----------------------------------------
+        // VALIDATION
+        // ----------------------------------------
+        if (!badge.mobile || !badge.regNum) {
+          skipped++;
+          continue;
+        }
+
+        // ----------------------------------------
+        // PUBLIC TOKEN
+        // ----------------------------------------
+        let publicToken = badge.publicToken;
+
+        if (!publicToken) {
+          publicToken = generateRegistrationPublicToken();
+
+          badge.publicToken = publicToken;
+
+          await badge.save();
+        }
+
+        // ----------------------------------------
+        // PUBLIC URL
+        // ----------------------------------------
+        const registrationUrl =
+          getRegistrationPublicUrl(publicToken);
+
+        // ----------------------------------------
+        // SEND WHATSAPP
+        // ----------------------------------------
+        await sendAIGRegistrationWhatsApp({
+          phone: badge.mobile,
+
+          delegateName:
+            `${badge.prefix || ""} ${badge.name || ""}`.trim(),
+
+          eventName: event.eventName,
+
+          registrationNumber: badge.regNum,
+
+          eventDate,
+
+          venue: venueName,
+
+          otherInformation,
+
+          registrationUrl,
+        });
+
+        // ----------------------------------------
+        // SUCCESS
+        // ----------------------------------------
+        badge.whatsappSent = true;
+        badge.whatsappSentAt = new Date();
+        badge.whatsappStatus = "sent";
+        badge.whatsappError = null;
+
+        await badge.save();
+
+        sent++;
+      } catch (whatsappError) {
+        failed++;
+
+        console.error(
+          `Onsite WhatsApp failed for ${badge.mobile}:`,
+          whatsappError,
+        );
+
+        badge.whatsappStatus = "failed";
+        badge.whatsappError = String(
+          whatsappError?.message ||
+            "WhatsApp sending failed",
+        ).slice(0, 1000);
+
+        await badge.save();
+      }
+    }
+
+    // ==========================================
+    // RESPONSE
+    // ==========================================
+    return res.status(200).json({
+      success: true,
+      message: "Onsite badge WhatsApp bulk process completed",
+
+      data: {
+        total: badges.length,
+        sent,
+        failed,
+        skipped,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "SEND BULK ONSITE BADGE WHATSAPP ERROR:",
+      error,
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error?.message ||
+        "Failed to send onsite badge WhatsApp",
     });
   }
 };

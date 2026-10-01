@@ -9,6 +9,8 @@ import {
   updateOnsiteBadge,
   sendBulkBadgeEmails,
   sendSingleBadgeEmail,
+  sendSingleOnsiteBadgeWhatsApp,
+  sendBulkOnsiteBadgeWhatsApps,
   searchOnsiteBadges,
   printBadge,
 } from "../controllers/onsiteBadgeController.js";
@@ -73,6 +75,20 @@ router.post(
   protect,
   authorizeRoles("eventAdmin"),
   sendSingleBadgeEmail,
+);
+
+router.post(
+  "/event-admin/events/:eventId/onsite/send-badge-whatsapp",
+  protect,
+  authorizeRoles("eventAdmin"),
+  sendBulkOnsiteBadgeWhatsApps,
+);
+
+router.post(
+  "/event-admin/events/:eventId/onsite/send-single-badge-whatsapp/:badgeId",
+  protect,
+  authorizeRoles("eventAdmin"),
+  sendSingleOnsiteBadgeWhatsApp,
 );
 
 // =======================
