@@ -17,11 +17,11 @@ const HotelSchema = new mongoose.Schema(
       type: String,
       required: [true, "Hotel image is required"], // store file path or URL
     },
-    checkinTime: {
+    checkinTime: {  // 13:00
       type: String,
       required: [true, "checking time is required"],
     },
-    checkoutTime: {
+    checkoutTime: { // 11:00
       type: String,
       required: [true, "checkout time is required"],
     },

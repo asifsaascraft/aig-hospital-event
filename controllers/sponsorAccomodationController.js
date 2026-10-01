@@ -3,18 +3,21 @@ import AddRoom from "../models/AddRoom.js";
 import SponsorAccomodationQuota from "../models/SponsorAccomodationQuota.js";
 import AssignAccomodationService from "../models/AssignAccomodationService.js";
 import RoomCategory from "../models/RoomCategory.js";
+import Hotel from "../models/Hotel.js";
 
 // =======================
 // Helper Functions
 // =======================
 
+const HOTEL_TIMEZONE = "Asia/Kolkata";
+
 const getDateKey = (date) => {
-  return new Date(date).toISOString().split("T")[0]; // YYYY-MM-DD
+  return new Date(date).toISOString().split("T")[0];
 };
 
 const formatDateIST = (date) => {
   return new Intl.DateTimeFormat("en-IN", {
-    timeZone: "Asia/Kolkata",
+    timeZone: HOTEL_TIMEZONE,
     day: "2-digit",
     month: "long",
     year: "numeric",
@@ -24,12 +27,47 @@ const formatDateIST = (date) => {
   }).format(new Date(date));
 };
 
+/**
+ * Convert hotel's HH:mm time into an actual Date
+ * on the same calendar date.
+ *
+ * Hotel times are stored as local Indian time.
+ */
+const applyHotelTime = (date, time, fieldName) => {
+  if (!time || !/^\d{2}:\d{2}$/.test(time)) {
+    throw new Error(`Invalid hotel ${fieldName}. Expected HH:mm format`);
+  }
+
+  const [hours, minutes] = time.split(":").map(Number);
+
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    throw new Error(`Invalid hotel ${fieldName}. Expected HH:mm format`);
+  }
+
+  const dateParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: HOTEL_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(date));
+
+  const year = Number(dateParts.find((part) => part.type === "year").value);
+
+  const month = Number(dateParts.find((part) => part.type === "month").value);
+
+  const day = Number(dateParts.find((part) => part.type === "day").value);
+
+  // IST = UTC + 05:30
+  return new Date(
+    Date.UTC(year, month - 1, day, hours - 5, minutes - 30, 0, 0),
+  );
+};
+
 const getDatesBetween = (start, end) => {
   const dates = [];
 
   let current = new Date(start);
 
-  // HOTEL NIGHT LOGIC
   while (current <= end) {
     dates.push(new Date(current));
 
@@ -74,6 +112,28 @@ export const createAccomodation = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Room category selection is required",
+      });
+    }
+
+    // ===============================
+    // HOTEL VALIDATION
+    // ===============================
+    const hotel = await Hotel.findOne({
+      _id: hotelId,
+      status: "Active",
+    });
+
+    if (!hotel) {
+      return res.status(400).json({
+        success: false,
+        message: "Selected hotel is not available",
+      });
+    }
+
+    if (!hotel.checkinTime || !hotel.checkoutTime) {
+      return res.status(400).json({
+        success: false,
+        message: "Hotel check-in and check-out time are not configured",
       });
     }
 
@@ -224,49 +284,44 @@ export const createAccomodation = async (req, res) => {
     const endDate = new Date(checkout);
     endDate.setUTCHours(0, 0, 0, 0);
 
-    // HOTEL NIGHT LOGIC
-    // checkout belongs to previous night's quota
-    endDate.setUTCDate(endDate.getUTCDate() - 1);
+    // =====================================================
+    // HOTEL STANDARD CHECK-IN / CHECK-OUT TIME
+    // =====================================================
 
-    // =======================================
-    // EARLY CHECKIN LOGIC
-    // =======================================
-
-    // Find room for selected checkin day
-    const checkinDayRoom = rooms.find(
-      (r) =>
-        getDateKey(r.checkinDateTime) === getDateKey(startDate) &&
-        r.hotelId._id.toString() === hotelId.toString() &&
-        r.roomCategoryId._id.toString() === roomCategoryId.toString(),
+    // Standard check-in time is hotel's configured checkinTime
+    const standardCheckin = applyHotelTime(
+      checkin,
+      hotel.checkinTime,
+      "check-in time",
     );
 
-    if (!checkinDayRoom) {
-      return res.status(400).json({
-        success: false,
-        message: `No quota available for ${getDateKey(startDate)}`,
-      });
-    }
-
-    // Standard checkin cutoff
-    const standardCheckin = new Date(checkin);
-
-    standardCheckin.setUTCHours(
-      new Date(checkinDayRoom.checkinDateTime).getUTCHours(),
-      new Date(checkinDayRoom.checkinDateTime).getUTCMinutes(),
-      0,
-      0,
+    // Standard checkout time is hotel's configured checkoutTime
+    const standardCheckout = applyHotelTime(
+      checkout,
+      hotel.checkoutTime,
+      "check-out time",
     );
 
-    // =======================================
-    // IF CHECKIN IS BEFORE CHECKIN CUTOFF
-    // USE PREVIOUS DAY QUOTA
-    // =======================================
+    // =====================================================
+    // EARLY CHECK-IN
+    // =====================================================
+    // Example:
+    // Hotel check-in = 13:00
+    //
+    // Guest requests:
+    // 27 Oct 10:00
+    //
+    // Then guest is arriving before standard check-in,
+    // therefore previous day's quota is required.
+    //
+    // 26 Oct quota + 27 Oct quota
+    // =====================================================
+
     if (checkin < standardCheckin) {
-      // Previous day
       const previousDate = new Date(startDate);
+
       previousDate.setUTCDate(previousDate.getUTCDate() - 1);
 
-      // Check previous day room availability
       const previousDayRoom = rooms.find(
         (r) =>
           getDateKey(r.checkinDateTime) === getDateKey(previousDate) &&
@@ -274,58 +329,54 @@ export const createAccomodation = async (req, res) => {
           r.roomCategoryId._id.toString() === roomCategoryId.toString(),
       );
 
-      // No previous day quota
       if (!previousDayRoom) {
         return res.status(400).json({
           success: false,
-          message: `Early check-in requires previous day's quota. No quota available for ${getDateKey(
-            previousDate,
-          )}`,
+          message:
+            `Early check-in at ${hotel.checkinTime} requires ` +
+            `an additional room quota for ` +
+            `${getDateKey(previousDate)}. ` +
+            `No quota is available for that date.`,
         });
       }
 
-      // Use previous day quota
+      // Consume previous day's quota also.
       startDate.setUTCDate(startDate.getUTCDate() - 1);
     }
 
-    // =======================================
-    // LATE CHECKOUT LOGIC
-    // =======================================
+    // =====================================================
+    // NORMAL CHECKOUT NIGHT LOGIC
+    // =====================================================
+    //
+    // Example:
+    // 27 Oct 13:00 → 29 Oct 11:00
+    //
+    // Quota required:
+    // 27 Oct
+    // 28 Oct
+    //
+    // Checkout at exactly hotel checkout time does NOT
+    // consume 29 Oct quota.
+    // =====================================================
 
-    // Find room for checkout day
-    const checkoutDayRoom = rooms.find(
-      (r) =>
-        getDateKey(r.checkinDateTime) === getDateKey(endDate) &&
-        r.hotelId._id.toString() === hotelId.toString() &&
-        r.roomCategoryId._id.toString() === roomCategoryId.toString(),
-    );
+    endDate.setUTCDate(endDate.getUTCDate() - 1);
 
-    if (!checkoutDayRoom) {
-      return res.status(400).json({
-        success: false,
-        message: `No quota available for ${getDateKey(endDate)}`,
-      });
-    }
+    // =====================================================
+    // LATE CHECKOUT
+    // =====================================================
+    // Example:
+    // Hotel checkout = 11:00
+    //
+    // Guest requests:
+    // 29 Oct 14:00
+    //
+    // Therefore 29 Oct quota is additionally required.
+    // =====================================================
 
-    // Standard checkout cutoff
-    const standardCheckout = new Date(checkout);
-
-    standardCheckout.setUTCHours(
-      new Date(checkoutDayRoom.checkoutDateTime).getUTCHours(),
-      new Date(checkoutDayRoom.checkoutDateTime).getUTCMinutes(),
-      0,
-      0,
-    );
-
-    // =======================================
-    // IF CHECKOUT EXCEEDS CHECKOUT CUTOFF
-    // USE NEXT DAY QUOTA
-    // =======================================
     if (checkout > standardCheckout) {
-      // Add next day quota
+      // Add checkout day quota
       endDate.setUTCDate(endDate.getUTCDate() + 1);
 
-      // Validate next day room exists
       const extraCheckoutRoom = rooms.find(
         (r) =>
           getDateKey(r.checkinDateTime) === getDateKey(endDate) &&
@@ -336,9 +387,11 @@ export const createAccomodation = async (req, res) => {
       if (!extraCheckoutRoom) {
         return res.status(400).json({
           success: false,
-          message: `Late checkout requires additional quota for ${getDateKey(
-            endDate,
-          )}`,
+          message:
+            `Late checkout after ${hotel.checkoutTime} ` +
+            `requires additional room quota for ` +
+            `${getDateKey(endDate)}. ` +
+            `No quota is available for that date.`,
         });
       }
     }
@@ -372,22 +425,6 @@ export const createAccomodation = async (req, res) => {
             date,
           )} in selected hotel. Please select another date or reduce stay duration.`,
         });
-      }
-
-      // ===============================
-      // ADDROOM DATETIME VALIDATION
-      // ===============================
-
-      // Checkin validation
-      if (getDateKey(date) === getDateKey(checkin)) {
-        if (checkin < new Date(room.checkinDateTime)) {
-          return res.status(400).json({
-            success: false,
-            message: `Check-in allowed only after ${formatDateIST(
-              room.checkinDateTime,
-            )}`,
-          });
-        }
       }
 
       const quotaItem = quotaRecord.quotas.find(
