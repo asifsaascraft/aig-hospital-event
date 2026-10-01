@@ -1,6 +1,6 @@
 import express from "express";
 import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
-import { uploadIdForTravel } from "../middlewares/uploadMiddleware.js";
+import { uploadTravelFiles } from "../middlewares/uploadMiddleware.js";
 
 import {
   createTravelBySponsor,
@@ -17,15 +17,18 @@ const router = express.Router();
 router.post(
   "/sponsor/events/:eventId/travel",
   protectSponsor,
-  uploadIdForTravel.single("idUpload"),
-  createTravelBySponsor
+  uploadTravelFiles.fields([
+    { name: "idUpload", maxCount: 1 },
+    { name: "travelPlanUpload", maxCount: 1 },
+  ]),
+  createTravelBySponsor,
 );
 
 // Get own
 router.get(
   "/sponsor/events/:eventId/travel",
   protectSponsor,
-  getTravelBySponsor
+  getTravelBySponsor,
 );
 
 // =======================
@@ -34,30 +37,32 @@ router.get(
 router.get(
   "/sponsor/events/:eventId/booked-assigned-travel",
   protectSponsor,
-  getMyBookedAssignedTravels
+  getMyBookedAssignedTravels,
 );
 
 // GET USED TRAVEL AGENTS BY SPONSOR
 router.get(
   "/sponsor/events/:eventId/travel-agents",
   protectSponsor,
-  getSponsorTravelAgents
+  getSponsorTravelAgents,
 );
 
 // Sponsor Travel Quota Summary
 router.get(
   "/sponsor/events/:eventId/travel-quota-summary",
   protectSponsor,
-  getSponsorTravelQuotaSummary
+  getSponsorTravelQuotaSummary,
 );
 
 // Update
 router.put(
   "/sponsor/travel/:id",
   protectSponsor,
-  uploadIdForTravel.single("idUpload"),
-  updateTravelBySponsor
+  uploadTravelFiles.fields([
+    { name: "idUpload", maxCount: 1 },
+    { name: "travelPlanUpload", maxCount: 1 },
+  ]),
+  updateTravelBySponsor,
 );
-
 
 export default router;

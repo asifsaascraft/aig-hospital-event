@@ -24,7 +24,21 @@ const TravelSchema = new mongoose.Schema(
 
     idUpload: {
       type: String,
-      required: [true, 'Identity document is required'],
+      trim: true,
+    },
+
+    travelPlanUpload: { // All type file upload and file size max 2MB
+      type: String,
+      trim: true,
+    },
+
+    arrivalRemark: {
+      type: String,
+      trim: true,
+    },
+
+    departureRemark: {
+      type: String,
       trim: true,
     },
 

@@ -131,26 +131,56 @@ export const uploadSponsorImage = createUploader("sponsors");
 
 export const uploadAbstractPDF = createUploader("abstract-files", pdfFileFilter);
 
-// Govenoment Id for Travel booked Upload (PDF only, 2MB)
-export const uploadIdForTravel = multer({
-  storage: multerS3({
-    s3,
-    bucket: process.env.AWS_BUCKET_NAME,
-    acl: "public-read",
-    contentDisposition: "inline",
-    contentType: multerS3.AUTO_CONTENT_TYPE,
-    key: (req, file, cb) => {
-      const fileName = `governoment-ids/${Date.now()}-${file.originalname}`;
-      cb(null, fileName);
-    },
-  }),
-  limits: { fileSize: 2 * 1024 * 1024 }, //  2 MB
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype === "application/pdf") {
-      cb(null, true);
-    } else {
-      cb(new Error("Only PDF files are allowed"), false);
+// Travel uploads
+// ID PDF + Travel Plan (any file), maximum 2 MB each
+
+const travelUploadStorage = multerS3({
+  s3,
+  bucket: process.env.AWS_BUCKET_NAME,
+  acl: "public-read",
+  contentDisposition: "inline",
+  contentType: multerS3.AUTO_CONTENT_TYPE,
+
+  key: (req, file, cb) => {
+    let folder = "travel-files";
+
+    if (file.fieldname === "idUpload") {
+      folder = "governoment-ids";
+    } else if (file.fieldname === "travelPlanUpload") {
+      folder = "travel-plans";
     }
+
+    const fileName = `${folder}/${Date.now()}-${file.originalname}`;
+
+    cb(null, fileName);
+  },
+});
+
+export const uploadTravelFiles = multer({
+  storage: travelUploadStorage,
+
+  limits: {
+    fileSize: 2 * 1024 * 1024, // 2 MB
+  },
+
+  fileFilter: (req, file, cb) => {
+    if (file.fieldname === "idUpload") {
+      if (file.mimetype === "application/pdf") {
+        return cb(null, true);
+      }
+
+      return cb(
+        new Error("Identity document must be a PDF file"),
+        false
+      );
+    }
+
+    if (file.fieldname === "travelPlanUpload") {
+      // Any file type is allowed
+      return cb(null, true);
+    }
+
+    return cb(new Error("Invalid travel file field"), false);
   },
 });
 
