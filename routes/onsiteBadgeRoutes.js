@@ -13,12 +13,22 @@ import {
   sendBulkOnsiteBadgeWhatsApps,
   searchOnsiteBadges,
   printBadge,
+  getPublicOnsiteBadgeByToken,
 } from "../controllers/onsiteBadgeController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 import { protectOnsite } from "../middlewares/onsiteAuthMiddleware.js";
 import { uploadSponsorExcel } from "../middlewares/uploadMiddleware.js";
 
 const router = express.Router();
+
+
+// =========================================
+// Public Onsite Badge Pass
+// =========================================
+router.get(
+  "/onsite/badges/public/:publicToken",
+  getPublicOnsiteBadgeByToken,
+);
 
 // =======================
 // Event Admin Only

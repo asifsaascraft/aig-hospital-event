@@ -2943,7 +2943,6 @@ export const sendBulkRegistrationSuccessWhatsApps = async (req, res) => {
       eventId,
       isPaid: true,
       isSuspended: false,
-      whatsappBulkSent: { $ne: true },
     });
 
     if (!registrations.length) {

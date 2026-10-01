@@ -1272,7 +1272,6 @@ export const sendBulkOnsiteBadgeWhatsApps = async (req, res) => {
       eventId,
       isDeleted: false,
       isSuspended: false,
-      whatsappSent: { $ne: true },
     });
 
     if (!badges.length) {
@@ -1412,6 +1411,133 @@ export const sendBulkOnsiteBadgeWhatsApps = async (req, res) => {
       message:
         error?.message ||
         "Failed to send onsite badge WhatsApp",
+    });
+  }
+};
+
+
+// ============================================
+// Public Onsite Badge Pass
+// GET /onsite/badges/public/:publicToken
+// ============================================
+export const getPublicOnsiteBadgeByToken = async (req, res) => {
+  try {
+    const { publicToken } = req.params;
+
+    if (!publicToken) {
+      return res.status(400).json({
+        success: false,
+        message: "Public badge token is required",
+      });
+    }
+
+    // ==========================================
+    // Find only a valid onsite badge
+    // ==========================================
+    const badge = await OnsiteBadge.findOne({
+      publicToken,
+    })
+      .select(
+        [
+          "publicToken",
+          "regNum",
+          "prefix",
+          "name",
+          "email",
+          "mobile",
+          "designation",
+          "affiliation",
+          "city",
+          "state",
+          "country",
+          "registrationType",
+          "badgeProfileId",
+          "badgeProfileName",
+          "createdAt",
+          "eventId",
+        ].join(" "),
+      )
+      .populate({
+        path: "eventId",
+        select:
+          "eventName shortName eventCode startDateTime endDateTime venueName",
+        populate: {
+          path: "venueName",
+          select: "venueName venueAddress",
+        },
+      })
+      .populate({
+        path: "badgeProfileId",
+        select: "CardProfileName",
+      })
+      .lean();
+
+    if (!badge) {
+      return res.status(404).json({
+        success: false,
+        message: "Onsite badge pass not found",
+      });
+    }
+
+    // ==========================================
+    // Return only public-safe badge data
+    // ==========================================
+    return res.status(200).json({
+      success: true,
+      message: "Onsite badge pass fetched successfully",
+
+      data: {
+        badge: {
+          publicToken: badge.publicToken,
+          registrationNumber: badge.regNum,
+
+          prefix: badge.prefix || "",
+          name: badge.name,
+          designation: badge.designation || "",
+          affiliation: badge.affiliation || "",
+
+          registrationType: badge.registrationType || "",
+
+          badgeProfile: badge.badgeProfileId
+            ? {
+                id: badge.badgeProfileId._id,
+                name: badge.badgeProfileId.CardProfileName,
+              }
+            : badge.badgeProfileName
+              ? {
+                  id: null,
+                  name: badge.badgeProfileName,
+                }
+              : null,
+
+          createdAt: badge.createdAt,
+        },
+
+        event: badge.eventId
+          ? {
+              id: badge.eventId._id,
+              eventName: badge.eventId.eventName,
+              shortName: badge.eventId.shortName,
+              eventCode: badge.eventId.eventCode,
+              startDateTime: badge.eventId.startDateTime,
+              endDateTime: badge.eventId.endDateTime,
+
+              venue: badge.eventId.venueName
+                ? {
+                    name: badge.eventId.venueName.venueName,
+                    address: badge.eventId.venueName.venueAddress,
+                  }
+                : null,
+            }
+          : null,
+      },
+    });
+  } catch (error) {
+    console.error("Get public onsite badge pass error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
     });
   }
 };

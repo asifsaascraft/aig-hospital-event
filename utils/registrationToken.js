@@ -5,7 +5,7 @@ import crypto from "crypto";
  * for an event registration.
  */
 export const generateRegistrationPublicToken = () => {
-  return crypto.randomBytes(8).toString("hex");
+  return crypto.randomBytes(16).toString("hex");
 };
 
 /**
