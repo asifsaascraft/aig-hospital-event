@@ -1322,7 +1322,8 @@ export const registerForEventByEventAdmin = async (req, res) => {
           address,
           pincode,
           amount,
-          additionalAnswers,
+          dynamicFormAnswers: validatedDynamicFormAnswers,
+          additionalAnswers: validatedAdditionalAnswers,
 
           isPaid: true,
           regNumGenerated: true,
