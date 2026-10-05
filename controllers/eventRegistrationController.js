@@ -737,6 +737,46 @@ export const getRegistrationById = async (req, res) => {
   }
 };
 
+/* 
+========================================================
+   Get Registration By ID (For Event admin can show only)
+========================================================*/
+export const getEventAdminRegistrationById = async (req, res) => {
+  try {
+    const { registrationId } = req.params;
+
+    const registration = await EventRegistration.findById(registrationId)
+      .populate("eventAdminId", "name email mobile")
+      .populate("userId")
+      .populate("sponsorId")
+      .populate("eventId")
+      .populate("registrationSlabId")
+      .populate("cardProfileId");
+
+    if (!registration) {
+      return res.status(404).json({
+        success: false,
+        message: "Registration not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Registration details fetched successfully",
+      data: registration,
+    });
+  } catch (error) {
+    console.error("Get Event Admin Registration By ID Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch registration details",
+      error: error.message,
+    });
+  }
+};
+
+
 /*
 ========================================================
   Get All Paid Registrations for an Event

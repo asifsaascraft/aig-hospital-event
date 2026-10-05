@@ -6,6 +6,7 @@ import {
   getMyRegistrations,
   getRegistrationsByEventForUser,
   getRegistrationById,
+  getEventAdminRegistrationById,
   getAllRegistrationsByEvent,
   updateRegistrationSuspension,
   updateRegistrationCardProfile,
@@ -81,6 +82,14 @@ router.get(
   protect,
   authorizeRoles("user"),
   getRegistrationById
+);
+
+// Get Single Registration by ID (Event Admin)
+router.get(
+  "/event-admin/registrations/:registrationId",
+  protect,
+  authorizeRoles("eventAdmin"),
+  getEventAdminRegistrationById
 );
 
 // 5 Get All Paid Registrations for an Event (Event Admin)
