@@ -2233,7 +2233,7 @@ export const getAllSpotRegistrationsByEvent = async (req, res) => {
   }
 };
 
-/* 
+/*
 ========================================================
   12. Update Registrations By eventAdmin (Event Admin)
 ========================================================
@@ -2250,22 +2250,9 @@ export const updateEventRegistration = async (req, res) => {
       "registrationType",
     ];
 
-    // Remove restricted fields
-    const updateData = { ...req.body };
-
-    restrictedFields.forEach((field) => delete updateData[field]);
-
     // ==========================================
-    // Parse JSON fields from multipart/form-data
+    // Find existing registration
     // ==========================================
-    if (typeof updateData.dynamicFormAnswers === "string") {
-      updateData.dynamicFormAnswers = JSON.parse(updateData.dynamicFormAnswers);
-    }
-
-    if (typeof updateData.additionalAnswers === "string") {
-      updateData.additionalAnswers = JSON.parse(updateData.additionalAnswers);
-    }
-
     const registration = await EventRegistration.findById(registrationId);
 
     if (!registration) {
@@ -2275,9 +2262,71 @@ export const updateEventRegistration = async (req, res) => {
       });
     }
 
-    // ===============================
-    // Validate cardProfileId
-    // ===============================
+    // ==========================================
+    // Build file map from multer.any()
+    // Same structure as create controller
+    // ==========================================
+    const fileMap = {};
+
+    (req.files || []).forEach((file) => {
+      fileMap[file.fieldname] = fileMap[file.fieldname] || [];
+      fileMap[file.fieldname].push(file);
+    });
+
+    // ==========================================
+    // Prepare update data
+    // ==========================================
+    const updateData = { ...req.body };
+
+    restrictedFields.forEach((field) => delete updateData[field]);
+
+    // ==========================================
+    // Parse multipart JSON fields
+    // ==========================================
+    let incomingDynamicAnswers = null;
+    let incomingAdditionalAnswers = null;
+
+    if (typeof updateData.dynamicFormAnswers === "string") {
+      try {
+        incomingDynamicAnswers = JSON.parse(
+          updateData.dynamicFormAnswers
+        );
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid JSON format for dynamicFormAnswers",
+        });
+      }
+
+      delete updateData.dynamicFormAnswers;
+    } else if (Array.isArray(updateData.dynamicFormAnswers)) {
+      incomingDynamicAnswers = updateData.dynamicFormAnswers;
+
+      delete updateData.dynamicFormAnswers;
+    }
+
+    if (typeof updateData.additionalAnswers === "string") {
+      try {
+        incomingAdditionalAnswers = JSON.parse(
+          updateData.additionalAnswers
+        );
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid JSON format for additionalAnswers",
+        });
+      }
+
+      delete updateData.additionalAnswers;
+    } else if (Array.isArray(updateData.additionalAnswers)) {
+      incomingAdditionalAnswers = updateData.additionalAnswers;
+
+      delete updateData.additionalAnswers;
+    }
+
+    // ==========================================
+    // Validate Card Profile
+    // ==========================================
     if (updateData.cardProfileId) {
       if (!mongoose.Types.ObjectId.isValid(updateData.cardProfileId)) {
         return res.status(400).json({
@@ -2299,6 +2348,197 @@ export const updateEventRegistration = async (req, res) => {
       }
     }
 
+    // ==========================================
+    // DYNAMIC FORM ANSWERS
+    // ==========================================
+    if (Array.isArray(incomingDynamicAnswers)) {
+      const existingDynamicAnswers = Array.isArray(
+        registration.dynamicFormAnswers
+      )
+        ? registration.dynamicFormAnswers
+        : [];
+
+      const existingDynamicMap = new Map(
+        existingDynamicAnswers.map((answer) => [
+          String(answer.id),
+          answer,
+        ])
+      );
+
+      const updatedDynamicAnswers =
+        incomingDynamicAnswers.map((answer) => {
+          const id = String(answer.id);
+
+          const existingAnswer = existingDynamicMap.get(id);
+
+          // --------------------------------------
+          // Check for newly uploaded replacement
+          // --------------------------------------
+          const newFile =
+            fileMap[`file_dyn_${id}`]?.[0] || null;
+
+          // --------------------------------------
+          // NEW FILE
+          // --------------------------------------
+          if (newFile) {
+            return {
+              ...(existingAnswer || {}),
+              ...answer,
+
+              value: null,
+              fileUrl: newFile.location,
+            };
+          }
+
+          // --------------------------------------
+          // EXISTING FILE - NO NEW FILE
+          //
+          // Frontend sends:
+          // {
+          //   id,
+          //   value: null,
+          //   fileUrl: oldUrl
+          // }
+          // --------------------------------------
+          if (answer.fileUrl) {
+            return {
+              ...(existingAnswer || {}),
+              ...answer,
+
+              value: null,
+              fileUrl: answer.fileUrl,
+            };
+          }
+
+          // --------------------------------------
+          // EXISTING FILE - SAFETY FALLBACK
+          //
+          // If frontend didn't send fileUrl but
+          // database already has one, preserve it.
+          // --------------------------------------
+          if (
+            existingAnswer?.fileUrl &&
+            answer.value == null
+          ) {
+            return {
+              ...(existingAnswer || {}),
+              ...answer,
+
+              value: null,
+              fileUrl: existingAnswer.fileUrl,
+            };
+          }
+
+          // --------------------------------------
+          // NORMAL NON-FILE ANSWER
+          // --------------------------------------
+          return {
+            ...(existingAnswer || {}),
+            ...answer,
+
+            fileUrl:
+              answer.fileUrl ??
+              existingAnswer?.fileUrl ??
+              null,
+          };
+        });
+
+      updateData.dynamicFormAnswers = updatedDynamicAnswers;
+    }
+
+    // ==========================================
+    // SLAB / ADDITIONAL ANSWERS
+    // ==========================================
+    if (Array.isArray(incomingAdditionalAnswers)) {
+      const existingAdditionalAnswers = Array.isArray(
+        registration.additionalAnswers
+      )
+        ? registration.additionalAnswers
+        : [];
+
+      const existingAdditionalMap = new Map(
+        existingAdditionalAnswers.map((answer) => [
+          String(answer.id),
+          answer,
+        ])
+      );
+
+      const updatedAdditionalAnswers =
+        incomingAdditionalAnswers.map((answer) => {
+          const id = String(answer.id);
+
+          const existingAnswer =
+            existingAdditionalMap.get(id);
+
+          // --------------------------------------
+          // Check for newly uploaded replacement
+          // --------------------------------------
+          const newFile =
+            fileMap[`file_${id}`]?.[0] || null;
+
+          // --------------------------------------
+          // NEW FILE
+          // --------------------------------------
+          if (newFile) {
+            return {
+              ...(existingAnswer || {}),
+              ...answer,
+
+              value: null,
+              fileUrl: newFile.location,
+            };
+          }
+
+          // --------------------------------------
+          // EXISTING FILE - NO NEW FILE
+          // --------------------------------------
+          if (answer.fileUrl) {
+            return {
+              ...(existingAnswer || {}),
+              ...answer,
+
+              value: null,
+              fileUrl: answer.fileUrl,
+            };
+          }
+
+          // --------------------------------------
+          // EXISTING FILE - SAFETY FALLBACK
+          // --------------------------------------
+          if (
+            existingAnswer?.fileUrl &&
+            answer.value == null
+          ) {
+            return {
+              ...(existingAnswer || {}),
+              ...answer,
+
+              value: null,
+              fileUrl: existingAnswer.fileUrl,
+            };
+          }
+
+          // --------------------------------------
+          // NORMAL NON-FILE ANSWER
+          // --------------------------------------
+          return {
+            ...(existingAnswer || {}),
+            ...answer,
+
+            fileUrl:
+              answer.fileUrl ??
+              existingAnswer?.fileUrl ??
+              null,
+          };
+        });
+
+      updateData.additionalAnswers =
+        updatedAdditionalAnswers;
+    }
+
+    // ==========================================
+    // Apply update
+    // ==========================================
     Object.assign(registration, updateData);
 
     await registration.save();
@@ -2310,7 +2550,7 @@ export const updateEventRegistration = async (req, res) => {
     });
   } catch (error) {
     console.error("=================================");
-    console.error("UPDATE ERROR");
+    console.error("UPDATE REGISTRATION ERROR");
     console.error(error);
     console.error("MESSAGE:", error?.message);
     console.error("STACK:", error?.stack);
