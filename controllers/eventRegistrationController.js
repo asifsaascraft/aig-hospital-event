@@ -2714,11 +2714,15 @@ export const getEventVisitorsNotRegistered = async (req, res) => {
       isSuspended: false,
     }).select("userId");
 
-    const registeredUserIds = registrations.map((r) => r.userId.toString());
+    const registeredUserIds = registrations
+      .filter((r) => r.userId)
+      .map((r) => r.userId.toString());
 
     // filter non registered users
     const nonRegisteredVisitors = visitors.filter(
-      (visitor) => !registeredUserIds.includes(visitor.userId._id.toString()),
+      (visitor) =>
+        visitor.userId &&
+        !registeredUserIds.includes(visitor.userId._id.toString()),
     );
 
     return res.status(200).json({
