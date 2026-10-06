@@ -4,6 +4,7 @@ import {
   getAssignedTravelServicesByEvent,
   getMyAssignedTravelServices,
   removeAssignedTravelRegistration,
+  sponsorRemoveAssignedTravelRegistration,
   reassignTravelService,
 } from "../controllers/assignTravelServiceController.js";
 import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
@@ -46,6 +47,16 @@ router.put(
   protect,
   authorizeRoles("eventAdmin"),
   removeAssignedTravelRegistration
+);
+
+
+// =======================
+// Sponsor Remove Registration
+// =======================
+router.put(
+  "/sponsor/events/:eventId/assign-travel-services/:registrationId/remove",
+  protectSponsor,
+  sponsorRemoveAssignedTravelRegistration,
 );
 
 // =======================

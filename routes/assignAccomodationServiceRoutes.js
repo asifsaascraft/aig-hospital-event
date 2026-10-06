@@ -4,6 +4,7 @@ import {
   getAssignedAccomodationServicesByEvent,
   getMyAssignedAccomodationServices,
   removeAssignedAccomodationRegistration,
+  sponsorRemoveAssignedAccomodationRegistration,
   reassignAccomodationService,
 } from "../controllers/assignAccomodationServiceController.js";
 import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
@@ -47,6 +48,15 @@ router.put(
   protect,
   authorizeRoles("eventAdmin"),
   removeAssignedAccomodationRegistration
+);
+
+// =======================
+// Sponsor Remove Registration
+// =======================
+router.put(
+  "/sponsor/events/:eventId/assign-accomodation-services/:registrationId/remove",
+  protectSponsor,
+  sponsorRemoveAssignedAccomodationRegistration,
 );
 
 // =======================

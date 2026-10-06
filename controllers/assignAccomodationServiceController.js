@@ -287,3 +287,89 @@ export const reassignAccomodationService = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// =======================
+// SPONSOR REMOVE ASSIGNED REGISTRATION
+// =======================
+export const sponsorRemoveAssignedAccomodationRegistration = async (
+  req,
+  res,
+) => {
+  try {
+    const { eventId, registrationId } = req.params;
+
+    // Logged-in sponsor
+    const sponsorId = req.sponsor._id;
+
+    if (!registrationId) {
+      return res.status(400).json({
+        success: false,
+        message: "registrationId is required",
+      });
+    }
+
+    // =======================
+    // CHECK ASSIGNMENT
+    // =======================
+    const assign = await AssignAccomodationService.findOne({
+      eventId,
+      sponsorId,
+      eventRegistrationId: registrationId,
+    });
+
+    if (!assign) {
+      return res.status(404).json({
+        success: false,
+        message: "This registration is not assigned to you",
+      });
+    }
+
+    // =======================
+    // CHECK IF ACCOMMODATION ALREADY BOOKED
+    // =======================
+    const bookedAccomodation = await Accomodation.findOne({
+      eventId,
+      sponsorId,
+      $or: [
+        { eventRegistrationId: registrationId },
+        { otherEventRegistrationId: registrationId },
+      ],
+    });
+
+    if (bookedAccomodation) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "This registration already booked accommodation. You cannot remove assigned accommodation service.",
+      });
+    }
+
+    // =======================
+    // REMOVE REGISTRATION
+    // =======================
+    assign.eventRegistrationId = assign.eventRegistrationId.filter(
+      (item) => item.toString() !== registrationId,
+    );
+
+    await assign.save();
+
+    // =======================
+    // DELETE EMPTY ASSIGNMENT
+    // =======================
+    if (assign.eventRegistrationId.length === 0) {
+      await assign.deleteOne();
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Registration removed from accommodation service successfully",
+    });
+  } catch (error) {
+    console.error("Sponsor remove accommodation assignment error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
