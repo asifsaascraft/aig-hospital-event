@@ -1115,3 +1115,372 @@ export const getSponsorTravelAgents = async (req, res) => {
     });
   }
 };
+
+// ======================================
+// EVENT ADMIN - TRAVEL SUMMARY
+// ======================================
+
+export const getEventAdminTravelSummary = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    if (!eventId) {
+      return res.status(400).json({
+        success: false,
+        message: "Event ID is required",
+      });
+    }
+
+    // ======================================
+    // 1. GET ALL TRAVEL RECORDS
+    // ======================================
+
+    const travels = await Travel.find({
+      eventId,
+    })
+      .populate("travelAgentId")
+      .populate("sponsorId", "sponsorName contactPersonName email mobile")
+      .populate({
+        path: "eventRegistrationId",
+        select: "prefix name email mobile regNum",
+      })
+      .sort({ createdAt: -1 });
+
+    if (!travels.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No travel records found for this event",
+      });
+    }
+
+    // ======================================
+    // 2. GET ALL SPONSOR TRAVEL QUOTAS
+    // ======================================
+
+    const quotaRecords = await SponsorTravelQuota.find({
+      eventId,
+    }).populate("sponsorId", "sponsorName contactPersonName email mobile");
+
+    // ======================================
+    // MAPS
+    // ======================================
+
+    const travelAgentWiseMap = {};
+    const sponsorWiseMap = {};
+    const dateWiseMap = {};
+
+    const travelWise = [];
+
+    // ======================================
+    // OVERVIEW VARIABLES
+    // ======================================
+
+    let totalTravelBookings = 0;
+    let totalSponsorTravelBookings = 0;
+    let totalEventAdminTravelBookings = 0;
+
+    let totalQuotaAllocated = 0;
+    let totalQuotaUsed = 0;
+
+    // ======================================
+    // 3. PROCESS TRAVEL RECORDS
+    // ======================================
+
+    for (const travel of travels) {
+      totalTravelBookings += 1;
+
+      if (travel.createdBy === "sponsor") {
+        totalSponsorTravelBookings += 1;
+      } else {
+        totalEventAdminTravelBookings += 1;
+      }
+
+      // ======================================
+      // TRAVEL AGENT WISE
+      // ======================================
+
+      if (travel.travelAgentId) {
+        const travelAgentId = travel.travelAgentId._id.toString();
+
+        const travelAgentName =
+          travel.travelAgentId.name ||
+          travel.travelAgentId.agentName ||
+          travel.travelAgentId.companyName ||
+          "Unknown Travel Agent";
+
+        if (!travelAgentWiseMap[travelAgentId]) {
+          travelAgentWiseMap[travelAgentId] = {
+            travelAgentId,
+            travelAgentName,
+            totalBookings: 0,
+            sponsorBookings: 0,
+            eventAdminBookings: 0,
+          };
+        }
+
+        travelAgentWiseMap[travelAgentId].totalBookings += 1;
+
+        if (travel.createdBy === "sponsor") {
+          travelAgentWiseMap[travelAgentId].sponsorBookings += 1;
+        } else {
+          travelAgentWiseMap[travelAgentId].eventAdminBookings += 1;
+        }
+      }
+
+      // ======================================
+      // SPONSOR WISE
+      // ======================================
+
+      if (travel.sponsorId) {
+        const sponsorId = travel.sponsorId._id.toString();
+
+        const sponsorName =
+          travel.sponsorId.sponsorName ||
+          travel.sponsorId.contactPersonName ||
+          "Unknown Sponsor";
+
+        if (!sponsorWiseMap[sponsorId]) {
+          sponsorWiseMap[sponsorId] = {
+            sponsorId,
+            sponsorName,
+            contactPersonName: travel.sponsorId.contactPersonName || null,
+            email: travel.sponsorId.email || null,
+            mobile: travel.sponsorId.mobile || null,
+            totalBookings: 0,
+            quotaAllocated: 0,
+            usedQuota: 0,
+            remainingQuota: 0,
+          };
+        }
+
+        sponsorWiseMap[sponsorId].totalBookings += 1;
+      }
+
+      // ======================================
+      // DATE WISE
+      // Use arrival pickup date
+      // ======================================
+
+      if (travel.arrival?.pickupDateTime) {
+        const date = new Date(travel.arrival.pickupDateTime)
+          .toISOString()
+          .split("T")[0];
+
+        if (!dateWiseMap[date]) {
+          dateWiseMap[date] = {
+            date,
+            totalBookings: 0,
+            arrivalBookings: 0,
+            departureBookings: 0,
+          };
+        }
+
+        dateWiseMap[date].arrivalBookings += 1;
+        dateWiseMap[date].totalBookings += 1;
+      }
+
+      // ======================================
+      // DETAILED TRAVEL WISE
+      // ======================================
+
+      travelWise.push({
+        travelId: travel._id,
+
+        eventRegistrationId: travel.eventRegistrationId?._id || null,
+
+        registration: travel.eventRegistrationId
+          ? {
+              prefix: travel.eventRegistrationId.prefix,
+              name: travel.eventRegistrationId.name,
+              email: travel.eventRegistrationId.email,
+              mobile: travel.eventRegistrationId.mobile,
+              regNum: travel.eventRegistrationId.regNum,
+            }
+          : null,
+
+        fullName: travel.fullName,
+
+        sponsorId: travel.sponsorId?._id || null,
+
+        sponsorName:
+          travel.sponsorId?.sponsorName ||
+          travel.sponsorId?.contactPersonName ||
+          null,
+
+        travelAgentId: travel.travelAgentId?._id || null,
+
+        travelAgentName:
+          travel.travelAgentId?.name ||
+          travel.travelAgentId?.agentName ||
+          travel.travelAgentId?.companyName ||
+          null,
+
+        createdBy: travel.createdBy,
+
+        arrival: travel.arrival
+          ? {
+              fromCity: travel.arrival.fromCity,
+              toCity: travel.arrival.toCity,
+              vehicleType: travel.arrival.vehicleType,
+              vehicleNumber: travel.arrival.vehicleNumber,
+              pickupPoint: travel.arrival.pickupPoint,
+              pickupDateTime: travel.arrival.pickupDateTime,
+              dropOffPoint: travel.arrival.dropOffPoint,
+            }
+          : null,
+
+        departure: travel.departure
+          ? {
+              fromCity: travel.departure.fromCity,
+              toCity: travel.departure.toCity,
+              vehicleType: travel.departure.vehicleType,
+              vehicleNumber: travel.departure.vehicleNumber,
+              pickupPoint: travel.departure.pickupPoint,
+              pickupDateTime: travel.departure.pickupDateTime,
+              dropOffPoint: travel.departure.dropOffPoint,
+            }
+          : null,
+
+        arrivalRemark: travel.arrivalRemark || null,
+        departureRemark: travel.departureRemark || null,
+
+        createdAt: travel.createdAt,
+        updatedAt: travel.updatedAt,
+      });
+    }
+
+    // ======================================
+    // 4. PROCESS SPONSOR QUOTAS
+    // ======================================
+
+    for (const quotaRecord of quotaRecords) {
+      if (!quotaRecord.sponsorId) {
+        continue;
+      }
+
+      const sponsorId = quotaRecord.sponsorId._id.toString();
+
+      const sponsorName =
+        quotaRecord.sponsorId.sponsorName ||
+        quotaRecord.sponsorId.contactPersonName ||
+        "Unknown Sponsor";
+
+      const quota = Number(quotaRecord.quota || 0);
+
+      // Actual sponsor travel bookings
+      const used = await Travel.countDocuments({
+        eventId,
+        sponsorId: quotaRecord.sponsorId._id,
+        createdBy: "sponsor",
+      });
+
+      const remaining = Math.max(quota - used, 0);
+
+      totalQuotaAllocated += quota;
+      totalQuotaUsed += used;
+
+      if (!sponsorWiseMap[sponsorId]) {
+        sponsorWiseMap[sponsorId] = {
+          sponsorId,
+          sponsorName,
+          contactPersonName: quotaRecord.sponsorId.contactPersonName || null,
+          email: quotaRecord.sponsorId.email || null,
+          mobile: quotaRecord.sponsorId.mobile || null,
+          totalBookings: 0,
+          quotaAllocated: 0,
+          usedQuota: 0,
+          remainingQuota: 0,
+        };
+      }
+
+      sponsorWiseMap[sponsorId].quotaAllocated += quota;
+      sponsorWiseMap[sponsorId].usedQuota += used;
+      sponsorWiseMap[sponsorId].remainingQuota += remaining;
+    }
+
+    // ======================================
+    // 5. CONVERT MAPS TO ARRAYS
+    // ======================================
+
+    const travelAgentWise = Object.values(travelAgentWiseMap);
+    const sponsorWise = Object.values(sponsorWiseMap);
+    const dateWise = Object.values(dateWiseMap);
+
+    // ======================================
+    // 6. SORT DATA
+    // ======================================
+
+    travelAgentWise.sort((a, b) =>
+      a.travelAgentName.localeCompare(b.travelAgentName),
+    );
+
+    sponsorWise.sort((a, b) => a.sponsorName.localeCompare(b.sponsorName));
+
+    dateWise.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    travelWise.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // ======================================
+    // 7. FINAL RESPONSE
+    // ======================================
+
+    return res.status(200).json({
+      success: true,
+
+      message: "Event Admin travel summary fetched successfully",
+
+      data: {
+        // ======================================
+        // OVERVIEW
+        // ======================================
+
+        overview: {
+          totalTravelBookings,
+          totalSponsorTravelBookings,
+          totalEventAdminTravelBookings,
+
+          totalQuotaAllocated,
+
+          totalQuotaUsed,
+
+          totalQuotaRemaining: Math.max(
+            totalQuotaAllocated - totalQuotaUsed,
+            0,
+          ),
+        },
+
+        // ======================================
+        // TRAVEL AGENT WISE
+        // ======================================
+
+        travelAgentWise,
+
+        // ======================================
+        // SPONSOR WISE
+        // ======================================
+
+        sponsorWise,
+
+        // ======================================
+        // DATE WISE
+        // ======================================
+
+        dateWise,
+
+        // ======================================
+        // DETAILED TRAVEL WISE
+        // ======================================
+
+        travelWise,
+      },
+    });
+  } catch (error) {
+    console.error("Event Admin Travel Summary Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};

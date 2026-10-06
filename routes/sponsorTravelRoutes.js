@@ -1,13 +1,14 @@
 import express from "express";
 import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
 import { uploadTravelFiles } from "../middlewares/uploadMiddleware.js";
-
+import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 import {
   createTravelBySponsor,
   getTravelBySponsor,
   getMyBookedAssignedTravels,
   getSponsorTravelAgents,
   getSponsorTravelQuotaSummary,
+  getEventAdminTravelSummary,
   updateTravelBySponsor,
 } from "../controllers/sponsorTravelController.js";
 
@@ -52,6 +53,16 @@ router.get(
   "/sponsor/events/:eventId/travel-quota-summary",
   protectSponsor,
   getSponsorTravelQuotaSummary,
+);
+
+// =======================
+// Event Admin: Travel Summary
+// =======================
+router.get(
+  "/event-admin/events/:eventId/travel-summary",
+  protect,
+  authorizeRoles("eventAdmin"),
+  getEventAdminTravelSummary,
 );
 
 // Update
