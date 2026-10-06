@@ -95,6 +95,7 @@ export const createAccomodation = async (req, res) => {
       roomType,
       guestName,
       otherEventRegistrationId,
+      remark,
     } = req.body;
 
     // ===============================
@@ -523,6 +524,7 @@ export const createAccomodation = async (req, res) => {
       checkinDateTime: checkin,
       checkoutDateTime: checkout,
       accomodationDays,
+      remark,
     });
 
     return res.status(201).json({
@@ -741,6 +743,7 @@ export const updateAccomodation = async (req, res) => {
       roomType,
       guestName,
       otherEventRegistrationId,
+      remark,
     } = req.body;
 
     const booking = await Accomodation.findOne({
@@ -829,6 +832,7 @@ export const updateAccomodation = async (req, res) => {
     booking.checkinDateTime = newBooking.checkinDateTime;
     booking.checkoutDateTime = newBooking.checkoutDateTime;
     booking.accomodationDays = newBooking.accomodationDays;
+    booking.remark = newBooking.remark;
 
     await booking.save();
 

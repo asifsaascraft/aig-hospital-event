@@ -83,6 +83,10 @@ const AccomodationSchema = new mongoose.Schema(
         },
       },
     ],
+    remark: {
+      type: String,
+      trim: true,
+    },
   },
   { timestamps: true },
 );
