@@ -29,6 +29,7 @@ export const createAddRoom = async (req, res) => {
       numberOfRooms,
       checkinDateTime,
       checkoutDateTime,
+      remark,
     } = req.body;
 
     // ===============================
@@ -158,6 +159,7 @@ export const createAddRoom = async (req, res) => {
       availableRooms: numberOfRooms,
       checkinDateTime: parsedCheckinDateTime,
       checkoutDateTime: parsedCheckoutDateTime,
+      remark,
     });
 
     res.status(201).json({
@@ -243,6 +245,7 @@ export const updateAddRoom = async (req, res) => {
       numberOfRooms,
       checkinDateTime,
       checkoutDateTime,
+      remark,
     } = req.body;
 
     // ===============================
@@ -381,6 +384,10 @@ export const updateAddRoom = async (req, res) => {
     existingRoom.checkinDateTime = finalCheckinDateTime;
 
     existingRoom.checkoutDateTime = finalCheckoutDateTime;
+
+    if (remark !== undefined) {
+      existingRoom.remark = remark;
+    }
 
     // ===============================
     // Save

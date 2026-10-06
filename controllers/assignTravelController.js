@@ -19,7 +19,7 @@ const getAssigneeQuery = (body, eventId) => {
 export const assignTravel = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { travelIds } = req.body;
+    const { travelIds, remark } = req.body;
 
     if (!travelIds || travelIds.length === 0) {
       return res.status(400).json({
@@ -51,11 +51,15 @@ export const assignTravel = async (req, res) => {
           ...travelIds,
         ]),
       ];
+
+      record.remark = remark;
+
       await record.save();
     } else {
       record = await AssignTravel.create({
         ...query,
         travelIds,
+        remark,
       });
     }
 
@@ -85,7 +89,7 @@ export const removeTravel = async (req, res) => {
     }
 
     record.travelIds = record.travelIds.filter(
-      (id) => id.toString() !== travelId
+      (id) => id.toString() !== travelId,
     );
 
     //  If empty → delete document
@@ -122,6 +126,7 @@ export const reassignTravel = async (req, res) => {
       marketingTeamId,
       eventAdminId,
       otherTeamId,
+      remark,
     } = req.body;
 
     // ======================
@@ -133,9 +138,7 @@ export const reassignTravel = async (req, res) => {
       return res.status(404).json({ message: "Source not found" });
     }
 
-    from.travelIds = from.travelIds.filter(
-      (id) => id.toString() !== travelId
-    );
+    from.travelIds = from.travelIds.filter((id) => id.toString() !== travelId);
 
     //  If empty → delete old record
     if (from.travelIds.length === 0) {
@@ -159,12 +162,18 @@ export const reassignTravel = async (req, res) => {
     if (to) {
       if (!to.travelIds.includes(travelId)) {
         to.travelIds.push(travelId);
-        await to.save();
       }
+
+      if (remark !== undefined) {
+        to.remark = remark;
+      }
+
+      await to.save();
     } else {
       to = await AssignTravel.create({
         ...query,
         travelIds: [travelId],
+        remark,
       });
     }
 
@@ -187,18 +196,15 @@ export const getUnassignedTravels = async (req, res) => {
     const assigned = await AssignTravel.find({ eventId });
 
     const assignedIds = assigned.flatMap((doc) =>
-      doc.travelIds.map((id) => id.toString())
+      doc.travelIds.map((id) => id.toString()),
     );
 
     const travels = await Travel.find({
       eventId,
       _id: { $nin: assignedIds },
     })
-      .select("_id eventRegistrationId fullName") 
-      .populate(
-        "eventRegistrationId",
-        "prefix name email mobile regNum"
-      );
+      .select("_id eventRegistrationId fullName")
+      .populate("eventRegistrationId", "prefix name email mobile regNum");
 
     //  Clean response (optional but recommended)
     const formatted = travels.map((item) => ({
@@ -226,12 +232,12 @@ export const getAssignSummary = async (req, res) => {
     const data = await AssignTravel.find({ eventId })
       .populate(
         "marketingTeamId",
-        "companyName contactPersonName contactPersonEmail contactPersonMobile"
+        "companyName contactPersonName contactPersonEmail contactPersonMobile",
       )
       .populate("eventAdminId", "name email mobile")
       .populate(
         "otherTeamId",
-        "contactPersonName contactPersonEmail contactPersonMobile"
+        "contactPersonName contactPersonEmail contactPersonMobile",
       )
       .populate({
         path: "travelIds",
@@ -254,6 +260,8 @@ export const getAssignSummary = async (req, res) => {
     const formatted = data.map((item) => {
       return {
         _id: item._id,
+
+        remark: item.remark,
 
         ...(item.marketingTeamId && {
           marketingTeamId: item.marketingTeamId,

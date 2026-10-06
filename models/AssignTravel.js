@@ -30,8 +30,13 @@ const AssignTravelSchema = new mongoose.Schema(
         required: true,
       },
     ],
+
+    remark: {
+      type: String,
+      trim: true,
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 //  Enforce ONLY ONE TEAM
@@ -45,8 +50,8 @@ AssignTravelSchema.pre("validate", function (next) {
   if (count !== 1) {
     return next(
       new Error(
-        "Exactly one of marketingTeamId, eventAdminId, otherTeamId is required"
-      )
+        "Exactly one of marketingTeamId, eventAdminId, otherTeamId is required",
+      ),
     );
   }
 

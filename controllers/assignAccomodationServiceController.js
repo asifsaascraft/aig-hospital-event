@@ -10,7 +10,7 @@ import Accomodation from "../models/Accomodation.js";
 export const assignAccomodationService = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { sponsorId, eventRegistrationId } = req.body;
+    const { sponsorId, eventRegistrationId, remark } = req.body;
 
     // validation
     if (
@@ -50,11 +50,11 @@ export const assignAccomodationService = async (req, res) => {
 
     if (alreadyAssigned.length > 0) {
       const assignedIds = alreadyAssigned.flatMap((doc) =>
-        doc.eventRegistrationId.map((id) => id.toString())
+        doc.eventRegistrationId.map((id) => id.toString()),
       );
 
       const duplicateIds = eventRegistrationId.filter((id) =>
-        assignedIds.includes(id)
+        assignedIds.includes(id),
       );
 
       return res.status(400).json({
@@ -71,8 +71,11 @@ export const assignAccomodationService = async (req, res) => {
         $addToSet: {
           eventRegistrationId: { $each: eventRegistrationId },
         },
+        $set: {
+          remark,
+        },
       },
-      { new: true, upsert: true }
+      { new: true, upsert: true },
     );
 
     return res.status(200).json({
@@ -80,13 +83,11 @@ export const assignAccomodationService = async (req, res) => {
       message: "Accommodation service assigned successfully",
       data: assign,
     });
-
   } catch (error) {
     console.error("Assign accommodation error:", error);
     return res.status(500).json({ message: "Server error" });
   }
 };
-
 
 // =======================
 // GET Assigned Accommodation Services
@@ -103,7 +104,6 @@ export const getAssignedAccomodationServicesByEvent = async (req, res) => {
       success: true,
       data,
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
@@ -125,10 +125,7 @@ export const getMyAssignedAccomodationServices = async (req, res) => {
       sponsorId,
     })
       .populate("sponsorId", "sponsorName contactPersonName email mobile")
-      .populate(
-        "eventRegistrationId",
-        "prefix name email mobile regNum"
-      );
+      .populate("eventRegistrationId", "prefix name email mobile regNum");
 
     if (!data) {
       return res.status(404).json({
@@ -141,7 +138,6 @@ export const getMyAssignedAccomodationServices = async (req, res) => {
       success: true,
       data,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -149,7 +145,6 @@ export const getMyAssignedAccomodationServices = async (req, res) => {
     });
   }
 };
-
 
 // =======================
 // REMOVE Assigned Registration
@@ -186,7 +181,7 @@ export const removeAssignedAccomodationRegistration = async (req, res) => {
     }
 
     assign.eventRegistrationId = assign.eventRegistrationId.filter(
-      (item) => item.toString() !== registrationId
+      (item) => item.toString() !== registrationId,
     );
 
     await assign.save();
@@ -200,13 +195,11 @@ export const removeAssignedAccomodationRegistration = async (req, res) => {
       success: true,
       message: "Removed successfully",
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 // =======================
 // REASSIGN Registration to another Sponsor
@@ -266,7 +259,7 @@ export const reassignAccomodationService = async (req, res) => {
     // remove from current
     await AssignAccomodationService.updateOne(
       { eventId, eventRegistrationId: registrationId },
-      { $pull: { eventRegistrationId: registrationId } }
+      { $pull: { eventRegistrationId: registrationId } },
     );
 
     // add to new sponsor
@@ -275,7 +268,7 @@ export const reassignAccomodationService = async (req, res) => {
       {
         $addToSet: { eventRegistrationId: registrationId },
       },
-      { new: true, upsert: true }
+      { new: true, upsert: true },
     );
 
     // remove empty docs
@@ -289,7 +282,6 @@ export const reassignAccomodationService = async (req, res) => {
       message: "Reassigned successfully",
       data: updated,
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });

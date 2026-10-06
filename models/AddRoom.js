@@ -1,4 +1,3 @@
-
 import mongoose from "mongoose";
 
 const AddRoomSchema = new mongoose.Schema(
@@ -66,13 +65,16 @@ const AddRoomSchema = new mongoose.Schema(
               checkout.getUTCDate() === nextDay.getUTCDate()
             );
           },
-          message:
-            "Checkout date must be exactly one day after check-in date",
+          message: "Checkout date must be exactly one day after check-in date",
         },
       ],
     },
+    remark: {
+      type: String,
+      trim: true,
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Avoid model overwrite during hot-reload

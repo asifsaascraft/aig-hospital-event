@@ -19,17 +19,18 @@ const AssignTravelServiceSchema = new mongoose.Schema(
         type: mongoose.Schema.Types.ObjectId,
         ref: "EventRegistration",
         required: true,
-      }
+      },
     ],
+    remark: {
+      type: String,
+      trim: true,
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 //  Prevent duplicate (event + sponsor)
-AssignTravelServiceSchema.index(
-  { eventId: 1, sponsorId: 1 },
-  { unique: true }
-);
+AssignTravelServiceSchema.index({ eventId: 1, sponsorId: 1 }, { unique: true });
 
 export default mongoose.models.AssignTravelService ||
   mongoose.model("AssignTravelService", AssignTravelServiceSchema);

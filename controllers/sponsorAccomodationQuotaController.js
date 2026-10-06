@@ -407,35 +407,62 @@ export const updateSponsorAccomodationQuota = async (req, res) => {
 // =======================
 // Delete
 // =======================
+
 export const deleteSponsorAccomodationQuota = async (req, res) => {
   try {
     const { id, quotaId } = req.params;
 
-    const record = await SponsorAccomodationQuota.findById(id);
-    if (!record) {
-      return res.status(404).json({
+    // Validate params
+    if (!id) {
+      return res.status(400).json({
         success: false,
-        message: "Accommodation quota record not found",
+        message: "Sponsor accommodation quota id is required",
       });
     }
 
+    if (!quotaId) {
+      return res.status(400).json({
+        success: false,
+        message: "Accommodation quota id is required",
+      });
+    }
+
+    // Find the sponsor accommodation quota record
+    // and make sure this quotaId exists inside the record
+    const record = await SponsorAccomodationQuota.findOne({
+      _id: id,
+      "quotas.quotaId": quotaId,
+    });
+
+    if (!record) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Sponsor accommodation quota record or specified quota not found",
+      });
+    }
+
+    // Find quota index
     const index = record.quotas.findIndex(
-      (q) => q.quotaId.toString() === quotaId,
+      (q) => q.quotaId.toString() === quotaId.toString(),
     );
 
     if (index === -1) {
       return res.status(404).json({
         success: false,
-        message: "Accomodation quota not found in this sponsor record",
+        message: "Accommodation quota not found in this sponsor record",
       });
     }
 
     const quotaItem = record.quotas[index];
 
+    // Restore available rooms
     const room = await AddRoom.findById(quotaId);
+
     if (room) {
       room.availableRooms += quotaItem.numberOfQuota;
 
+      // Never allow available rooms to exceed total rooms
       if (room.availableRooms > room.numberOfRooms) {
         room.availableRooms = room.numberOfRooms;
       }
@@ -443,8 +470,10 @@ export const deleteSponsorAccomodationQuota = async (req, res) => {
       await room.save();
     }
 
+    // Remove quota from sponsor record
     record.quotas.splice(index, 1);
 
+    // If no quotas are left, delete parent document
     if (record.quotas.length === 0) {
       await record.deleteOne();
     } else {
@@ -457,6 +486,7 @@ export const deleteSponsorAccomodationQuota = async (req, res) => {
     });
   } catch (error) {
     console.error("Delete Quota Error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Internal server error while deleting quota",
