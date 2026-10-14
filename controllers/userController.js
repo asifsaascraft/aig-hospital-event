@@ -7,7 +7,6 @@ import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import s3 from "../config/s3.js";
 import sendOtpSMS from "../utils/sendOtpSMS.js";
 
-
 // =======================
 // User Signup (Public)
 // =======================
@@ -246,7 +245,8 @@ export const forgotPasswordUser = async (req, res) => {
       await sendEmailWithTemplate({
         to: user.email,
         name: user.name,
-        templateKey: "2518b.554b0da719bc314.k1.2c1b3910-4140-11f1-8a49-ae9c7e0b6a9f.19dc8a7bf21",
+        templateKey:
+          "2518b.554b0da719bc314.k1.2c1b3910-4140-11f1-8a49-ae9c7e0b6a9f.19dc8a7bf21",
         mergeInfo: {
           name: user.name,
           otp: otp,
@@ -394,10 +394,6 @@ export const updateUserProfile = async (req, res) => {
   }
 };
 
-
-
-
-
 // =======================
 // Get Support Admins
 // =======================
@@ -420,6 +416,42 @@ export const getSupportAdmins = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message,
+    });
+  }
+};
+
+// =======================
+// Check User Email Exists (Public)
+// =======================
+export const checkUserEmailExists = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email || typeof email !== "string" || !email.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const userExists = await User.exists({
+      email: normalizedEmail,
+      role: "user",
+    });
+
+    return res.status(200).json({
+      success: true,
+      exists: !!userExists,
+      message: userExists ? "Email already registered" : "Email is not registered",
+    });
+  } catch (error) {
+    console.error("Check user email error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error while checking email",
     });
   }
 };

@@ -10,6 +10,7 @@ import {
   getUserProfile,
   updateUserProfile,
   getSupportAdmins,
+  checkUserEmailExists,
 } from '../controllers/userController.js'
 
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
@@ -19,6 +20,11 @@ const router = express.Router();
 
 // Middleware to parse cookies
 router.use(cookieParser());
+
+
+// Check whether email exists for role=user (Public)
+router.post("/check-email", checkUserEmailExists);
+
 
 // =======================
 // User Routes
