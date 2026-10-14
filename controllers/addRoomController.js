@@ -3,6 +3,39 @@ import Event from "../models/Event.js";
 import Hotel from "../models/Hotel.js";
 import RoomCategory from "../models/RoomCategory.js";
 
+// Parse date-only values as midnight in Indian Standard Time
+const parseIndianDate = (value) => {
+  if (typeof value !== "string") return null;
+
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!match) return null;
+
+  const [, year, month, day] = match;
+
+  const date = new Date(`${year}-${month}-${day}T00:00:00+05:30`);
+
+  // Reject invalid calendar dates
+  if (
+    date.getUTCFullYear() !== Number(year) &&
+    date.getUTCFullYear() !== Number(year) - 1
+  ) {
+    return null;
+  }
+
+  const istDate = new Date(date.getTime() + 5.5 * 60 * 60 * 1000);
+
+  if (
+    istDate.getUTCFullYear() !== Number(year) ||
+    istDate.getUTCMonth() + 1 !== Number(month) ||
+    istDate.getUTCDate() !== Number(day)
+  ) {
+    return null;
+  }
+
+  return date;
+};
+
 const isExactlyOneDayStay = (checkin, checkout) => {
   if (!checkin || !checkout) return false;
 
@@ -47,38 +80,28 @@ export const createAddRoom = async (req, res) => {
         message: "Hotel and Room Category are required",
       });
     }
-    // ===============================
-    // Required check
-    // ===============================
+
     if (!checkinDateTime || !checkoutDateTime) {
       return res.status(400).json({
-        message: "Check-in and check-out date time are required",
+        success: false,
+        message: "Check-in and check-out dates are required",
       });
     }
 
-    // ===============================
-    // Validate datetime format
-    // ===============================
-    if (isNaN(new Date(checkinDateTime)) || isNaN(new Date(checkoutDateTime))) {
+    const parsedCheckinDateTime = parseIndianDate(checkinDateTime);
+    const parsedCheckoutDateTime = parseIndianDate(checkoutDateTime);
+
+    if (!parsedCheckinDateTime || !parsedCheckoutDateTime) {
       return res.status(400).json({
-        message: "Invalid date time format",
+        success: false,
+        message: "Invalid date format. Use YYYY-MM-DD",
       });
     }
-
-    // ===============================
-    // Convert datetime
-    // ===============================
-    const parsedCheckinDateTime = new Date(checkinDateTime);
-    const parsedCheckoutDateTime = new Date(checkoutDateTime);
-
-    // ===============================
-    // Validate checkout > checkin
-    // ===============================
 
     if (parsedCheckoutDateTime <= parsedCheckinDateTime) {
       return res.status(400).json({
         success: false,
-        message: "Checkout date time must be greater than checkin date time",
+        message: "Checkout date must be greater than check-in date",
       });
     }
 
@@ -268,35 +291,28 @@ export const updateAddRoom = async (req, res) => {
       });
     }
 
-    // ===============================
-    // Validate datetime format
-    // ===============================
-    if (
-      (checkinDateTime && isNaN(new Date(checkinDateTime))) ||
-      (checkoutDateTime && isNaN(new Date(checkoutDateTime)))
-    ) {
+    const parsedCheckinDateTime = checkinDateTime
+      ? parseIndianDate(checkinDateTime)
+      : existingRoom.checkinDateTime;
+
+    const parsedCheckoutDateTime = checkoutDateTime
+      ? parseIndianDate(checkoutDateTime)
+      : existingRoom.checkoutDateTime;
+
+    if (!parsedCheckinDateTime || !parsedCheckoutDateTime) {
       return res.status(400).json({
-        message: "Invalid date time format",
+        success: false,
+        message: "Invalid date format. Use YYYY-MM-DD",
       });
     }
 
-    // ===============================
-    // Prepare final values
-    // ===============================
-    const finalCheckinDateTime = checkinDateTime
-      ? new Date(checkinDateTime)
-      : existingRoom.checkinDateTime;
+    const finalCheckinDateTime = parsedCheckinDateTime;
+    const finalCheckoutDateTime = parsedCheckoutDateTime;
 
-    const finalCheckoutDateTime = checkoutDateTime
-      ? new Date(checkoutDateTime)
-      : existingRoom.checkoutDateTime;
-
-    // ===============================
-    // Validate checkout > checkin
-    // ===============================
     if (finalCheckoutDateTime <= finalCheckinDateTime) {
       return res.status(400).json({
-        message: "Checkout date time must be greater than checkin date time",
+        success: false,
+        message: "Checkout date must be greater than check-in date",
       });
     }
 
