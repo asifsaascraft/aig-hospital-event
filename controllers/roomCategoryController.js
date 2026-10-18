@@ -6,7 +6,7 @@ import RoomCategory from "../models/RoomCategory.js";
 export const getRoomCategories = async (req, res) => {
   try {
     const roomCategories = await RoomCategory.find()
-      .populate("hotelId", "hotelName")
+      .populate("hotelId", "hotelName checkinTime checkoutTime")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -30,7 +30,7 @@ export const getActiveRoomCategories = async (req, res) => {
     const roomCategories = await RoomCategory.find({
       status: "Active",
     })
-      .populate("hotelId", "hotelName")
+      .populate("hotelId", "hotelName checkinTime checkoutTime")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -65,7 +65,7 @@ export const getRoomCategoriesByHotelId = async (req, res) => {
       hotelId,
       status: "Active",
     })
-      .populate("hotelId", "hotelName")
+      .populate("hotelId", "hotelName checkinTime checkoutTime")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -91,7 +91,7 @@ export const getRoomCategoryById = async (req, res) => {
   try {
     const roomCategory = await RoomCategory.findById(req.params.id).populate(
       "hotelId",
-      "hotelName",
+      "hotelName checkinTime checkoutTime",
     );
 
     if (!roomCategory) {
