@@ -1,7 +1,7 @@
 // controllers/hotelController.js
 import Hotel from "../models/Hotel.js";
 
-// Convert HH:mm into a Date using 1970-01-01 as the reference date
+// Convert Indian HH:mm time to UTC for database storage
 const parseTime = (value) => {
   if (typeof value !== "string") return null;
 
@@ -11,7 +11,18 @@ const parseTime = (value) => {
 
   const [, hours, minutes] = match;
 
-  return new Date(Date.UTC(1970, 0, 1, Number(hours), Number(minutes), 0, 0));
+  // Frontend time is interpreted as IST (UTC+05:30)
+  return new Date(
+    Date.UTC(
+      1970,
+      0,
+      1,
+      Number(hours),
+      Number(minutes),
+      0,
+      0
+    ) - 330 * 60 * 1000
+  );
 };
 
 // =======================
