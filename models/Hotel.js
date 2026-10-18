@@ -17,13 +17,13 @@ const HotelSchema = new mongoose.Schema(
       type: String,
       required: [true, "Hotel image is required"], // store file path or URL
     },
-    checkinTime: {  // 13:00
-      type: String,
-      required: [true, "checking time is required"],
+    checkinTime: {
+      type: Date,
+      required: [true, "Check-in time is required"],
     },
-    checkoutTime: { // 11:00
-      type: String,
-      required: [true, "checkout time is required"],
+    checkoutTime: {
+      type: Date,
+      required: [true, "Check-out time is required"],
     },
     country: {
       type: String,
@@ -65,11 +65,8 @@ const HotelSchema = new mongoose.Schema(
       required: [true, "Nearest Metro Station is required"],
     },
   },
-  { timestamps: true } // adds createdAt and updatedAt automatically
+  { timestamps: true }, // adds createdAt and updatedAt automatically
 );
 
 // Avoid model overwrite during hot-reload
-export default mongoose.models.Hotel ||
-  mongoose.model("Hotel", HotelSchema);
-
-
+export default mongoose.models.Hotel || mongoose.model("Hotel", HotelSchema);

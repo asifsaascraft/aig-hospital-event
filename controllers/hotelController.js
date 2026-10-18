@@ -1,6 +1,19 @@
 // controllers/hotelController.js
 import Hotel from "../models/Hotel.js";
 
+// Convert HH:mm into a Date using 1970-01-01 as the reference date
+const parseTime = (value) => {
+  if (typeof value !== "string") return null;
+
+  const match = value.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+
+  if (!match) return null;
+
+  const [, hours, minutes] = match;
+
+  return new Date(Date.UTC(1970, 0, 1, Number(hours), Number(minutes), 0, 0));
+};
+
 // =======================
 // Get all hotels (public for logged-in users)
 // =======================
@@ -22,8 +35,9 @@ export const getHotels = async (req, res) => {
 // =======================
 export const getActiveHotels = async (req, res) => {
   try {
-    const hotels = await Hotel.find({ status: "Active" })
-      .sort({ createdAt: -1 });
+    const hotels = await Hotel.find({ status: "Active" }).sort({
+      createdAt: -1,
+    });
 
     res.status(200).json({
       success: true,
@@ -48,7 +62,9 @@ export const getHotelById = async (req, res) => {
     const { id } = req.params;
     const hotel = await Hotel.findById(id);
     if (!hotel) {
-      return res.status(404).json({ success: false, message: "Hotel not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Hotel not found" });
     }
     res.json({ success: true, data: hotel });
   } catch (error) {
@@ -108,11 +124,20 @@ export const createHotel = async (req, res) => {
       });
     }
 
+    const parsedCheckinTime = parseTime(checkinTime);
+    const parsedCheckoutTime = parseTime(checkoutTime);
+
+    if (!parsedCheckinTime || !parsedCheckoutTime) {
+      return res.status(400).json({
+        success: false,
+        message: "Check-in and check-out times must be in HH:mm format",
+      });
+    }
     const newHotel = await Hotel.create({
       hotelName,
       hotelAddress,
-      checkinTime,
-      checkoutTime,
+      checkinTime: parsedCheckinTime,
+      checkoutTime: parsedCheckoutTime,
       hotelImage: req.file.location,
       country,
       state,
@@ -147,18 +172,30 @@ export const updateHotel = async (req, res) => {
     const { id } = req.params;
     const updatedData = { ...req.body };
 
-    if (updatedData.checkinTime && !updatedData.checkinTime.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Check-in time cannot be empty",
-      });
+    if (updatedData.checkinTime !== undefined) {
+      const parsedCheckinTime = parseTime(updatedData.checkinTime);
+
+      if (!parsedCheckinTime) {
+        return res.status(400).json({
+          success: false,
+          message: "Check-in time must be in HH:mm format",
+        });
+      }
+
+      updatedData.checkinTime = parsedCheckinTime;
     }
 
-    if (updatedData.checkoutTime && !updatedData.checkoutTime.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Check-out time cannot be empty",
-      });
+    if (updatedData.checkoutTime !== undefined) {
+      const parsedCheckoutTime = parseTime(updatedData.checkoutTime);
+
+      if (!parsedCheckoutTime) {
+        return res.status(400).json({
+          success: false,
+          message: "Check-out time must be in HH:mm format",
+        });
+      }
+
+      updatedData.checkoutTime = parsedCheckoutTime;
     }
 
     // If new image uploaded
@@ -187,7 +224,7 @@ export const updateHotel = async (req, res) => {
     if (updatedData.status === "Inactive") {
       await RoomCategory.updateMany(
         { hotel: id },
-        { $set: { status: "Inactive" } }
+        { $set: { status: "Inactive" } },
       );
     }
 
@@ -196,7 +233,6 @@ export const updateHotel = async (req, res) => {
       message: "Hotel updated successfully",
       data: updatedHotel,
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -216,7 +252,9 @@ export const deleteHotel = async (req, res) => {
     const hotel = await Hotel.findByIdAndDelete(id);
 
     if (!hotel) {
-      return res.status(404).json({ success: false, message: "Hotel not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Hotel not found" });
     }
 
     res.json({ success: true, message: "Hotel deleted successfully" });
