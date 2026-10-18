@@ -3,50 +3,18 @@ import Event from "../models/Event.js";
 import Hotel from "../models/Hotel.js";
 import RoomCategory from "../models/RoomCategory.js";
 
-// Parse date-only values as midnight in Indian Standard Time
-const parseIndianDate = (value) => {
-  if (typeof value !== "string") return null;
-
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-
-  if (!match) return null;
-
-  const [, year, month, day] = match;
-
-  const date = new Date(`${year}-${month}-${day}T00:00:00+05:30`);
-
-  // Reject invalid calendar dates
-  if (
-    date.getUTCFullYear() !== Number(year) &&
-    date.getUTCFullYear() !== Number(year) - 1
-  ) {
+const parseFullDateTime = (value) => {
+  if (typeof value !== "string" || !value.trim()) {
     return null;
   }
 
-  const istDate = new Date(date.getTime() + 5.5 * 60 * 60 * 1000);
+  const date = new Date(value);
 
-  if (
-    istDate.getUTCFullYear() !== Number(year) ||
-    istDate.getUTCMonth() + 1 !== Number(month) ||
-    istDate.getUTCDate() !== Number(day)
-  ) {
+  if (Number.isNaN(date.getTime())) {
     return null;
   }
 
   return date;
-};
-
-const isExactlyOneDayStay = (checkin, checkout) => {
-  if (!checkin || !checkout) return false;
-
-  const nextDay = new Date(checkin);
-  nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-
-  return (
-    checkout.getUTCFullYear() === nextDay.getUTCFullYear() &&
-    checkout.getUTCMonth() === nextDay.getUTCMonth() &&
-    checkout.getUTCDate() === nextDay.getUTCDate()
-  );
 };
 
 // =======================
@@ -81,27 +49,28 @@ export const createAddRoom = async (req, res) => {
       });
     }
 
+
     if (!checkinDateTime || !checkoutDateTime) {
       return res.status(400).json({
         success: false,
-        message: "Check-in and check-out dates are required",
+        message: "Check-in and check-out date-time are required",
       });
     }
 
-    const parsedCheckinDateTime = parseIndianDate(checkinDateTime);
-    const parsedCheckoutDateTime = parseIndianDate(checkoutDateTime);
+    const parsedCheckinDateTime = parseFullDateTime(checkinDateTime);
+    const parsedCheckoutDateTime = parseFullDateTime(checkoutDateTime);
 
     if (!parsedCheckinDateTime || !parsedCheckoutDateTime) {
       return res.status(400).json({
         success: false,
-        message: "Invalid date format. Use YYYY-MM-DD",
+        message: "Invalid check-in or check-out date-time format",
       });
     }
 
     if (parsedCheckoutDateTime <= parsedCheckinDateTime) {
       return res.status(400).json({
         success: false,
-        message: "Checkout date must be greater than check-in date",
+        message: "Checkout date-time must be greater than check-in date-time",
       });
     }
 
@@ -292,17 +261,17 @@ export const updateAddRoom = async (req, res) => {
     }
 
     const parsedCheckinDateTime = checkinDateTime
-      ? parseIndianDate(checkinDateTime)
+      ? parseFullDateTime(checkinDateTime)
       : existingRoom.checkinDateTime;
 
     const parsedCheckoutDateTime = checkoutDateTime
-      ? parseIndianDate(checkoutDateTime)
+      ? parseFullDateTime(checkoutDateTime)
       : existingRoom.checkoutDateTime;
 
     if (!parsedCheckinDateTime || !parsedCheckoutDateTime) {
       return res.status(400).json({
         success: false,
-        message: "Invalid date format. Use YYYY-MM-DD",
+        message: "Invalid check-in or check-out date-time format",
       });
     }
 
@@ -312,7 +281,7 @@ export const updateAddRoom = async (req, res) => {
     if (finalCheckoutDateTime <= finalCheckinDateTime) {
       return res.status(400).json({
         success: false,
-        message: "Checkout date must be greater than check-in date",
+        message: "Checkout date-time must be greater than check-in date-time",
       });
     }
 
