@@ -13,8 +13,20 @@ const parseFullDateTime = (value) => {
   if (Number.isNaN(date.getTime())) {
     return null;
   }
-
   return date;
+};
+
+const isExactlyOneDayStay = (checkin, checkout) => {
+  if (!checkin || !checkout) return false;
+
+  const nextDay = new Date(checkin);
+  nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+
+  return (
+    checkout.getUTCFullYear() === nextDay.getUTCFullYear() &&
+    checkout.getUTCMonth() === nextDay.getUTCMonth() &&
+    checkout.getUTCDate() === nextDay.getUTCDate()
+  );
 };
 
 // =======================
@@ -48,7 +60,6 @@ export const createAddRoom = async (req, res) => {
         message: "Hotel and Room Category are required",
       });
     }
-
 
     if (!checkinDateTime || !checkoutDateTime) {
       return res.status(400).json({
