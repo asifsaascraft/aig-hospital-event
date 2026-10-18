@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Accomodation from "../models/Accomodation.js";
 import AddRoom from "../models/AddRoom.js";
 import SponsorAccomodationQuota from "../models/SponsorAccomodationQuota.js";
@@ -12,70 +13,435 @@ import Sponsor from "../models/Sponsor.js";
 
 const HOTEL_TIMEZONE = "Asia/Kolkata";
 
-const getDateKey = (date) => {
-  return new Date(date).toISOString().split("T")[0];
-};
+// Convert a stored UTC Date into its Indian calendar date (YYYY-MM-DD).
+const getDateKey = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
 
-const formatDateIST = (date) => {
-  return new Intl.DateTimeFormat("en-IN", {
-    timeZone: HOTEL_TIMEZONE,
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(date));
-};
-
-/**
- * Convert hotel's HH:mm time into an actual Date
- * on the same calendar date.
- *
- * Hotel times are stored as local Indian time.
- */
-const applyHotelTime = (date, time, fieldName) => {
-  if (!time || !/^\d{2}:\d{2}$/.test(time)) {
-    throw new Error(`Invalid hotel ${fieldName}. Expected HH:mm format`);
-  }
-
-  const [hours, minutes] = time.split(":").map(Number);
-
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
-    throw new Error(`Invalid hotel ${fieldName}. Expected HH:mm format`);
-  }
-
-  const dateParts = new Intl.DateTimeFormat("en-CA", {
+  const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: HOTEL_TIMEZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).formatToParts(new Date(date));
+  }).formatToParts(date);
 
-  const year = Number(dateParts.find((part) => part.type === "year").value);
-
-  const month = Number(dateParts.find((part) => part.type === "month").value);
-
-  const day = Number(dateParts.find((part) => part.type === "day").value);
-
-  // IST = UTC + 05:30
-  return new Date(
-    Date.UTC(year, month - 1, day, hours - 5, minutes - 30, 0, 0),
-  );
+  const part = (type) => parts.find((item) => item.type === type)?.value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
 };
 
-const getDatesBetween = (start, end) => {
+// Accept ISO timestamps and common Indian date/time formats.
+// Date/time strings without an explicit timezone are interpreted as IST.
+const parseDateTimeIST = (value) => {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : new Date(value);
+  }
+  if (typeof value !== "string" || !value.trim()) return null;
+
+  const input = value.trim();
+  const indianMatch = input.match(
+    /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/,
+  );
+
+  if (indianMatch) {
+    const [
+      ,
+      dayText,
+      monthText,
+      yearText,
+      hourText = "0",
+      minuteText = "0",
+      secondText = "0",
+    ] = indianMatch;
+
+    const day = Number(dayText);
+    const month = Number(monthText);
+    const year = Number(yearText);
+    const hour = Number(hourText);
+    const minute = Number(minuteText);
+    const second = Number(secondText);
+
+    if (
+      month < 1 ||
+      month > 12 ||
+      day < 1 ||
+      day > 31 ||
+      hour < 0 ||
+      hour > 23 ||
+      minute < 0 ||
+      minute > 59 ||
+      second < 0 ||
+      second > 59
+    ) {
+      return null;
+    }
+
+    const result = new Date(
+      Date.UTC(year, month - 1, day, hour - 5, minute - 30, second),
+    );
+
+    // Reject impossible dates such as 31/02/2026.
+    const check = new Date(Date.UTC(year, month - 1, day));
+
+    if (
+      check.getUTCFullYear() !== year ||
+      check.getUTCMonth() !== month - 1 ||
+      check.getUTCDate() !== day
+    ) {
+      return null;
+    }
+
+    return result;
+  }
+
+  // A timezone-less ISO date/time is treated as Indian time, not server-local time.
+  const timezoneLessISO =
+    /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?)?$/.test(
+      input,
+    );
+
+  const normalized = timezoneLessISO
+    ? `${input.replace(" ", "T")}${
+        input.length === 10 ? "T00:00:00" : ""
+      }+05:30`
+    : input;
+
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const formatDateIST = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Invalid date/time";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: HOTEL_TIMEZONE,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
+};
+
+const addDaysToDateKey = (dateKey, amount) => {
+  const date = new Date(`${dateKey}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + amount);
+  return date.toISOString().slice(0, 10);
+};
+
+const getDatesBetweenKeys = (startKey, endKey) => {
   const dates = [];
+  let current = startKey;
 
-  let current = new Date(start);
-
-  while (current <= end) {
-    dates.push(new Date(current));
-
-    current.setUTCDate(current.getUTCDate() + 1);
+  while (current && current <= endKey) {
+    dates.push(current);
+    current = addDaysToDateKey(current, 1);
   }
 
   return dates;
+};
+
+const badRequest = (message) => ({
+  statusCode: 400,
+  body: { success: false, message },
+});
+
+const notFound = (message) => ({
+  statusCode: 404,
+  body: { success: false, message },
+});
+
+// Shared create/update validation. A sponsor can book only from its assigned
+// quota, for the selected hotel + room category, and only while quota remains.
+const prepareAccommodationBooking = async ({
+  eventId,
+  sponsorId,
+  payload,
+  ignoreBookingId = null,
+}) => {
+  const {
+    eventRegistrationId,
+    checkinDateTime,
+    checkoutDateTime,
+    hotelId,
+    roomCategoryId,
+    roomType,
+    guestName,
+    otherEventRegistrationId,
+    remark,
+  } = payload;
+
+  if (!mongoose.isValidObjectId(eventId)) {
+    return badRequest("Invalid event ID");
+  }
+
+  if (!eventRegistrationId || !mongoose.isValidObjectId(eventRegistrationId)) {
+    return badRequest("A valid delegate registration is required");
+  }
+
+  if (!hotelId || !mongoose.isValidObjectId(hotelId)) {
+    return badRequest("A valid hotel selection is required");
+  }
+
+  if (!roomCategoryId || !mongoose.isValidObjectId(roomCategoryId)) {
+    return badRequest("A valid room category selection is required");
+  }
+
+  if (
+    !roomType ||
+    !["Single Occupancy", "Double Occupancy", "Twin Sharing"].includes(roomType)
+  ) {
+    return badRequest("Please select a valid room type");
+  }
+
+  if (roomType === "Double Occupancy" && !String(guestName || "").trim()) {
+    return badRequest("Guest name is required for Double Occupancy");
+  }
+
+  if (roomType === "Twin Sharing") {
+    if (
+      !otherEventRegistrationId ||
+      !mongoose.isValidObjectId(otherEventRegistrationId)
+    ) {
+      return badRequest("A valid second delegate is required for Twin Sharing");
+    }
+
+    if (
+      eventRegistrationId.toString() === otherEventRegistrationId.toString()
+    ) {
+      return badRequest("You cannot select the same delegate for Twin Sharing");
+    }
+  }
+
+  if (!checkinDateTime || !checkoutDateTime) {
+    return badRequest("Check-in and check-out date/time are required");
+  }
+
+  const checkin = parseDateTimeIST(checkinDateTime);
+  const checkout = parseDateTimeIST(checkoutDateTime);
+
+  if (!checkin || !checkout) {
+    return badRequest(
+      "Invalid date/time. Use DD/MM/YYYY HH:mm (Indian time) or an ISO date-time with timezone.",
+    );
+  }
+
+  if (checkin >= checkout) {
+    return badRequest(
+      `Check-out (${formatDateIST(checkout)}) must be later than check-in (${formatDateIST(checkin)}).`,
+    );
+  }
+
+  const hotel = await Hotel.findOne({ _id: hotelId, status: "Active" });
+
+  if (!hotel) {
+    return badRequest("Selected hotel is not active or does not exist");
+  }
+
+  const category = await RoomCategory.findOne({
+    _id: roomCategoryId,
+    hotelId,
+    status: "Active",
+  });
+
+  if (!category) {
+    return badRequest(
+      "Selected room category is not active or does not belong to this hotel",
+    );
+  }
+
+  const quotaRecord = await SponsorAccomodationQuota.findOne({
+    eventId,
+    sponsorId,
+  });
+
+  if (!quotaRecord || !quotaRecord.quotas?.length) {
+    return badRequest(
+      "No accommodation quota has been assigned to your sponsor account",
+    );
+  }
+
+  // Restrict all possible nights to this sponsor's quota items for the chosen
+  // hotel and category. AddRoom stores the standard check-in/check-out instants.
+  const eligibleQuotaItems = quotaRecord.quotas.filter(
+    (item) =>
+      item.quotaId &&
+      item.roomCategoryId?.toString() === roomCategoryId.toString(),
+  );
+
+  const quotaRoomIds = eligibleQuotaItems.map((item) => item.quotaId);
+
+  const rooms = await AddRoom.find({
+    _id: { $in: quotaRoomIds },
+    eventId,
+    hotelId,
+    roomCategoryId,
+  }).sort({ checkinDateTime: 1 });
+
+  const roomByDate = new Map();
+
+  for (const room of rooms) {
+    const key = getDateKey(room.checkinDateTime);
+    if (key && !roomByDate.has(key)) {
+      roomByDate.set(key, room);
+    }
+  }
+
+  const checkinKey = getDateKey(checkin);
+  const checkoutKey = getDateKey(checkout);
+
+  if (!checkinKey || !checkoutKey) {
+    return badRequest("Could not interpret the selected Indian dates");
+  }
+
+  // Each AddRoom record represents one night: its check-in date is the quota date.
+  const normalNightKeys = getDatesBetweenKeys(
+    checkinKey,
+    addDaysToDateKey(checkoutKey, -1),
+  );
+
+  if (!normalNightKeys.length) {
+    return badRequest("The accommodation must include at least one night");
+  }
+
+  for (const key of normalNightKeys) {
+    if (!roomByDate.has(key)) {
+      return badRequest(
+        `No assigned room quota for ${key.split("-").reverse().join("/")}. Hotel: ${hotel.hotelName}; room category: ${category.roomCategoryName}.`,
+      );
+    }
+  }
+
+  const firstNightRoom = roomByDate.get(normalNightKeys[0]);
+  const lastNightRoom = roomByDate.get(
+    normalNightKeys[normalNightKeys.length - 1],
+  );
+
+  const requiredDateKeys = [...normalNightKeys];
+
+  // Early check-in: if arrival is earlier than the standard time stored in
+  // AddRoom for the first night, the previous night's quota is also required.
+  if (checkin < firstNightRoom.checkinDateTime) {
+    const previousKey = addDaysToDateKey(checkinKey, -1);
+
+    if (!roomByDate.has(previousKey)) {
+      return badRequest(
+        `Early check-in requested for ${formatDateIST(checkin)} is before the standard check-in time ${formatDateIST(firstNightRoom.checkinDateTime)}. An additional room quota is required for ${previousKey.split("-").reverse().join("/")}, but your sponsor has no assigned quota for that date in this hotel and room category.`,
+      );
+    }
+
+    requiredDateKeys.unshift(previousKey);
+  }
+
+  // Late checkout: compare against the checkout instant stored on the last
+  // normal night in AddRoom. If late, the checkout calendar date needs quota too.
+  if (checkout > lastNightRoom.checkoutDateTime) {
+    const extraCheckoutKey = checkoutKey;
+
+    if (!roomByDate.has(extraCheckoutKey)) {
+      return badRequest(
+        `Late check-out requested for ${formatDateIST(checkout)} is after the standard check-out time ${formatDateIST(lastNightRoom.checkoutDateTime)}. An additional room quota is required for ${extraCheckoutKey.split("-").reverse().join("/")}, but your sponsor has no assigned quota for that date in this hotel and room category.`,
+      );
+    }
+
+    requiredDateKeys.push(extraCheckoutKey);
+  }
+
+  // Check duplicate delegate bookings, ignoring the current record during update.
+  const delegateIds = [
+    eventRegistrationId.toString(),
+    ...(roomType === "Twin Sharing"
+      ? [otherEventRegistrationId.toString()]
+      : []),
+  ];
+
+  const duplicateConditions = delegateIds.flatMap((delegateId) => [
+    { eventRegistrationId: delegateId },
+    { otherEventRegistrationId: delegateId },
+  ]);
+
+  const duplicate = await Accomodation.findOne({
+    eventId,
+    ...(ignoreBookingId ? { _id: { $ne: ignoreBookingId } } : {}),
+    $or: duplicateConditions,
+  });
+
+  if (duplicate) {
+    return badRequest(
+      "One of the selected delegates already has an accommodation booking for this event",
+    );
+  }
+
+  const accomodationDays = [];
+
+  for (const dateKey of [...new Set(requiredDateKeys)]) {
+    const room = roomByDate.get(dateKey);
+
+    if (!room) {
+      return badRequest(
+        `No assigned room quota for ${dateKey.split("-").reverse().join("/")}, hotel ${hotel.hotelName}, category ${category.roomCategoryName}.`,
+      );
+    }
+
+    const quotaItem = eligibleQuotaItems.find(
+      (item) => item.quotaId.toString() === room._id.toString(),
+    );
+
+    if (
+      !quotaItem ||
+      quotaItem.roomCategoryId?.toString() !== roomCategoryId.toString()
+    ) {
+      return badRequest(
+        `No sponsor quota is assigned for ${dateKey.split("-").reverse().join("/")}, category ${category.roomCategoryName}.`,
+      );
+    }
+
+    const used = await Accomodation.countDocuments({
+      eventId,
+      sponsorId,
+      ...(ignoreBookingId ? { _id: { $ne: ignoreBookingId } } : {}),
+      accomodationDays: {
+        $elemMatch: {
+          date: dateKey,
+          quotaId: room._id,
+          roomCategoryId,
+        },
+      },
+    });
+
+    if (used >= quotaItem.numberOfQuota) {
+      return badRequest(
+        `Your ${category.roomCategoryName} quota is full for ${dateKey.split("-").reverse().join("/")}. Assigned quota: ${quotaItem.numberOfQuota}; already booked: ${used}.`,
+      );
+    }
+
+    accomodationDays.push({
+      date: dateKey,
+      quotaId: room._id,
+      hotelId: room.hotelId,
+      roomCategoryId: room.roomCategoryId,
+    });
+  }
+
+  return {
+    data: {
+      eventId,
+      sponsorId,
+      eventRegistrationId,
+      hotelId,
+      roomCategoryId,
+      roomType,
+      guestName:
+        roomType === "Double Occupancy" ? String(guestName).trim() : null,
+      otherEventRegistrationId:
+        roomType === "Twin Sharing" ? otherEventRegistrationId : null,
+      checkinDateTime: checkin,
+      checkoutDateTime: checkout,
+      accomodationDays,
+      remark,
+    },
+  };
 };
 
 // =======================
@@ -86,446 +452,17 @@ export const createAccomodation = async (req, res) => {
     const { eventId } = req.params;
     const sponsorId = req.sponsor._id;
 
-    const {
-      eventRegistrationId,
-      checkinDateTime,
-      checkoutDateTime,
-      hotelId,
-      roomCategoryId,
-      roomType,
-      guestName,
-      otherEventRegistrationId,
-      remark,
-    } = req.body;
-
-    // ===============================
-    // BASIC VALIDATION
-    // ===============================
-    if (!hotelId) {
-      return res.status(400).json({
-        success: false,
-        message: "Hotel selection is required",
-      });
-    }
-    // ===============================
-    // ROOM CATEGORY VALIDATION
-    // ===============================
-    if (!roomCategoryId) {
-      return res.status(400).json({
-        success: false,
-        message: "Room category selection is required",
-      });
-    }
-
-    // ===============================
-    // HOTEL VALIDATION
-    // ===============================
-    const hotel = await Hotel.findOne({
-      _id: hotelId,
-      status: "Active",
-    });
-
-    if (!hotel) {
-      return res.status(400).json({
-        success: false,
-        message: "Selected hotel is not available",
-      });
-    }
-
-    if (!hotel.checkinTime || !hotel.checkoutTime) {
-      return res.status(400).json({
-        success: false,
-        message: "Hotel check-in and check-out time are not configured",
-      });
-    }
-
-    const roomCategory = await RoomCategory.findOne({
-      _id: roomCategoryId,
-      hotelId,
-      status: "Active",
-    });
-
-    if (!roomCategory) {
-      return res.status(400).json({
-        success: false,
-        message: "Selected room category is not available for this hotel",
-      });
-    }
-
-    // ===============================
-    // ROOM TYPE VALIDATION
-    // ===============================
-    if (!roomType) {
-      return res.status(400).json({
-        success: false,
-        message: "Room type is required",
-      });
-    }
-
-    if (roomType === "Double Occupancy" && !guestName) {
-      return res.status(400).json({
-        success: false,
-        message: "Guest name is required for Double Occupancy",
-      });
-    }
-
-    if (roomType === "Twin Sharing" && !otherEventRegistrationId) {
-      return res.status(400).json({
-        success: false,
-        message: "Other delegate is required for Twin Sharing",
-      });
-    }
-
-    if (
-      roomType === "Twin Sharing" &&
-      eventRegistrationId === otherEventRegistrationId
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "You cannot select the same delegate for Twin Sharing",
-      });
-    }
-
-    // ===============================
-    // PREVENT DUPLICATE BOOKING (FULL CHECK)
-    // ===============================
-    const existingBooking = await Accomodation.findOne({
-      eventId,
-      ...(req._skipBookingId && { _id: { $ne: req._skipBookingId } }),
-      $or: [
-        { eventRegistrationId },
-        { otherEventRegistrationId: eventRegistrationId },
-        ...(otherEventRegistrationId
-          ? [
-              { eventRegistrationId: otherEventRegistrationId },
-              { otherEventRegistrationId },
-            ]
-          : []),
-      ],
-    });
-
-    if (existingBooking) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "One of the selected delegates already has an accommodation booking",
-      });
-    }
-
-    if (!checkinDateTime || !checkoutDateTime) {
-      return res.status(400).json({
-        success: false,
-        message: "Checkin and checkout datetime are required",
-      });
-    }
-
-    const checkin = new Date(checkinDateTime);
-    const checkout = new Date(checkoutDateTime);
-
-    if (isNaN(checkin) || isNaN(checkout)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid checkin or checkout datetime",
-      });
-    }
-
-    if (checkin >= checkout) {
-      return res.status(400).json({
-        success: false,
-        message: "Checkout date must be after checkin date",
-      });
-    }
-
-    // ===============================
-    // GET SPONSOR QUOTAS
-    // ===============================
-    const quotaRecord = await SponsorAccomodationQuota.findOne({
+    const result = await prepareAccommodationBooking({
       eventId,
       sponsorId,
+      payload: req.body,
     });
 
-    if (!quotaRecord) {
-      return res.status(400).json({
-        success: false,
-        message: "No accommodation quota assigned",
-      });
+    if (result.statusCode) {
+      return res.status(result.statusCode).json(result.body);
     }
 
-    // ===============================
-    // LOAD ROOMS OF THIS HOTEL ONLY
-    // ===============================
-    const roomIds = quotaRecord.quotas
-      .filter(
-        (q) =>
-          q.roomCategoryId &&
-          q.roomCategoryId.toString() === roomCategoryId.toString(),
-      )
-      .map((q) => q.quotaId);
-
-    const rooms = await AddRoom.find({
-      _id: { $in: roomIds },
-      hotelId,
-      roomCategoryId,
-    })
-      .populate("hotelId")
-      .populate("roomCategoryId")
-      .sort({
-        checkinDateTime: 1,
-      });
-
-    if (rooms.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No quota available for selected hotel",
-      });
-    }
-
-    const startDate = new Date(checkin);
-    startDate.setUTCHours(0, 0, 0, 0);
-
-    const endDate = new Date(checkout);
-    endDate.setUTCHours(0, 0, 0, 0);
-
-    // =====================================================
-    // HOTEL STANDARD CHECK-IN / CHECK-OUT TIME
-    // =====================================================
-
-    // Standard check-in time is hotel's configured checkinTime
-    const standardCheckin = applyHotelTime(
-      checkin,
-      hotel.checkinTime,
-      "check-in time",
-    );
-
-    // Standard checkout time is hotel's configured checkoutTime
-    const standardCheckout = applyHotelTime(
-      checkout,
-      hotel.checkoutTime,
-      "check-out time",
-    );
-
-    // =====================================================
-    // EARLY CHECK-IN
-    // =====================================================
-    // Example:
-    // Hotel check-in = 13:00
-    //
-    // Guest requests:
-    // 27 Oct 10:00
-    //
-    // Then guest is arriving before standard check-in,
-    // therefore previous day's quota is required.
-    //
-    // 26 Oct quota + 27 Oct quota
-    // =====================================================
-
-    if (checkin < standardCheckin) {
-      const previousDate = new Date(startDate);
-
-      previousDate.setUTCDate(previousDate.getUTCDate() - 1);
-
-      const previousDayRoom = rooms.find(
-        (r) =>
-          getDateKey(r.checkinDateTime) === getDateKey(previousDate) &&
-          r.hotelId._id.toString() === hotelId.toString() &&
-          r.roomCategoryId._id.toString() === roomCategoryId.toString(),
-      );
-
-      if (!previousDayRoom) {
-        return res.status(400).json({
-          success: false,
-          message:
-            `Early check-in at ${hotel.checkinTime} requires ` +
-            `an additional room quota for ` +
-            `${getDateKey(previousDate)}. ` +
-            `No quota is available for that date.`,
-        });
-      }
-
-      // Consume previous day's quota also.
-      startDate.setUTCDate(startDate.getUTCDate() - 1);
-    }
-
-    // =====================================================
-    // NORMAL CHECKOUT NIGHT LOGIC
-    // =====================================================
-    //
-    // Example:
-    // 27 Oct 13:00 → 29 Oct 11:00
-    //
-    // Quota required:
-    // 27 Oct
-    // 28 Oct
-    //
-    // Checkout at exactly hotel checkout time does NOT
-    // consume 29 Oct quota.
-    // =====================================================
-
-    endDate.setUTCDate(endDate.getUTCDate() - 1);
-
-    // =====================================================
-    // LATE CHECKOUT
-    // =====================================================
-    // Example:
-    // Hotel checkout = 11:00
-    //
-    // Guest requests:
-    // 29 Oct 14:00
-    //
-    // Therefore 29 Oct quota is additionally required.
-    // =====================================================
-
-    if (checkout > standardCheckout) {
-      // Add checkout day quota
-      endDate.setUTCDate(endDate.getUTCDate() + 1);
-
-      const extraCheckoutRoom = rooms.find(
-        (r) =>
-          getDateKey(r.checkinDateTime) === getDateKey(endDate) &&
-          r.hotelId._id.toString() === hotelId.toString() &&
-          r.roomCategoryId._id.toString() === roomCategoryId.toString(),
-      );
-
-      if (!extraCheckoutRoom) {
-        return res.status(400).json({
-          success: false,
-          message:
-            `Late checkout after ${hotel.checkoutTime} ` +
-            `requires additional room quota for ` +
-            `${getDateKey(endDate)}. ` +
-            `No quota is available for that date.`,
-        });
-      }
-    }
-
-    const dates = getDatesBetween(startDate, endDate);
-
-    if (dates.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "At least one day booking required",
-      });
-    }
-
-    const accomodationDays = [];
-
-    // ===============================
-    // VALIDATE EACH DATE
-    // ===============================
-    for (let date of dates) {
-      const room = rooms.find(
-        (r) =>
-          getDateKey(r.checkinDateTime) === getDateKey(date) &&
-          r.hotelId._id.toString() === hotelId.toString() &&
-          r.roomCategoryId._id.toString() === roomCategoryId.toString(),
-      );
-
-      if (!room) {
-        return res.status(400).json({
-          success: false,
-          message: `No quota available for ${getDateKey(
-            date,
-          )} in selected hotel. Please select another date or reduce stay duration.`,
-        });
-      }
-
-      const quotaItem = quotaRecord.quotas.find(
-        (q) => q.quotaId.toString() === room._id.toString(),
-      );
-
-      // First check whether quota exists
-      if (!quotaItem) {
-        return res.status(400).json({
-          success: false,
-          message: `Quota not assigned for ${getDateKey(date)}`,
-        });
-      }
-
-      // Then check room category
-      if (
-        !quotaItem.roomCategoryId ||
-        quotaItem.roomCategoryId.toString() !== roomCategoryId.toString()
-      ) {
-        return res.status(400).json({
-          success: false,
-          message: `Room category quota is not assigned for ${getDateKey(date)}`,
-        });
-      }
-
-      // ===============================
-      // PREVENT SAME DELEGATE OVERLAP (PER DAY)
-      // ===============================
-      const alreadyBooked = await Accomodation.findOne({
-        eventId,
-        ...(req._skipBookingId && { _id: { $ne: req._skipBookingId } }),
-        accomodationDays: {
-          $elemMatch: {
-            date: getDateKey(date),
-          },
-        },
-        $or: [
-          { eventRegistrationId },
-          { otherEventRegistrationId: eventRegistrationId },
-          ...(otherEventRegistrationId
-            ? [
-                { eventRegistrationId: otherEventRegistrationId },
-                { otherEventRegistrationId },
-              ]
-            : []),
-        ],
-      });
-
-      if (alreadyBooked) {
-        return res.status(400).json({
-          success: false,
-          message: `Delegate already booked for ${getDateKey(date)}`,
-        });
-      }
-
-      const used = await Accomodation.countDocuments({
-        eventId,
-        sponsorId,
-        accomodationDays: {
-          $elemMatch: {
-            date: getDateKey(date),
-            quotaId: room._id,
-          },
-        },
-      });
-
-      if (used >= quotaItem.numberOfQuota) {
-        return res.status(400).json({
-          success: false,
-          message: `Quota full for ${getDateKey(date)}`,
-        });
-      }
-
-      accomodationDays.push({
-        date: getDateKey(date),
-        quotaId: room._id,
-        hotelId: room.hotelId._id,
-        roomCategoryId: room.roomCategoryId._id,
-      });
-    }
-
-    // ===============================
-    // CREATE BOOKING
-    // ===============================
-    const booking = await Accomodation.create({
-      eventId,
-      sponsorId,
-      eventRegistrationId,
-      hotelId,
-      roomCategoryId,
-      roomType,
-      guestName: roomType === "Double Occupancy" ? guestName : null,
-      otherEventRegistrationId:
-        roomType === "Twin Sharing" ? otherEventRegistrationId : null,
-      checkinDateTime: checkin,
-      checkoutDateTime: checkout,
-      accomodationDays,
-      remark,
-    });
+    const booking = await Accomodation.create(result.data);
 
     return res.status(201).json({
       success: true,
@@ -533,14 +470,13 @@ export const createAccomodation = async (req, res) => {
       data: booking,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Create Accommodation Error:", error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: "Internal server error while creating accommodation",
     });
   }
 };
-
 // =======================
 // Get Accomodation by Sponsor
 // =======================
@@ -559,9 +495,7 @@ export const getAccomodationBySponsor = async (req, res) => {
       .populate("otherEventRegistrationId", "prefix name email mobile regNum")
       .sort({ createdAt: -1 });
 
-    // ===============================
     // GET ASSIGNED REGISTRATION IDS
-    // ===============================
     const assignedData = await AssignAccomodationService.findOne({
       eventId,
       sponsorId,
@@ -571,17 +505,10 @@ export const getAccomodationBySponsor = async (req, res) => {
       ? assignedData.eventRegistrationId.map((id) => id.toString())
       : [];
 
-    // ===============================
     // ADD STATUS FIELD
-    // ===============================
     const data = bookings.map((item) => ({
       ...item.toObject(),
-
-      // UI FIELD
       usedQuota: item.accomodationDays.length,
-
-      // true = came from AssignAccomodationService
-      // false = normal sponsor booking
       isAssignedAccomodationService:
         assignedRegistrationIds.includes(
           item.eventRegistrationId?._id?.toString(),
@@ -613,9 +540,6 @@ export const getMyBookedAssignedAccomodations = async (req, res) => {
     const sponsorId = req.sponsor._id;
     const { eventId } = req.params;
 
-    // ===============================
-    // GET ASSIGNED DELEGATES
-    // ===============================
     const assignedData = await AssignAccomodationService.findOne({
       eventId,
       sponsorId,
@@ -632,13 +556,9 @@ export const getMyBookedAssignedAccomodations = async (req, res) => {
       id.toString(),
     );
 
-    // ===============================
-    // GET ONLY BOOKED ASSIGNED
-    // ===============================
     const bookings = await Accomodation.find({
       eventId,
       sponsorId,
-
       $or: [
         {
           eventRegistrationId: {
@@ -658,13 +578,8 @@ export const getMyBookedAssignedAccomodations = async (req, res) => {
       .populate("otherEventRegistrationId", "prefix name email mobile regNum")
       .sort({ createdAt: -1 });
 
-    // ===============================
-    // SAME RESPONSE FORMAT
-    // ===============================
     const data = bookings.map((item) => ({
       ...item.toObject(),
-
-      // UI FIELD
       usedQuota: item.accomodationDays.length,
     }));
 
@@ -702,10 +617,6 @@ export const getAllAccomodationByEvent = async (req, res) => {
 
     const data = bookings.map((item) => ({
       ...item.toObject(),
-
-      // =========================
-      // UI FIELD
-      // =========================
       usedQuota: item.accomodationDays.length,
     }));
 
@@ -731,113 +642,56 @@ export const getAllAccomodationByEvent = async (req, res) => {
 export const updateAccomodation = async (req, res) => {
   try {
     const sponsorId = req.sponsor._id;
-    const { id } = req.params;
-    const { eventId } = req.params;
+    const { id, eventId } = req.params;
 
-    const {
-      eventRegistrationId,
-      checkinDateTime,
-      checkoutDateTime,
-      hotelId,
-      roomCategoryId,
-      roomType,
-      guestName,
-      otherEventRegistrationId,
-      remark,
-    } = req.body;
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid accommodation booking ID",
+      });
+    }
 
     const booking = await Accomodation.findOne({
       _id: id,
       sponsorId,
+      eventId,
     });
 
     if (!booking) {
       return res.status(404).json({
         success: false,
-        message: "Accomodation not found",
+        message: "Accommodation booking not found for this event",
       });
     }
 
-    // ===============================
-    // DUPLICATE CHECK (IGNORE CURRENT)
-    // ===============================
-    const existingBooking = await Accomodation.findOne({
-      _id: { $ne: id },
+    // Partial updates are supported: omitted fields retain their current values.
+    const payload = {
+      eventRegistrationId:
+        req.body.eventRegistrationId ?? booking.eventRegistrationId,
+      checkinDateTime: req.body.checkinDateTime ?? booking.checkinDateTime,
+      checkoutDateTime: req.body.checkoutDateTime ?? booking.checkoutDateTime,
+      hotelId: req.body.hotelId ?? booking.hotelId,
+      roomCategoryId: req.body.roomCategoryId ?? booking.roomCategoryId,
+      roomType: req.body.roomType ?? booking.roomType,
+      guestName: req.body.guestName ?? booking.guestName,
+      otherEventRegistrationId:
+        req.body.otherEventRegistrationId ?? booking.otherEventRegistrationId,
+      remark: req.body.remark ?? booking.remark,
+    };
+
+    const result = await prepareAccommodationBooking({
       eventId,
-      $or: [
-        { eventRegistrationId },
-        { otherEventRegistrationId: eventRegistrationId },
-        ...(otherEventRegistrationId
-          ? [
-              { eventRegistrationId: otherEventRegistrationId },
-              { otherEventRegistrationId },
-            ]
-          : []),
-      ],
+      sponsorId,
+      payload,
+      ignoreBookingId: booking._id,
     });
 
-    if (existingBooking) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "One of the selected delegates already has an accommodation booking",
-      });
+    if (result.statusCode) {
+      return res.status(result.statusCode).json(result.body);
     }
 
-    req._skipBookingId = id;
-
-    // ===============================
-    // REUSE CREATE VALIDATION LOGIC
-    // ===============================
-    const response = {
-      statusCode: 200,
-      body: null,
-    };
-
-    const mockRes = {
-      status(code) {
-        response.statusCode = code;
-        return this;
-      },
-
-      json(data) {
-        response.body = data;
-        return data;
-      },
-    };
-
-    await createAccomodation(req, mockRes);
-
-    // Validation failed
-    if (response.statusCode !== 201) {
-      return res.status(response.statusCode).json(response.body);
-    }
-
-    // Get newly created booking
-    const newBooking = await Accomodation.findOne({
-      sponsorId,
-      eventId,
-      eventRegistrationId,
-      checkinDateTime: new Date(checkinDateTime),
-    }).sort({ createdAt: -1 });
-
-    // Copy new data into old booking
-    booking.eventRegistrationId = newBooking.eventRegistrationId;
-    booking.hotelId = newBooking.hotelId;
-    booking.roomCategoryId = newBooking.roomCategoryId;
-    booking.roomType = newBooking.roomType;
-    booking.guestName = newBooking.guestName;
-    booking.otherEventRegistrationId = newBooking.otherEventRegistrationId;
-
-    booking.checkinDateTime = newBooking.checkinDateTime;
-    booking.checkoutDateTime = newBooking.checkoutDateTime;
-    booking.accomodationDays = newBooking.accomodationDays;
-    booking.remark = newBooking.remark;
-
+    Object.assign(booking, result.data);
     await booking.save();
-
-    // Delete temporary booking
-    await newBooking.deleteOne();
 
     return res.status(200).json({
       success: true,
@@ -845,10 +699,10 @@ export const updateAccomodation = async (req, res) => {
       data: booking,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Update Accommodation Error:", error);
     return res.status(500).json({
       success: false,
-      message: "Update failed",
+      message: "Internal server error while updating accommodation",
     });
   }
 };
@@ -896,9 +750,7 @@ export const getAccomodationSummary = async (req, res) => {
     const sponsorId = req.sponsor._id;
     const { eventId } = req.params;
 
-    // ===============================
     // GET SPONSOR QUOTA
-    // ===============================
     const quotaRecord = await SponsorAccomodationQuota.findOne({
       eventId,
       sponsorId,
@@ -923,40 +775,21 @@ export const getAccomodationSummary = async (req, res) => {
       });
     }
 
-    // ===============================
-    // RESPONSE ARRAYS / MAPS
-    // ===============================
     const dateWise = [];
-
     const roomCategorySummaryMap = {};
-
     const hotelSummaryMap = {};
 
-    // ===============================
     // LOOP THROUGH SPONSOR QUOTAS
-    // ===============================
     for (const q of quotaRecord.quotas) {
       const room = q.quotaId;
 
-      // Safety check
-      if (!room) {
-        continue;
-      }
+      if (!room) continue;
 
-      // ===============================
-      // HOTEL INFORMATION
-      // ===============================
       const hotel = room.hotelId;
-
-      if (!hotel) {
-        continue;
-      }
+      if (!hotel) continue;
 
       const hotelName = hotel.hotelName;
 
-      // ===============================
-      // ROOM CATEGORY INFORMATION
-      // ===============================
       const roomCategoryId =
         q.roomCategoryId?.toString() || room.roomCategoryId?._id?.toString();
 
@@ -965,124 +798,75 @@ export const getAccomodationSummary = async (req, res) => {
         room.roomCategoryId?.roomCategoryName ||
         "Unknown";
 
-      // ===============================
-      // DATE
-      // ===============================
       const date = getDateKey(room.checkinDateTime);
 
-      // ===============================
-      // COUNT USED QUOTA
-      // ===============================
       const used = await Accomodation.countDocuments({
         eventId,
         sponsorId,
-
         accomodationDays: {
           $elemMatch: {
             date,
             quotaId: room._id,
-            roomCategoryId: roomCategoryId,
+            roomCategoryId,
           },
         },
       });
 
-      // ===============================
-      // REMAINING
-      // ===============================
       const remaining = Math.max(q.numberOfQuota - used, 0);
 
-      // =====================================================
-      // 1. DATE WISE
-      // =====================================================
+      // DATE WISE
       dateWise.push({
         hotelName,
-
         roomCategoryId: roomCategoryId || null,
-
         roomCategoryName,
-
         date,
-
         totalQuota: q.numberOfQuota,
-
         used,
-
         remaining,
       });
 
-      // =====================================================
-      // 2. ROOM CATEGORY WISE
-      // =====================================================
-
-      // Unique key = Hotel + Room Category
+      // ROOM CATEGORY WISE
       const categoryKey = `${hotel._id}_${roomCategoryId}`;
 
       if (!roomCategorySummaryMap[categoryKey]) {
         roomCategorySummaryMap[categoryKey] = {
           hotelId: hotel._id,
-
           hotelName,
-
           roomCategoryId: roomCategoryId || null,
-
           roomCategoryName,
-
           totalQuota: 0,
-
           used: 0,
-
           remaining: 0,
         };
       }
 
       roomCategorySummaryMap[categoryKey].totalQuota += q.numberOfQuota;
-
       roomCategorySummaryMap[categoryKey].used += used;
-
       roomCategorySummaryMap[categoryKey].remaining += remaining;
 
-      // =====================================================
-      // 3. HOTEL WISE
-      // =====================================================
-
+      // HOTEL WISE
       const hotelKey = hotel._id.toString();
 
       if (!hotelSummaryMap[hotelKey]) {
         hotelSummaryMap[hotelKey] = {
           hotelId: hotel._id,
-
           hotelName,
-
           totalQuota: 0,
-
           used: 0,
-
           remaining: 0,
         };
       }
 
       hotelSummaryMap[hotelKey].totalQuota += q.numberOfQuota;
-
       hotelSummaryMap[hotelKey].used += used;
-
       hotelSummaryMap[hotelKey].remaining += remaining;
     }
 
-    // ===============================
-    // CONVERT MAPS → ARRAYS
-    // ===============================
     const roomCategoryWise = Object.values(roomCategorySummaryMap);
-
     const hotelWise = Object.values(hotelSummaryMap);
 
-    // ===============================
-    // SORT DATE WISE
-    // ===============================
     dateWise.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // ===============================
-    // SORT ROOM CATEGORY WISE
-    // ===============================
     roomCategoryWise.sort((a, b) => {
       if (a.hotelName !== b.hotelName) {
         return a.hotelName.localeCompare(b.hotelName);
@@ -1091,23 +875,14 @@ export const getAccomodationSummary = async (req, res) => {
       return a.roomCategoryName.localeCompare(b.roomCategoryName);
     });
 
-    // ===============================
-    // SORT HOTEL WISE
-    // ===============================
     hotelWise.sort((a, b) => a.hotelName.localeCompare(b.hotelName));
 
-    // ===============================
-    // RESPONSE
-    // ===============================
     return res.status(200).json({
       success: true,
       message: "Accomodation summary fetched",
-
       data: {
         dateWise,
-
         roomCategoryWise,
-
         hotelWise,
       },
     });
@@ -1122,19 +897,14 @@ export const getAccomodationSummary = async (req, res) => {
   }
 };
 
-
 // =====================================================
 // EVENT ADMIN - ACCOMODATION SUMMARY
 // =====================================================
-
 export const getEventAdminAccomodationSummary = async (req, res) => {
   try {
     const { eventId } = req.params;
 
-    // =====================================================
-    // 1. GET ALL ROOMS ADDED FOR EVENT
-    // =====================================================
-
+    // GET ALL ROOMS ADDED FOR EVENT
     const addRooms = await AddRoom.find({ eventId })
       .populate("hotelId", "hotelName")
       .populate("roomCategoryId", "roomCategoryName")
@@ -1147,10 +917,7 @@ export const getEventAdminAccomodationSummary = async (req, res) => {
       });
     }
 
-    // =====================================================
-    // 2. GET ALL SPONSOR QUOTAS FOR EVENT
-    // =====================================================
-
+    // GET ALL SPONSOR QUOTAS FOR EVENT
     const quotaRecords = await SponsorAccomodationQuota.find({
       eventId,
     })
@@ -1169,65 +936,37 @@ export const getEventAdminAccomodationSummary = async (req, res) => {
         ],
       });
 
-    // =====================================================
-    // MAPS
-    // =====================================================
-
     const hotelWiseMap = {};
     const roomCategoryWiseMap = {};
     const sponsorWiseMap = {};
     const dateWiseMap = {};
-
     const quotaWise = [];
-
-    // =====================================================
-    // OVERVIEW VARIABLES
-    // =====================================================
 
     let totalRoomsAdded = 0;
     let totalQuotaAllocated = 0;
     let totalBookedRooms = 0;
 
-    // =====================================================
-    // 3. PROCESS ALL ADD ROOM RECORDS
-    // =====================================================
-
+    // PROCESS ALL ADD ROOM RECORDS
     for (const room of addRooms) {
-      if (!room.hotelId || !room.roomCategoryId) {
-        continue;
-      }
+      if (!room.hotelId || !room.roomCategoryId) continue;
 
       const hotelId = room.hotelId._id.toString();
-
       const roomCategoryId = room.roomCategoryId._id.toString();
-
       const hotelName = room.hotelId.hotelName;
-
       const roomCategoryName = room.roomCategoryId.roomCategoryName;
 
       const totalRooms = Number(room.numberOfRooms || 0);
-
       const availableRooms = Number(room.availableRooms || 0);
 
-      /*
-       * Number of rooms already allocated from AddRoom
-       */
-      const allocatedRooms = Math.max(
-        totalRooms - availableRooms,
-        0
-      );
+      const allocatedRooms = Math.max(totalRooms - availableRooms, 0);
 
       totalRoomsAdded += totalRooms;
 
-      // ===================================================
       // HOTEL WISE
-      // ===================================================
-
       if (!hotelWiseMap[hotelId]) {
         hotelWiseMap[hotelId] = {
           hotelId,
           hotelName,
-
           totalRooms: 0,
           quotaAllocated: 0,
           bookedRooms: 0,
@@ -1237,23 +976,17 @@ export const getEventAdminAccomodationSummary = async (req, res) => {
       }
 
       hotelWiseMap[hotelId].totalRooms += totalRooms;
-
       hotelWiseMap[hotelId].availableRooms += availableRooms;
 
-      // ===================================================
       // ROOM CATEGORY WISE
-      // ===================================================
-
       const categoryKey = `${hotelId}_${roomCategoryId}`;
 
       if (!roomCategoryWiseMap[categoryKey]) {
         roomCategoryWiseMap[categoryKey] = {
           hotelId,
           hotelName,
-
           roomCategoryId,
           roomCategoryName,
-
           totalRooms: 0,
           quotaAllocated: 0,
           bookedRooms: 0,
@@ -1263,64 +996,39 @@ export const getEventAdminAccomodationSummary = async (req, res) => {
       }
 
       roomCategoryWiseMap[categoryKey].totalRooms += totalRooms;
-
       roomCategoryWiseMap[categoryKey].availableRooms += availableRooms;
     }
 
-    // =====================================================
-    // 4. PROCESS SPONSOR QUOTAS
-    // =====================================================
-
+    // PROCESS SPONSOR QUOTAS
     for (const quotaRecord of quotaRecords) {
       const sponsor = quotaRecord.sponsorId;
-
-      if (!sponsor) {
-        continue;
-      }
+      if (!sponsor) continue;
 
       const sponsorId = sponsor._id.toString();
-
       const sponsorName =
-        sponsor.sponsorName ||
-        sponsor.contactPersonName ||
-        "Unknown Sponsor";
-
-      // ===================================================
-      // CREATE SPONSOR ENTRY
-      // ===================================================
+        sponsor.sponsorName || sponsor.contactPersonName || "Unknown Sponsor";
 
       if (!sponsorWiseMap[sponsorId]) {
         sponsorWiseMap[sponsorId] = {
           sponsorId,
           sponsorName,
-
           contactPersonName: sponsor.contactPersonName || null,
-
           email: sponsor.email || null,
-
           mobile: sponsor.mobile || null,
-
           totalQuota: 0,
           usedQuota: 0,
           remainingQuota: 0,
-
           hotels: [],
         };
       }
 
-      // ===================================================
       // PROCESS EACH QUOTA
-      // ===================================================
-
       for (const q of quotaRecord.quotas) {
         const room = q.quotaId;
 
-        if (!room || !room.hotelId || !room.roomCategoryId) {
-          continue;
-        }
+        if (!room || !room.hotelId || !room.roomCategoryId) continue;
 
         const hotelId = room.hotelId._id.toString();
-
         const hotelName = room.hotelId.hotelName;
 
         const roomCategoryId =
@@ -1334,22 +1042,11 @@ export const getEventAdminAccomodationSummary = async (req, res) => {
           "Unknown";
 
         const quota = Number(q.numberOfQuota || 0);
-
-        // =================================================
-        // DATE
-        // =================================================
-
         const date = getDateKey(room.checkinDateTime);
-
-        // =================================================
-        // COUNT ACTUAL BOOKED ROOMS
-        // =================================================
 
         const used = await Accomodation.countDocuments({
           eventId,
-
           sponsorId,
-
           accomodationDays: {
             $elemMatch: {
               date,
@@ -1361,54 +1058,33 @@ export const getEventAdminAccomodationSummary = async (req, res) => {
 
         const remaining = Math.max(quota - used, 0);
 
-        // =================================================
-        // OVERVIEW
-        // =================================================
-
         totalQuotaAllocated += quota;
-
         totalBookedRooms += used;
 
-        // =================================================
         // SPONSOR WISE
-        // =================================================
-
         sponsorWiseMap[sponsorId].totalQuota += quota;
-
         sponsorWiseMap[sponsorId].usedQuota += used;
-
         sponsorWiseMap[sponsorId].remainingQuota += remaining;
 
-        // =================================================
         // SPONSOR HOTEL DETAIL
-        // =================================================
-
         sponsorWiseMap[sponsorId].hotels.push({
           hotelId,
           hotelName,
-
           roomCategoryId,
           roomCategoryName,
-
           quota,
           used,
           remaining,
-
           date,
-
           checkinDateTime: room.checkinDateTime,
           checkoutDateTime: room.checkoutDateTime,
         });
 
-        // =================================================
         // HOTEL WISE
-        // =================================================
-
         if (!hotelWiseMap[hotelId]) {
           hotelWiseMap[hotelId] = {
             hotelId,
             hotelName,
-
             totalRooms: 0,
             quotaAllocated: 0,
             bookedRooms: 0,
@@ -1418,25 +1094,18 @@ export const getEventAdminAccomodationSummary = async (req, res) => {
         }
 
         hotelWiseMap[hotelId].quotaAllocated += quota;
-
         hotelWiseMap[hotelId].bookedRooms += used;
-
         hotelWiseMap[hotelId].remainingQuota += remaining;
 
-        // =================================================
         // ROOM CATEGORY WISE
-        // =================================================
-
         const categoryKey = `${hotelId}_${roomCategoryId}`;
 
         if (!roomCategoryWiseMap[categoryKey]) {
           roomCategoryWiseMap[categoryKey] = {
             hotelId,
             hotelName,
-
             roomCategoryId,
             roomCategoryName,
-
             totalRooms: 0,
             quotaAllocated: 0,
             bookedRooms: 0,
@@ -1446,27 +1115,19 @@ export const getEventAdminAccomodationSummary = async (req, res) => {
         }
 
         roomCategoryWiseMap[categoryKey].quotaAllocated += quota;
-
         roomCategoryWiseMap[categoryKey].bookedRooms += used;
-
         roomCategoryWiseMap[categoryKey].remainingQuota += remaining;
 
-        // =================================================
         // DATE WISE
-        // =================================================
-
         const dateKey = `${date}_${hotelId}_${roomCategoryId}`;
 
         if (!dateWiseMap[dateKey]) {
           dateWiseMap[dateKey] = {
             date,
-
             hotelId,
             hotelName,
-
             roomCategoryId,
             roomCategoryName,
-
             totalQuota: 0,
             used: 0,
             remaining: 0,
@@ -1474,206 +1135,121 @@ export const getEventAdminAccomodationSummary = async (req, res) => {
         }
 
         dateWiseMap[dateKey].totalQuota += quota;
-
         dateWiseMap[dateKey].used += used;
-
         dateWiseMap[dateKey].remaining += remaining;
 
-        // =================================================
         // QUOTA WISE DETAIL
-        // =================================================
-
         quotaWise.push({
           quotaId: room._id,
-
           sponsorId,
           sponsorName,
-
           hotelId,
           hotelName,
-
           roomCategoryId,
           roomCategoryName,
-
           date,
-
           checkinDateTime: room.checkinDateTime,
-
           checkoutDateTime: room.checkoutDateTime,
-
           totalRooms: room.numberOfRooms,
-
           availableRooms: room.availableRooms,
-
           quotaAllocated: quota,
-
           bookedRooms: used,
-
           remainingQuota: remaining,
         });
       }
     }
-
     // =====================================================
-    // 5. CALCULATE OVERVIEW
+    // CALCULATE OVERVIEW
     // =====================================================
 
     const totalAvailableRooms = addRooms.reduce(
       (sum, room) => sum + Number(room.availableRooms || 0),
-      0
+      0,
     );
 
     const totalHotels = Object.keys(hotelWiseMap).length;
+    const totalRoomCategories = Object.keys(roomCategoryWiseMap).length;
+    const totalSponsors = Object.keys(sponsorWiseMap).length;
 
-    const totalRoomCategories =
-      Object.keys(roomCategoryWiseMap).length;
+    const totalRoomsAllocatedToSponsors = addRooms.reduce((sum, room) => {
+      const total = Number(room.numberOfRooms || 0);
+      const available = Number(room.availableRooms || 0);
 
-    const totalSponsors =
-      Object.keys(sponsorWiseMap).length;
-
-    const totalRoomsAllocatedToSponsors = addRooms.reduce(
-      (sum, room) => {
-        const total = Number(room.numberOfRooms || 0);
-
-        const available = Number(room.availableRooms || 0);
-
-        return sum + Math.max(total - available, 0);
-      },
-      0
-    );
+      return sum + Math.max(total - available, 0);
+    }, 0);
 
     // =====================================================
-    // 6. CONVERT MAPS TO ARRAYS
+    // CONVERT MAPS TO ARRAYS
     // =====================================================
 
     const hotelWise = Object.values(hotelWiseMap);
-
-    const roomCategoryWise =
-      Object.values(roomCategoryWiseMap);
-
-    const sponsorWise =
-      Object.values(sponsorWiseMap);
-
-    const dateWise =
-      Object.values(dateWiseMap);
+    const roomCategoryWise = Object.values(roomCategoryWiseMap);
+    const sponsorWise = Object.values(sponsorWiseMap);
+    const dateWise = Object.values(dateWiseMap);
 
     // =====================================================
-    // 7. SORT DATA
+    // SORT DATA
     // =====================================================
 
-    hotelWise.sort((a, b) =>
-      a.hotelName.localeCompare(b.hotelName)
-    );
+    hotelWise.sort((a, b) => a.hotelName.localeCompare(b.hotelName));
 
     roomCategoryWise.sort((a, b) => {
       if (a.hotelName !== b.hotelName) {
         return a.hotelName.localeCompare(b.hotelName);
       }
 
-      return a.roomCategoryName.localeCompare(
-        b.roomCategoryName
-      );
+      return a.roomCategoryName.localeCompare(b.roomCategoryName);
     });
 
-    sponsorWise.sort((a, b) =>
-      a.sponsorName.localeCompare(b.sponsorName)
-    );
+    sponsorWise.sort((a, b) => a.sponsorName.localeCompare(b.sponsorName));
 
-    dateWise.sort(
-      (a, b) =>
-        new Date(a.date) - new Date(b.date)
-    );
+    dateWise.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     quotaWise.sort((a, b) => {
       if (a.hotelName !== b.hotelName) {
         return a.hotelName.localeCompare(b.hotelName);
       }
 
-      return a.sponsorName.localeCompare(
-        b.sponsorName
-      );
+      return a.sponsorName.localeCompare(b.sponsorName);
     });
 
     // =====================================================
-    // 8. FINAL RESPONSE
+    // FINAL RESPONSE
     // =====================================================
 
     return res.status(200).json({
       success: true,
-
-      message:
-        "Event Admin accommodation summary fetched successfully",
+      message: "Event Admin accommodation summary fetched successfully",
 
       data: {
-        // ===============================================
-        // OVERVIEW
-        // ===============================================
-
         overview: {
           totalHotels,
-
           totalRoomCategories,
-
           totalSponsors,
-
           totalRoomsAdded,
-
           totalRoomsAllocatedToSponsors,
-
           totalQuotaAllocated,
-
           totalBookedRooms,
-
           totalAvailableRooms,
-
           totalQuotaRemaining: Math.max(
             totalQuotaAllocated - totalBookedRooms,
-            0
+            0,
           ),
         },
 
-        // ===============================================
-        // HOTEL WISE
-        // ===============================================
-
         hotelWise,
-
-        // ===============================================
-        // ROOM CATEGORY WISE
-        // ===============================================
-
         roomCategoryWise,
-
-        // ===============================================
-        // SPONSOR WISE
-        // ===============================================
-
         sponsorWise,
-
-        // ===============================================
-        // DATE WISE
-        // ===============================================
-
         dateWise,
-
-        // ===============================================
-        // DETAILED QUOTA WISE
-        // ===============================================
-
         quotaWise,
       },
     });
   } catch (error) {
-    console.error(
-      "Event Admin Accommodation Summary Error:",
-      error
-    );
+    console.error("Event Admin Accommodation Summary Error:", error);
 
     return res.status(500).json({
       success: false,
-
       message: "Server error",
-
       error: error.message,
     });
   }
