@@ -4,6 +4,7 @@ import Event from "../models/Event.js";
 import SponsorRegistrationQuota from "../models/SponsorRegistrationQuota.js";
 import User from "../models/User.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
+import RegistrationSlab from "../models/RegistrationSlab.js";
 import moment from "moment";
 import {
   getIndianFormattedDateTime,
@@ -97,6 +98,7 @@ export const sponsorRegisterForEvent = async (req, res) => {
 
     const {
       userId,
+      registrationSlabId,
       prefix,
       cardProfileId,
       name,
@@ -147,6 +149,36 @@ export const sponsorRegisterForEvent = async (req, res) => {
     if (!event) {
       return res.status(404).json({
         message: "Event not found",
+      });
+    }
+
+    // =====================================
+    // Validate Sponsor Registration Slab
+    // =====================================
+    if (!registrationSlabId) {
+      return res.status(400).json({
+        success: false,
+        message: "registrationSlabId is required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(registrationSlabId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid registrationSlabId",
+      });
+    }
+
+    const registrationSlab = await RegistrationSlab.findOne({
+      _id: registrationSlabId,
+      eventId,
+      slabType: "sponsor",
+    });
+
+    if (!registrationSlab) {
+      return res.status(404).json({
+        success: false,
+        message: "Sponsor registration slab not found for this event",
       });
     }
 
@@ -279,6 +311,7 @@ export const sponsorRegisterForEvent = async (req, res) => {
           sponsorId,
           userId,
           eventId,
+          registrationSlabId,
           prefix,
           cardProfileId,
           name,
@@ -476,6 +509,10 @@ export const getAllRegistrationsByEvent = async (req, res) => {
         path: "cardProfileId",
         select: "CardProfileName",
       })
+      .populate({
+        path: "registrationSlabId",
+        select: "slabName",
+      })
       .sort({ createdAt: -1 });
 
     return res.status(200).json({
@@ -625,12 +662,51 @@ export const updateSponsorEventRegistration = async (req, res) => {
       }
     }
 
+    // ===============================
+    // Validate Sponsor Registration Slab
+    // ===============================
+    if (req.body.registrationSlabId !== undefined) {
+      const { registrationSlabId } = req.body;
+
+      if (!mongoose.Types.ObjectId.isValid(registrationSlabId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid registrationSlabId",
+        });
+      }
+
+      const registrationSlab = await RegistrationSlab.findOne({
+        _id: registrationSlabId,
+        eventId,
+        slabType: "sponsor",
+      });
+
+      if (!registrationSlab) {
+        return res.status(404).json({
+          success: false,
+          message: "Sponsor registration slab not found for this event",
+        });
+      }
+    }
+
     // Step 4: Update registration
     const updatedRegistration = await EventRegistration.findByIdAndUpdate(
       registrationId,
       req.body,
-      { new: true },
-    );
+      { new: true, runValidators: true },
+    )
+      .populate({
+        path: "registrationSlabId",
+        select: "slabName",
+      })
+      .populate({
+        path: "eventId",
+        select: "eventName startDateTime endDateTime",
+      })
+      .populate({
+        path: "cardProfileId",
+        select: "CardProfileName",
+      });
 
     res.status(200).json({
       success: true,
