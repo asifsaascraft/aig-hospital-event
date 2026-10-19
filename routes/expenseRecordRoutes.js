@@ -11,9 +11,11 @@ import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// GET Combined Income and Expense Records by Event
+// EventAdmin:  Combined Income and Expense Records by Event
 router.get(
   "/events/:eventId/financial-records",
+  protect,
+  authorizeRoles("eventAdmin"),
   getFinancialRecordsByEvent
 );
 
