@@ -5,6 +5,8 @@ import {
   getActiveRegistrationSlabsByEvent,
   deleteRegistrationSlab,
   updateRegistrationSlab,
+  getActiveRegularRegistrationSlabsByEvent,
+  getActiveSponsorRegistrationSlabsByEvent,
 } from "../controllers/registrationSlabController.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -30,6 +32,17 @@ router.get("/events/:eventId/slabs", getRegistrationSlabsByEvent);
 // =======================
 router.get("/events/:eventId/slabs/active", getActiveRegistrationSlabsByEvent);
 
+// Public: Get Active Regular Slabs
+router.get(
+  "/events/:eventId/slabs/active/regular",
+  getActiveRegularRegistrationSlabsByEvent
+);
+
+// Public: Get Active Sponsor Slabs
+router.get(
+  "/events/:eventId/slabs/active/sponsor",
+  getActiveSponsorRegistrationSlabsByEvent
+);
 
 // =======================
 // EventAdmin: Update Registration Slab

@@ -1,6 +1,6 @@
-
 import RegistrationSlab from "../models/RegistrationSlab.js";
 import Event from "../models/Event.js";
+import mongoose from "mongoose";
 
 // =======================
 // Create Registration Slab
@@ -10,6 +10,7 @@ export const createRegistrationSlab = async (req, res) => {
     const { eventId } = req.params;
 
     const {
+      slabType = "regular",
       slabName,
       description,
       amount,
@@ -20,64 +21,156 @@ export const createRegistrationSlab = async (req, res) => {
       additionalFields,
     } = req.body;
 
-    // =======================
-    // CHECK EVENT
-    // =======================
-    const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ message: "Event not found" });
-    }
-
-    // =======================
-    // DATE VALIDATION
-    // =======================
-    if (isNaN(new Date(startDateTime))) {
+    if (!mongoose.isValidObjectId(eventId)) {
       return res.status(400).json({
-        message: "Invalid startDateTime format",
+        success: false,
+        message: "Invalid eventId",
       });
     }
 
-    if (isNaN(new Date(endDateTime))) {
+    if (!["regular", "sponsor"].includes(slabType)) {
       return res.status(400).json({
-        message: "Invalid endDateTime format",
+        success: false,
+        message: "slabType must be either regular or sponsor",
+      });
+    }
+
+    if (!slabName || !startDateTime || !endDateTime) {
+      return res.status(400).json({
+        success: false,
+        message: "slabName, startDateTime and endDateTime are required",
+      });
+    }
+
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
       });
     }
 
     const start = new Date(startDateTime);
     const end = new Date(endDateTime);
 
-    if (end < start) {
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       return res.status(400).json({
-        message: "End date time must be greater than start date time",
+        success: false,
+        message: "Invalid startDateTime or endDateTime format",
       });
     }
 
-    // =======================
-    // CREATE
-    // =======================
+    if (end < start) {
+      return res.status(400).json({
+        success: false,
+        message: "endDateTime must be greater than or equal to startDateTime",
+      });
+    }
+
     const slab = await RegistrationSlab.create({
       eventId,
+      slabType,
       slabName,
       description,
       amount,
       AccompanyAmount,
       startDateTime: start,
       endDateTime: end,
-      needAdditionalInfo: needAdditionalInfo || false,
-      additionalFields: Array.isArray(additionalFields)
-        ? additionalFields
-        : [],
+      needAdditionalInfo: needAdditionalInfo ?? false,
+      additionalFields: Array.isArray(additionalFields) ? additionalFields : [],
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Registration slab created successfully",
       data: slab,
     });
-
   } catch (error) {
     console.error("Create registration slab error:", error);
-    res.status(500).json({ message: "Server Error" });
+
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: Object.values(error.errors)
+          .map((err) => err.message)
+          .join(", "),
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+// =======================
+// Get Active Regular Slabs
+// =======================
+export const getActiveRegularRegistrationSlabsByEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    if (!mongoose.isValidObjectId(eventId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid eventId",
+      });
+    }
+
+    const now = new Date();
+
+    const slabs = await RegistrationSlab.find({
+      eventId,
+      slabType: "regular",
+      startDateTime: { $lte: now },
+      endDateTime: { $gte: now },
+    }).sort({ startDateTime: 1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "Active regular registration slabs fetched successfully",
+      count: slabs.length,
+      data: slabs,
+    });
+  } catch (error) {
+    console.error("Get active regular slabs error:", error);
+    return res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// =======================
+// Get Active Sponsor Slabs
+// =======================
+export const getActiveSponsorRegistrationSlabsByEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    if (!mongoose.isValidObjectId(eventId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid eventId",
+      });
+    }
+
+    const now = new Date();
+
+    const slabs = await RegistrationSlab.find({
+      eventId,
+      slabType: "sponsor",
+      startDateTime: { $lte: now },
+      endDateTime: { $gte: now },
+    }).sort({ startDateTime: 1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "Active sponsor registration slabs fetched successfully",
+      count: slabs.length,
+      data: slabs,
+    });
+  } catch (error) {
+    console.error("Get active sponsor slabs error:", error);
+    return res.status(500).json({ message: "Server Error" });
   }
 };
 
@@ -129,7 +222,6 @@ export const getActiveRegistrationSlabsByEvent = async (req, res) => {
   }
 };
 
-
 // =======================
 // Update Registration Slab
 // =======================
@@ -143,6 +235,7 @@ export const updateRegistrationSlab = async (req, res) => {
     }
 
     const {
+      slabType,
       slabName,
       description,
       amount,
@@ -188,6 +281,18 @@ export const updateRegistrationSlab = async (req, res) => {
     // =======================
     // UPDATE FIELDS
     // =======================
+
+    if (slabType !== undefined) {
+      if (!["regular", "sponsor"].includes(slabType)) {
+        return res.status(400).json({
+          success: false,
+          message: "slabType must be either regular or sponsor",
+        });
+      }
+
+      slab.slabType = slabType;
+    }
+
     if (slabName !== undefined) slab.slabName = slabName;
     if (description !== undefined) slab.description = description;
     if (amount !== undefined) slab.amount = amount;
@@ -209,13 +314,11 @@ export const updateRegistrationSlab = async (req, res) => {
       message: "Registration slab updated successfully",
       data: slab,
     });
-
   } catch (error) {
     console.error("Update registration slab error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
-
 
 // =======================
 // Delete Registration Slab
@@ -226,9 +329,7 @@ export const deleteRegistrationSlab = async (req, res) => {
 
     const slab = await RegistrationSlab.findById(id);
     if (!slab) {
-      return res
-        .status(404)
-        .json({ message: "Registration slab not found" });
+      return res.status(404).json({ message: "Registration slab not found" });
     }
 
     await slab.deleteOne();

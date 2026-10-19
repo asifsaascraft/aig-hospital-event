@@ -52,6 +52,13 @@ const RegistrationSlabSchema = new mongoose.Schema(
       required: true,
     },
 
+    slabType: {
+      type: String,
+      enum: ["regular", "sponsor"],
+      default: "regular",
+      required: true,
+    },
+
     slabName: {
       type: String,
       required: [true, "Slab name is required"],
