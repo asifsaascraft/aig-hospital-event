@@ -3,6 +3,7 @@ import {
   createSponsor,
   getSponsorsByEvent,
   getActiveSponsorsByEvent,
+  updateSponsorLoginToken,
   updateSponsor,
   deleteSponsor,
   getSponsorSummary,
@@ -37,6 +38,15 @@ router.get(
   getActiveSponsorsByEvent
 );
 
+// =======================
+// EventAdmin: Update Sponsor Login Token
+// =======================
+router.put(
+  "/event-admin/sponsors/:id/login-token",
+  protect,
+  authorizeRoles("eventAdmin"),
+  updateSponsorLoginToken
+);
 
 // =======================
 // EventAdmin: Update Sponsor
