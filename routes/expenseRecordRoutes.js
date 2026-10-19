@@ -4,11 +4,18 @@ import {
   getExpenseRecordsByEvent,
   updateExpenseRecord,
   deleteExpenseRecord,
+  getFinancialRecordsByEvent,
 } from "../controllers/expenseRecordController.js";
 
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
+
+// GET Combined Income and Expense Records by Event
+router.get(
+  "/events/:eventId/financial-records",
+  getFinancialRecordsByEvent
+);
 
 // =======================
 // Get All Expenses by Event (Public)
