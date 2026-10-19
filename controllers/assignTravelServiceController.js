@@ -1,8 +1,20 @@
+import mongoose from "mongoose";
 import AssignTravelService from "../models/AssignTravelService.js";
 import Event from "../models/Event.js";
 import Sponsor from "../models/Sponsor.js";
 import EventRegistration from "../models/EventRegistration.js";
 import Travel from "../models/Travel.js";
+
+const findBookedTravel = (eventId, registrationIds) => {
+  const ids = (
+    Array.isArray(registrationIds) ? registrationIds : [registrationIds]
+  ).map((id) => id.toString());
+
+  return Travel.findOne({
+    eventId,
+    eventRegistrationId: { $in: ids },
+  });
+};
 
 // =======================
 // ASSIGN Travel Service
@@ -39,6 +51,16 @@ export const assignTravelService = async (req, res) => {
     if (registrations.length !== eventRegistrationId.length) {
       return res.status(400).json({
         message: "Some event registrations are invalid",
+      });
+    }
+
+    const bookedTravel = await findBookedTravel(eventId, eventRegistrationId);
+
+    if (bookedTravel) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "One or more delegates already have travel booked. Travel service cannot be assigned.",
       });
     }
 
@@ -283,7 +305,6 @@ export const reassignTravelService = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 // =======================
 // SPONSOR REMOVE ASSIGNED TRAVEL REGISTRATION
