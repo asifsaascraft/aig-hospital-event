@@ -1,8 +1,23 @@
+import mongoose from "mongoose";
 import AssignAccomodationService from "../models/AssignAccomodationService.js";
 import Event from "../models/Event.js";
 import Sponsor from "../models/Sponsor.js";
 import EventRegistration from "../models/EventRegistration.js";
 import Accomodation from "../models/Accomodation.js";
+
+const findBookedAccommodation = (eventId, registrationIds) => {
+  const ids = (
+    Array.isArray(registrationIds) ? registrationIds : [registrationIds]
+  ).map((id) => id.toString());
+
+  return Accomodation.findOne({
+    eventId,
+    $or: [
+      { eventRegistrationId: { $in: ids } },
+      { otherEventRegistrationId: { $in: ids } },
+    ],
+  });
+};
 
 // =======================
 // ASSIGN Accommodation Service
@@ -28,17 +43,34 @@ export const assignAccomodationService = async (req, res) => {
     if (!event) return res.status(404).json({ message: "Event not found" });
 
     // check sponsor
-    const sponsor = await Sponsor.findById(sponsorId);
+    const sponsor = await Sponsor.findOne({
+      _id: sponsorId,
+      eventId,
+    });
     if (!sponsor) return res.status(404).json({ message: "Sponsor not found" });
 
     // check registrations
     const registrations = await EventRegistration.find({
       _id: { $in: eventRegistrationId },
+      eventId,
     });
 
     if (registrations.length !== eventRegistrationId.length) {
       return res.status(400).json({
         message: "Some event registrations are invalid",
+      });
+    }
+
+    const bookedAccommodation = await findBookedAccommodation(
+      eventId,
+      eventRegistrationId,
+    );
+
+    if (bookedAccommodation) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "One or more delegates already have accommodation booked. Their accommodation service cannot be assigned again.",
       });
     }
 
@@ -159,27 +191,36 @@ export const removeAssignedAccomodationRegistration = async (req, res) => {
       return res.status(404).json({ message: "Assignment not found" });
     }
 
-    // =======================
-    // CHECK IF ACCOMMODATION ALREADY BOOKED
-    // =======================
-    const bookedAccomodation = await Accomodation.findOne({
-      eventId: assign.eventId,
-      sponsorId: assign.sponsorId,
-
-      $or: [
-        { eventRegistrationId: registrationId },
-        { otherEventRegistrationId: registrationId },
-      ],
-    });
-
-    if (bookedAccomodation) {
+    if (!registrationId || !mongoose.isValidObjectId(registrationId)) {
       return res.status(400).json({
         success: false,
-        message:
-          "This registration already booked accommodation. You cannot remove assigned accommodation service.",
+        message: "A valid registrationId is required",
       });
     }
 
+    const isAssigned = assign.eventRegistrationId.some(
+      (item) => item.toString() === registrationId.toString(),
+    );
+
+    if (!isAssigned) {
+      return res.status(404).json({
+        success: false,
+        message: "This registration is not part of this assignment",
+      });
+    }
+
+    const bookedAccommodation = await findBookedAccommodation(
+      assign.eventId,
+      registrationId,
+    );
+
+    if (bookedAccommodation) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "This delegate already has accommodation booked. You cannot remove the accommodation service assignment.",
+      });
+    }
     assign.eventRegistrationId = assign.eventRegistrationId.filter(
       (item) => item.toString() !== registrationId,
     );
@@ -209,73 +250,96 @@ export const reassignAccomodationService = async (req, res) => {
     const { eventId } = req.params;
     const { registrationId, newSponsorId } = req.body;
 
-    if (!registrationId || !newSponsorId) {
+    if (
+      !mongoose.isValidObjectId(eventId) ||
+      !mongoose.isValidObjectId(registrationId) ||
+      !mongoose.isValidObjectId(newSponsorId)
+    ) {
       return res.status(400).json({
-        message: "registrationId and newSponsorId are required",
+        success: false,
+        message: "Valid eventId, registrationId and newSponsorId are required",
       });
     }
 
     const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ message: "Event not found" });
-
-    const sponsor = await Sponsor.findById(newSponsorId);
-    if (!sponsor) {
-      return res.status(404).json({ message: "Sponsor not found" });
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
     }
 
-    // =======================
-    // CHECK IF ACCOMMODATION ALREADY BOOKED
-    // =======================
-    const bookedAccomodation = await Accomodation.findOne({
+    const sponsor = await Sponsor.findOne({
+      _id: newSponsorId,
       eventId,
-
-      $or: [
-        { eventRegistrationId: registrationId },
-        { otherEventRegistrationId: registrationId },
-      ],
     });
 
-    if (bookedAccomodation) {
+    if (!sponsor) {
+      return res.status(404).json({
+        success: false,
+        message: "Sponsor not found for this event",
+      });
+    }
+
+    // Prevent reassignment if accommodation is already booked.
+    const bookedAccommodation = await findBookedAccommodation(
+      eventId,
+      registrationId,
+    );
+
+    if (bookedAccommodation) {
       return res.status(400).json({
         success: false,
         message:
-          "This registration already booked accommodation. You cannot reassign accommodation service.",
+          "This registration already has accommodation booked. You cannot reassign it.",
       });
     }
 
-    // check already assigned
-    const existing = await AssignAccomodationService.findOne({
+    // Find the assignment that currently contains this registration.
+    const currentAssignment = await AssignAccomodationService.findOne({
       eventId,
-      sponsorId: newSponsorId,
       eventRegistrationId: registrationId,
     });
 
-    if (existing) {
-      return res.status(400).json({
-        message: "Already assigned to this sponsor",
+    if (!currentAssignment) {
+      return res.status(404).json({
+        success: false,
+        message: "This registration is not currently assigned",
       });
     }
 
-    // remove from current
-    await AssignAccomodationService.updateOne(
-      { eventId, eventRegistrationId: registrationId },
-      { $pull: { eventRegistrationId: registrationId } },
-    );
+    if (currentAssignment.sponsorId.toString() === newSponsorId) {
+      return res.status(400).json({
+        success: false,
+        message: "This registration is already assigned to this sponsor",
+      });
+    }
 
-    // add to new sponsor
+    // Remove only from the current assignment.
+    currentAssignment.eventRegistrationId =
+      currentAssignment.eventRegistrationId.filter(
+        (id) => id.toString() !== registrationId,
+      );
+
+    if (currentAssignment.eventRegistrationId.length === 0) {
+      await currentAssignment.deleteOne();
+    } else {
+      await currentAssignment.save();
+    }
+
+    // Assign to the new sponsor.
     const updated = await AssignAccomodationService.findOneAndUpdate(
       { eventId, sponsorId: newSponsorId },
       {
-        $addToSet: { eventRegistrationId: registrationId },
+        $addToSet: {
+          eventRegistrationId: registrationId,
+        },
       },
-      { new: true, upsert: true },
+      {
+        new: true,
+        upsert: true,
+      },
     );
-
-    // remove empty docs
-    await AssignAccomodationService.deleteMany({
-      eventId,
-      eventRegistrationId: { $size: 0 },
-    });
 
     return res.status(200).json({
       success: true,
@@ -283,8 +347,11 @@ export const reassignAccomodationService = async (req, res) => {
       data: updated,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Reassign accommodation service error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
@@ -301,7 +368,7 @@ export const sponsorRemoveAssignedAccomodationRegistration = async (
     // Logged-in sponsor
     const sponsorId = req.sponsor._id;
 
-    if (!registrationId) {
+    if (!mongoose.isValidObjectId(registrationId)) {
       return res.status(400).json({
         success: false,
         message: "registrationId is required",
@@ -327,20 +394,16 @@ export const sponsorRemoveAssignedAccomodationRegistration = async (
     // =======================
     // CHECK IF ACCOMMODATION ALREADY BOOKED
     // =======================
-    const bookedAccomodation = await Accomodation.findOne({
+    const bookedAccommodation = await findBookedAccommodation(
       eventId,
-      sponsorId,
-      $or: [
-        { eventRegistrationId: registrationId },
-        { otherEventRegistrationId: registrationId },
-      ],
-    });
+      registrationId,
+    );
 
-    if (bookedAccomodation) {
+    if (bookedAccommodation) {
       return res.status(400).json({
         success: false,
         message:
-          "This registration already booked accommodation. You cannot remove assigned accommodation service.",
+          "This delegate already has accommodation booked. You cannot remove the accommodation service assignment.",
       });
     }
 
