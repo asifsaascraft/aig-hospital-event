@@ -76,6 +76,22 @@ export const protectSponsor = async (req, res, next) => {
       })
     }
 
+    // Tokens issued before session versioning are treated as version 0.
+    // Once the login token is rotated, the sponsor's version increments and
+    // those legacy tokens are rejected without logging out unrelated sponsors.
+    const tokenSessionVersion = decoded.sessionVersion ?? 0
+
+    if (
+      !Number.isInteger(tokenSessionVersion) ||
+      tokenSessionVersion !== (sponsor.sessionVersion ?? 0)
+    ) {
+      return res.status(401).json({
+        success: false,
+        code: 'SPONSOR_SESSION_REVOKED',
+        message: 'Your session has been revoked. Please log in again.',
+      })
+    }
+
     // ============================
     // Check Sponsor status
     // ============================

@@ -51,6 +51,14 @@ const SponsorSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // Incremented whenever the sponsor's login credential is rotated.
+    // Access and refresh tokens issued under an older version are rejected.
+    sessionVersion: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     gstNumber: {
       type: String,
       trim: true,

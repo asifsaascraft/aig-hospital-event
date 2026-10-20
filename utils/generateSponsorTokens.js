@@ -7,12 +7,17 @@ import Sponsor from '../models/Sponsor.js'
 // =======================
 // Generate Sponsor JWT Tokens
 // =======================
-export const generateSponsorTokens = (sponsorId, eventId) => {
+export const generateSponsorTokens = (
+  sponsorId,
+  eventId,
+  sessionVersion = 0,
+) => {
   const accessToken = jwt.sign(
     {
       id: sponsorId,
       role: 'sponsor',
       eventId,
+      sessionVersion,
     },
     process.env.JWT_SECRET,
     {
@@ -25,6 +30,7 @@ export const generateSponsorTokens = (sponsorId, eventId) => {
       id: sponsorId,
       role: 'sponsor',
       eventId,
+      sessionVersion,
     },
     process.env.JWT_REFRESH_SECRET,
     {

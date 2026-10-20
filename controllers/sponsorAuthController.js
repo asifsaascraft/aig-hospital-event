@@ -80,6 +80,7 @@ export const loginSponsor = async (req, res) => {
     const { accessToken, refreshToken } = generateSponsorTokens(
       sponsor._id,
       sponsor.eventId._id,
+      sponsor.sessionVersion ?? 0,
     )
 
     // ============================
@@ -193,13 +194,42 @@ export const refreshAccessTokenSponsor = async (req, res) => {
     // Find Sponsor
     // ============================
     const sponsor = await Sponsor.findById(decoded.id).select(
-      '_id eventId sponsorName contactPersonName status',
+      '_id eventId sponsorName contactPersonName status sessionVersion',
     )
 
     if (!sponsor) {
       return res.status(401).json({
         success: false,
         message: 'Sponsor not found',
+      })
+    }
+
+    // Never allow a stale refresh token to mint a new access token.
+    // Legacy refresh tokens are treated as version 0 for a safe rollout;
+    // after this sponsor's token is rotated, their version no longer matches.
+    const tokenSessionVersion = decoded.sessionVersion ?? 0
+
+    if (
+      !Number.isInteger(tokenSessionVersion) ||
+      tokenSessionVersion !== (sponsor.sessionVersion ?? 0)
+    ) {
+      res.clearCookie('accessToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        path: '/',
+      })
+      res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        path: '/',
+      })
+
+      return res.status(401).json({
+        success: false,
+        code: 'SPONSOR_SESSION_REVOKED',
+        message: 'Your session has been revoked. Please log in again.',
       })
     }
 
@@ -226,7 +256,11 @@ export const refreshAccessTokenSponsor = async (req, res) => {
     // ============================
     // Generate new access token
     // ============================
-    const { accessToken } = generateSponsorTokens(sponsor._id, sponsor.eventId)
+    const { accessToken } = generateSponsorTokens(
+      sponsor._id,
+      sponsor.eventId,
+      sponsor.sessionVersion ?? 0,
+    )
 
     // ============================
     // Set new access token cookie
