@@ -3,6 +3,7 @@ import {
   assignAccomodationService,
   getAssignedAccomodationServicesByEvent,
   getMyAssignedAccomodationServices,
+  getMyUnbookedAssignedAccomodationServices,
   removeAssignedAccomodationRegistration,
   sponsorRemoveAssignedAccomodationRegistration,
   reassignAccomodationService,
@@ -38,6 +39,13 @@ router.get(
   "/sponsor/events/:eventId/my-assign-accomodation-services",
   protectSponsor,
   getMyAssignedAccomodationServices,
+);
+
+// Sponsor: Get Only Assigned Delegates Without Accommodation Bookings
+router.get(
+  "/sponsor/events/:eventId/my-unbooked-assign-accomodation-services",
+  protectSponsor,
+  getMyUnbookedAssignedAccomodationServices,
 );
 
 // =======================

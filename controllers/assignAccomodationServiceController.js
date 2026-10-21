@@ -173,6 +173,99 @@ export const getMyAssignedAccomodationServices = async (req, res) => {
 };
 
 // =======================
+// GET Logged In Sponsor Unbooked Assigned Accommodation Services
+// =======================
+export const getMyUnbookedAssignedAccomodationServices = async (
+  req,
+  res,
+) => {
+  try {
+    const { eventId } = req.params;
+    const sponsorId = req.sponsor._id;
+
+    // Get this sponsor's accommodation assignment
+    const assignedData = await AssignAccomodationService.findOne({
+      eventId,
+      sponsorId,
+    })
+      .populate("sponsorId", "sponsorName contactPersonName email mobile")
+      .populate("eventRegistrationId", "prefix name email mobile regNum");
+
+    if (!assignedData) {
+      return res.status(200).json({
+        success: true,
+        data: null,
+      });
+    }
+
+    // Get all assigned registration IDs
+    const assignedRegistrationIds = assignedData.eventRegistrationId.map(
+      (registration) => registration._id,
+    );
+
+    // Find bookings for either the primary delegate or the
+    // second delegate selected for Twin Sharing
+    const bookedAccommodations = await Accomodation.find({
+      eventId,
+      $or: [
+        {
+          eventRegistrationId: { $in: assignedRegistrationIds },
+        },
+        {
+          otherEventRegistrationId: { $in: assignedRegistrationIds },
+        },
+      ],
+    }).select("eventRegistrationId otherEventRegistrationId");
+
+    // Collect every registration ID that is already booked
+    const bookedRegistrationIds = new Set();
+
+    for (const booking of bookedAccommodations) {
+      if (booking.eventRegistrationId) {
+        bookedRegistrationIds.add(
+          booking.eventRegistrationId.toString(),
+        );
+      }
+
+      if (booking.otherEventRegistrationId) {
+        bookedRegistrationIds.add(
+          booking.otherEventRegistrationId.toString(),
+        );
+      }
+    }
+
+    // Keep only assigned delegates who have no accommodation booking
+    const unbookedRegistrations =
+      assignedData.eventRegistrationId.filter(
+        (registration) =>
+          !bookedRegistrationIds.has(registration._id.toString()),
+      );
+
+    // Keep the same response structure as the existing API
+    const data = {
+      ...assignedData.toObject(),
+      eventRegistrationId: unbookedRegistrations,
+    };
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.error(
+      "Get My Unbooked Assigned Accommodation Services Error:",
+      error,
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
+// =======================
 // REMOVE Assigned Registration
 // =======================
 export const removeAssignedAccomodationRegistration = async (req, res) => {

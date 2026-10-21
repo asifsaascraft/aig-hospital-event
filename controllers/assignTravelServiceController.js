@@ -164,6 +164,78 @@ export const getMyAssignedTravelServices = async (req, res) => {
 };
 
 // =======================
+// GET Logged In Sponsor Unbooked Assigned Travel Services
+// =======================
+export const getMyUnbookedAssignedTravelServices = async (
+  req,
+  res,
+) => {
+  try {
+    const { eventId } = req.params;
+    const sponsorId = req.sponsor._id;
+
+    // Get the logged-in sponsor's assigned travel services
+    const assignedData = await AssignTravelService.findOne({
+      eventId,
+      sponsorId,
+    })
+      .populate("sponsorId", "sponsorName contactPersonName email mobile")
+      .populate("eventRegistrationId", "prefix name email mobile regNum");
+
+    if (!assignedData) {
+      return res.status(200).json({
+        success: true,
+        data: null,
+      });
+    }
+
+    // Get assigned registration IDs
+    const assignedRegistrationIds = assignedData.eventRegistrationId.map(
+      (registration) => registration._id,
+    );
+
+    // Find delegates who already have travel booked
+    const bookedTravels = await Travel.find({
+      eventId,
+      eventRegistrationId: { $in: assignedRegistrationIds },
+    }).select("eventRegistrationId");
+
+    const bookedRegistrationIds = new Set(
+      bookedTravels.map((travel) => travel.eventRegistrationId.toString()),
+    );
+
+    // Exclude delegates who already have a Travel record
+    const unbookedRegistrations =
+      assignedData.eventRegistrationId.filter(
+        (registration) =>
+          !bookedRegistrationIds.has(registration._id.toString()),
+      );
+
+    // Preserve the same response structure as the existing API
+    const data = {
+      ...assignedData.toObject(),
+      eventRegistrationId: unbookedRegistrations,
+    };
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.error(
+      "Get My Unbooked Assigned Travel Services Error:",
+      error,
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
+// =======================
 // REMOVE Assigned Registration
 // =======================
 export const removeAssignedTravelRegistration = async (req, res) => {

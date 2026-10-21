@@ -3,6 +3,7 @@ import {
   assignTravelService,
   getAssignedTravelServicesByEvent,
   getMyAssignedTravelServices,
+  getMyUnbookedAssignedTravelServices,
   removeAssignedTravelRegistration,
   sponsorRemoveAssignedTravelRegistration,
   reassignTravelService,
@@ -37,6 +38,13 @@ router.get(
   "/sponsor/events/:eventId/my-assign-travel-services",
   protectSponsor,
   getMyAssignedTravelServices
+);
+
+// Sponsor: Get Assigned Delegates Without Travel Bookings
+router.get(
+  "/sponsor/events/:eventId/my-unbooked-assign-travel-services",
+  protectSponsor,
+  getMyUnbookedAssignedTravelServices,
 );
 
 // =======================
