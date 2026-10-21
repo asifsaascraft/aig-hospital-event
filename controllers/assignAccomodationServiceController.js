@@ -159,12 +159,6 @@ export const getMyAssignedAccomodationServices = async (req, res) => {
       .populate("sponsorId", "sponsorName contactPersonName email mobile")
       .populate("eventRegistrationId", "prefix name email mobile regNum");
 
-    if (!data) {
-      return res.status(404).json({
-        success: false,
-        message: "No assigned accommodation services found",
-      });
-    }
 
     return res.status(200).json({
       success: true,
