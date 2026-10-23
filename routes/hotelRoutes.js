@@ -14,10 +14,10 @@ import { uploadHotelImage } from "../middlewares/uploadMiddleware.js";
 
 const router = express.Router();
 
-// Public: anyone logged-in can view hotels
-router.get("/hotels", protect, getHotels);
-router.get("/hotels/active", protect, getActiveHotels);
-router.get("/hotels/:id", protect, getHotelById);
+// Public:  view hotels
+router.get("/hotels", getHotels);
+router.get("/hotels/active", getActiveHotels);
+router.get("/hotels/:id", getHotelById);
 
 // Admin-only: Create hotel
 router.post(
