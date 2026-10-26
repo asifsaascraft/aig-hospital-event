@@ -4,6 +4,7 @@ import {
   getAccompanyAmount,
   addAccompanies,
   getAllPaidAccompaniesByEvent,
+  getAllPaidAccompaniesByUser,
   editPaidAccompanies,
   getAllPaidAccompaniesByEvent_Admin,
   updateAccompanySuspension,
@@ -18,6 +19,15 @@ const router = express.Router();
 /* ========================================================
    Accompany Routes — Accessible only by "user"
 ======================================================== */
+
+// Get all paid accompanies for the logged-in user across all events
+router.get(
+  "/accompanies/paid/my-all",
+  protect,
+  authorizeRoles("user"),
+  getAllPaidAccompaniesByUser
+);
+
 
 //  Get accompany amount by event + registration
 router.get(

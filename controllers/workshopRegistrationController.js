@@ -175,6 +175,52 @@ export const registerForWorkshops = async (req, res) => {
   }
 };
 
+
+// Get all completed workshop registrations for the logged-in user across all events
+export const getAllUserWorkshopRegistrations = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Fetch all completed registrations for the logged-in user
+    const registrations = await WorkshopRegistration.find({
+      userId,
+      paymentStatus: "Completed",
+    })
+      .populate({
+        path: "eventId",
+        select: "eventName eventCode startDateTime endDateTime",
+      })
+      .populate("workshops.workshopIds")
+      .sort({ createdAt: -1 });
+
+    // Exclude suspended workshops
+    const filteredRegistrations = registrations
+      .map((reg) => ({
+        ...reg.toObject(),
+        workshops: reg.workshops.filter(
+          (ws) => ws.isSuspended === false
+        ),
+      }))
+      // Remove registrations where all workshops are suspended
+      .filter((reg) => reg.workshops.length > 0);
+
+    return res.status(200).json({
+      success: true,
+      message: "All completed workshop registrations fetched successfully",
+      totalRegistrations: filteredRegistrations.length,
+      data: filteredRegistrations,
+    });
+  } catch (error) {
+    console.error("Get all user workshop registrations error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
 /* 
 ========================================================
   2️ Get completed workshop registrations for specific event

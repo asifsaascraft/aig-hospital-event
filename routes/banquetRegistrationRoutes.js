@@ -2,6 +2,7 @@ import express from "express";
 import {
   registerBanquet,
   getAllPaidBanquetsByEvent,
+  getAllPaidBanquetsByUser,
   editPaidBanquets,
   getAllPaidBanquetsByEvent_Admin,
   updateBanquetSuspension,
@@ -17,6 +18,14 @@ router.post(
   protect,
   authorizeRoles("user"),
   registerBanquet
+);
+
+// Get all paid banquets for the logged-in user across all events
+router.get(
+  "/banquet-registrations/paid/my-all",
+  protect,
+  authorizeRoles("user"),
+  getAllPaidBanquetsByUser
 );
 
 // Get all paid banquets for logged-in user (specific event)

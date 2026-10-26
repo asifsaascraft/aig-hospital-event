@@ -225,6 +225,99 @@ export const getAllPaidBanquetsByEvent = async (req, res) => {
   }
 };
 
+
+// Get all paid banquets for the logged-in user across all events
+export const getAllPaidBanquetsByUser = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Find all banquet registrations belonging to the logged-in user
+    const banquetRegs = await BanquetRegistration.find({ userId })
+      .populate({
+        path: "eventId",
+        select: "eventName eventCode startDateTime endDateTime",
+      })
+      .populate({
+        path: "banquetId",
+        select: "banquetslabName amount startDateTime endDateTime",
+      })
+      .populate({
+        path: "banquets.userId",
+        select: "name email",
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const paidBanquets = [];
+
+    for (const reg of banquetRegs) {
+      const paidEntries = [];
+
+      for (const b of reg.banquets) {
+        // Return only paid and non-suspended banquet entries
+        if (b.isPaid === true && b.isSuspended === false) {
+          const banquetData = { ...b };
+
+          // Include accompany details when this entry belongs to an accompany
+          if (b.accompanySubId) {
+            const parent = await Accompany.findOne({
+              "accompanies._id": b.accompanySubId,
+            }).lean();
+
+            if (parent) {
+              const sub = parent.accompanies.find(
+                (a) =>
+                  a._id.toString() === b.accompanySubId.toString()
+              );
+
+              if (sub) {
+                banquetData.accompanyDetails = {
+                  parentAccompanyId: parent._id,
+                  ...sub,
+                };
+              }
+            }
+          }
+
+          paidEntries.push(banquetData);
+        }
+      }
+
+      // Include only registrations containing paid banquet entries
+      if (paidEntries.length > 0) {
+        paidBanquets.push({
+          _id: reg._id,
+          banquet: reg.banquetId,
+          event: reg.eventId,
+          registration: reg.eventRegistrationId,
+          paidBanquets: paidEntries,
+        });
+      }
+    }
+
+    if (paidBanquets.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No paid banquet registrations found for this user",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "All paid banquets fetched successfully for the logged-in user",
+      totalBanquetRegistrations: paidBanquets.length,
+      data: paidBanquets,
+    });
+  } catch (error) {
+    console.error("Get all paid banquets by user error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+
 /* 
 ========================================================
   3️ Edit Paid Banquets (Only update otherName)

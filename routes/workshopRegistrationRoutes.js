@@ -2,6 +2,7 @@ import express from "express";
 import {
   registerForWorkshops,
   getUserWorkshopRegistrationsByEvent,
+  getAllUserWorkshopRegistrations, 
   getAllWorkshopRegistrationsByEvent,
   updateWorkshopSuspension,
   registerForWorkshopsByEventAdmin,
@@ -22,6 +23,15 @@ router.post(
   authorizeRoles("user"),
   registerForWorkshops
 );
+
+// Get all completed workshop registrations for the logged-in user across all events
+router.get(
+  "/my-registrations",
+  protect,
+  authorizeRoles("user"),
+  getAllUserWorkshopRegistrations
+);
+
 
 // 2️ Get Completed Workshop Registrations for Specific Event
 router.get(

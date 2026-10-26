@@ -222,6 +222,61 @@ export const getAllPaidAccompaniesByEvent = async (req, res) => {
   }
 };
 
+// Get all paid accompanies for the logged-in user across all events
+export const getAllPaidAccompaniesByUser = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Find accompany records belonging to the logged-in user
+    const accompanies = await Accompany.find({ userId })
+      .populate({
+        path: "eventId",
+        select: "eventName eventCode startDateTime endDateTime",
+      })
+      .sort({ createdAt: -1 });
+
+    // Return only paid and non-suspended accompany members
+    const paidAccompanies = accompanies
+      .map((doc) => {
+        const paidList = doc.accompanies.filter(
+          (a) => a.isPaid === true && a.isSuspended === false
+        );
+
+        if (paidList.length > 0) {
+          return {
+            _id: doc._id,
+            event: doc.eventId,
+            registration: doc.eventRegistrationId,
+            paidAccompanies: paidList,
+          };
+        }
+
+        return null;
+      })
+      .filter(Boolean);
+
+    if (paidAccompanies.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No paid accompanies found for this user",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "All paid accompanies fetched successfully",
+      total: paidAccompanies.length,
+      data: paidAccompanies,
+    });
+  } catch (error) {
+    console.error("Get all paid accompanies by user error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
 /* 
 ========================================================
   4️ Edit Paid Accompanies (Only editable fields)
