@@ -348,7 +348,11 @@ const prepareAccommodationBooking = async ({
     requiredDateKeys.push(extraCheckoutKey);
   }
 
-  // Check duplicate delegate bookings, ignoring the current record during update.
+  // ===============================
+  // PREVENT SAME DELEGATE BOOKING ON OVERLAPPING DATES
+  // Allow multiple hotels for different dates
+  // ===============================
+
   const delegateIds = [
     eventRegistrationId.toString(),
     ...(roomType === "Twin Sharing"
@@ -363,13 +367,23 @@ const prepareAccommodationBooking = async ({
 
   const duplicate = await Accomodation.findOne({
     eventId,
+
     ...(ignoreBookingId ? { _id: { $ne: ignoreBookingId } } : {}),
+
+    // Check whether the delegate already has a booking
+    // on any date required by this booking.
+    accomodationDays: {
+      $elemMatch: {
+        date: { $in: requiredDateKeys },
+      },
+    },
+
     $or: duplicateConditions,
   });
 
   if (duplicate) {
     return badRequest(
-      "One of the selected delegates already has an accommodation booking for this event",
+      "This delegate already has an accommodation booking for one or more selected dates. Please select different dates.",
     );
   }
 

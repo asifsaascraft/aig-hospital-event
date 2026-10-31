@@ -23,6 +23,30 @@ export const getTeams = async (req, res) => {
 };
 
 // =======================
+// Get all active eventAdmins
+// =======================
+export const getAllActiveTeams = async (req, res) => {
+  try {
+    const teams = await User.find({
+      role: "eventAdmin",
+      status: "Active",
+    }).sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      total: teams.length,
+      data: teams,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch active teams",
+      error: error.message,
+    });
+  }
+};
+
+// =======================
 // Create eventAdmin (admin only)
 // =======================
 export const createTeam = async (req, res) => {

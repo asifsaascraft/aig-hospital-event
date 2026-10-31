@@ -2,6 +2,7 @@
 import express from "express";
 import {
   getTeams,
+  getAllActiveTeams,
   createTeam,
   updateTeam,
   deleteTeam,
@@ -14,6 +15,11 @@ const router = express.Router();
 // Public: Get all teams (eventAdmins)
 // =======================
 router.get("/teams", getTeams);
+
+// =======================
+// Get all active teams
+// =======================
+router.get("/teams/active", getAllActiveTeams);
 
 // =======================
 // Admin-only: Create a new team (eventAdmin user)
