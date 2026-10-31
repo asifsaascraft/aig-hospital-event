@@ -1,8 +1,8 @@
 import User from "../models/User.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
 import { generateStrongPassword } from "../utils/generatePassword.js";
-import EventRegistration from '../models/EventRegistration.js'
-import Event from '../models/Event.js'
+import EventRegistration from "../models/EventRegistration.js";
+import Event from "../models/Event.js";
 
 // =======================
 // (EventAdmin Authorize): Create User (signup)
@@ -61,9 +61,6 @@ export const registerUserByEventAdmin = async (req, res) => {
     }
     // Generate password
     const plainPassword = generateStrongPassword();
-
-
-
 
     let createdByValue;
     let createdById;
@@ -140,8 +137,6 @@ export const registerUserByEventAdmin = async (req, res) => {
   }
 };
 
-
-
 // =======================
 // Admin: Get All Users
 // =======================
@@ -150,22 +145,22 @@ export const getAllUsers = async (req, res) => {
     const users = await User.aggregate([
       {
         $match: {
-          role: 'user',
+          role: "user",
         },
       },
 
       // Get first registration of the user
       {
         $lookup: {
-          from: 'eventregistrations',
+          from: "eventregistrations",
           let: {
-            userId: '$_id',
+            userId: "$_id",
           },
           pipeline: [
             {
               $match: {
                 $expr: {
-                  $eq: ['$userId', '$$userId'],
+                  $eq: ["$userId", "$$userId"],
                 },
               },
             },
@@ -177,34 +172,51 @@ export const getAllUsers = async (req, res) => {
             {
               $limit: 1,
             },
+            {
+              $project: {
+                createdAt: 1,
+                eventId: 1,
+              },
+            },
           ],
-          as: 'firstRegistration',
+          as: "firstRegistration",
         },
       },
 
       // Get event details
       {
         $lookup: {
-          from: 'events',
-          localField: 'firstRegistration.eventId',
-          foreignField: '_id',
-          as: 'signupEvent',
+          from: "events",
+          localField: "firstRegistration.eventId",
+          foreignField: "_id",
+          as: "signupEventDetails",
         },
       },
 
+      // Set signupEvent and registration createdAt
       {
         $addFields: {
           signupEvent: {
             $ifNull: [
               {
-                $arrayElemAt: ['$signupEvent.eventName', 0],
+                $arrayElemAt: ["$signupEventDetails.eventName", 0],
               },
-              'Self',
+              "Self",
+            ],
+          },
+
+          createdAt: {
+            $ifNull: [
+              {
+                $arrayElemAt: ["$firstRegistration.createdAt", 0],
+              },
+              "$createdAt",
             ],
           },
         },
       },
 
+      // Remove sensitive fields and temporary lookup fields
       {
         $project: {
           password: 0,
@@ -214,6 +226,7 @@ export const getAllUsers = async (req, res) => {
           otp: 0,
           otpExpires: 0,
           firstRegistration: 0,
+          signupEventDetails: 0,
         },
       },
 
@@ -222,22 +235,22 @@ export const getAllUsers = async (req, res) => {
           createdAt: -1,
         },
       },
-    ])
+    ]);
 
     return res.status(200).json({
       success: true,
       count: users.length,
       users,
-    })
+    });
   } catch (error) {
-    console.error('Get all users error:', error)
+    console.error("Get all users error:", error);
 
     return res.status(500).json({
       success: false,
-      message: 'Internal Server Error',
-    })
+      message: "Internal Server Error",
+    });
   }
-}
+};
 
 // =======================
 // EventAdmin: Get ONLY EventAdmin Created Users
@@ -381,7 +394,6 @@ export const updateUser = async (req, res) => {
   }
 };
 
-
 // =======================
 // Admin: Update Any User
 // =======================
@@ -406,10 +418,7 @@ export const updateUserByAdmin = async (req, res) => {
     // =======================
     // Email duplicate check
     // =======================
-    if (
-      updateFields.email &&
-      updateFields.email !== user.email
-    ) {
+    if (updateFields.email && updateFields.email !== user.email) {
       const emailExists = await User.findOne({
         email: updateFields.email,
         _id: { $ne: userId },
@@ -426,10 +435,7 @@ export const updateUserByAdmin = async (req, res) => {
     // =======================
     // Mobile duplicate check
     // =======================
-    if (
-      updateFields.mobile &&
-      updateFields.mobile !== user.mobile
-    ) {
+    if (updateFields.mobile && updateFields.mobile !== user.mobile) {
       const mobileExists = await User.findOne({
         mobile: updateFields.mobile,
         _id: { $ne: userId },
@@ -460,15 +466,11 @@ export const updateUserByAdmin = async (req, res) => {
     // =======================
     // Update user
     // =======================
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      updateFields,
-      {
-        new: true,
-        runValidators: true,
-      }
-    ).select(
-      "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires"
+    const updatedUser = await User.findByIdAndUpdate(userId, updateFields, {
+      new: true,
+      runValidators: true,
+    }).select(
+      "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires",
     );
 
     // =======================
@@ -489,7 +491,6 @@ export const updateUserByAdmin = async (req, res) => {
     });
   }
 };
-
 
 // =======================
 // Delete User (Only eventAdmin)
@@ -539,10 +540,9 @@ export const checkUserEmailExists = async (req, res) => {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-
     const user = await User.findOne({
       email: normalizedEmail,
-      role: "user"
+      role: "user",
     }).select(
       "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires",
     );
@@ -640,7 +640,6 @@ export const registerUserBySponsor = async (req, res) => {
     // created By SPONSOR
     let createdByValue = "sponsor";
     let createdById = req.sponsor._id;
-
 
     // =======================
     // Create User
