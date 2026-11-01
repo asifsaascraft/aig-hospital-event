@@ -4,13 +4,20 @@ import EventVisitor from "../models/EventVisitor.js";
 import EventRegistration from "../models/EventRegistration.js";
 
 
+
 // =======================
 // Get Event Cards (Public)
 // =======================
 export const getEventCards = async (req, res) => {
   try {
+    const now = new Date();
+
     const events = await Event.find(
-      { isActive: true },
+      {
+        isActive: true,
+        isEventApp: true,
+        endDateTime: { $gte: now },
+      },
       {
         eventName: 1,
         eventImage: 1,
@@ -41,6 +48,9 @@ export const getEventCards = async (req, res) => {
     });
   }
 };
+
+
+
 // =======================
 // Get all events (public)
 // =======================
