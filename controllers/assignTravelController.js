@@ -222,6 +222,7 @@ export const getUnassignedTravels = async (req, res) => {
   }
 };
 
+
 // ===============================
 // SUMMARY
 // ===============================
@@ -230,19 +231,20 @@ export const getAssignSummary = async (req, res) => {
     const { eventId } = req.params;
 
     const data = await AssignTravel.find({ eventId })
+      .sort({ createdAt: -1 })
       .populate(
         "marketingTeamId",
-        "companyName contactPersonName contactPersonEmail contactPersonMobile",
+        "companyName contactPersonName contactPersonEmail contactPersonMobile"
       )
       .populate("eventAdminId", "name email mobile")
       .populate(
         "otherTeamId",
-        "contactPersonName contactPersonEmail contactPersonMobile",
+        "contactPersonName contactPersonEmail contactPersonMobile"
       )
       .populate({
         path: "travelIds",
         select:
-          "_id eventId eventRegistrationId fullName travelAgentId arrivalPickupPoint arrivalPickupPointType arrivalPickupDateTime arrivalDropOffPoint departurePickupPoint departurePickupPointType departurePickupDateTime departureDropOffPoint",
+          "_id eventId eventRegistrationId fullName idUpload travelPlanUpload arrivalRemark departureRemark travelAgentId arrival departure sponsorId createdBy createdAt updatedAt",
         populate: [
           {
             path: "eventRegistrationId",
@@ -254,50 +256,82 @@ export const getAssignSummary = async (req, res) => {
           },
         ],
       })
-      .lean(); //  important
+      .lean();
 
-    //  FORMAT RESPONSE
-    const formatted = data.map((item) => {
-      return {
-        _id: item._id,
+    const formatted = data.map((item) => ({
+      _id: item._id,
+      remark: item.remark,
 
-        remark: item.remark,
+      ...(item.marketingTeamId && {
+        marketingTeamId: item.marketingTeamId,
+      }),
 
-        ...(item.marketingTeamId && {
-          marketingTeamId: item.marketingTeamId,
-        }),
+      ...(item.eventAdminId && {
+        eventAdminId: item.eventAdminId,
+      }),
 
-        ...(item.eventAdminId && {
-          eventAdminId: item.eventAdminId,
-        }),
+      ...(item.otherTeamId && {
+        otherTeamId: item.otherTeamId,
+      }),
 
-        ...(item.otherTeamId && {
-          otherTeamId: item.otherTeamId,
-        }),
-
-        travelIds: item.travelIds.map((t) => ({
+      travelIds: (item.travelIds || [])
+        .filter(Boolean)
+        .map((t) => ({
           _id: t._id,
           eventId: t.eventId,
-          eventRegistrationId: t.eventRegistrationId, //  populated object
+          eventRegistrationId: t.eventRegistrationId,
           fullName: t.fullName,
-          travelAgentId: t.travelAgentId, //  populated object
-          arrivalPickupPoint: t.arrivalPickupPoint,
-          arrivalPickupPointType: t.arrivalPickupPointType,
-          arrivalPickupDateTime: t.arrivalPickupDateTime,
-          arrivalDropOffPoint: t.arrivalDropOffPoint,
-          departurePickupPoint: t.departurePickupPoint,
-          departurePickupPointType: t.departurePickupPointType,
-          departurePickupDateTime: t.departurePickupDateTime,
-          departureDropOffPoint: t.departureDropOffPoint,
-        })),
-      };
-    });
 
-    res.status(200).json({
+          // Travel documents and remarks
+          idUpload: t.idUpload,
+          travelPlanUpload: t.travelPlanUpload,
+          arrivalRemark: t.arrivalRemark,
+          departureRemark: t.departureRemark,
+
+          // Travel agent
+          travelAgentId: t.travelAgentId,
+
+          // Arrival details (nested in Travel model)
+          arrival: {
+            fromCity: t.arrival?.fromCity,
+            toCity: t.arrival?.toCity,
+            vehicleType: t.arrival?.vehicleType,
+            vehicleNumber: t.arrival?.vehicleNumber,
+            pickupPoint: t.arrival?.pickupPoint,
+            pickupDateTime: t.arrival?.pickupDateTime,
+            dropOffPoint: t.arrival?.dropOffPoint,
+          },
+
+          // Departure details (nested in Travel model)
+          departure: {
+            fromCity: t.departure?.fromCity,
+            toCity: t.departure?.toCity,
+            vehicleType: t.departure?.vehicleType,
+            vehicleNumber: t.departure?.vehicleNumber,
+            pickupPoint: t.departure?.pickupPoint,
+            pickupDateTime: t.departure?.pickupDateTime,
+            dropOffPoint: t.departure?.dropOffPoint,
+          },
+
+          sponsorId: t.sponsorId,
+          createdBy: t.createdBy,
+          createdAt: t.createdAt,
+          updatedAt: t.updatedAt,
+        })),
+    }));
+
+    return res.status(200).json({
       success: true,
       data: formatted,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("getAssignSummary error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch travel assignment summary",
+      error: error.message,
+    });
   }
 };
+
