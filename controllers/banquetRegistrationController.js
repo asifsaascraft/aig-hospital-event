@@ -169,7 +169,7 @@ export const getAllPaidBanquetsByEvent = async (req, res) => {
     for (const reg of banquetRegs) {
       const paidEntries = [];
 
-      for (const b of reg.banquets) {
+      for (const b of reg.banquets || []) {
         if (b.isPaid && b.isSuspended === false) {
           const banquetData = { ...b };
 
@@ -208,11 +208,13 @@ export const getAllPaidBanquetsByEvent = async (req, res) => {
     }
 
     if (paidBanquets.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No paid banquet registrations found for this event",
-      });
-    }
+  return res.status(200).json({
+    success: true,
+    message: 'All paid banquets fetched successfully for the logged-in user',
+    totalBanquetRegistrations: 0,
+    data: [],
+  })
+}
 
     res.status(200).json({
       success: true,
@@ -253,7 +255,7 @@ export const getAllPaidBanquetsByUser = async (req, res) => {
     for (const reg of banquetRegs) {
       const paidEntries = [];
 
-      for (const b of reg.banquets) {
+      for (const b of reg.banquets || []) {
         // Return only paid and non-suspended banquet entries
         if (b.isPaid === true && b.isSuspended === false) {
           const banquetData = { ...b };
@@ -415,7 +417,7 @@ export const getAllPaidBanquetsByEvent_Admin = async (req, res) => {
     for (const reg of banquetRegs) {
       const paidEntries = [];
 
-      for (const b of reg.banquets) {
+      for (const b of reg.banquets || []) {
         if (b.isPaid) {
           const banquetData = { ...b };
 
@@ -454,10 +456,12 @@ export const getAllPaidBanquetsByEvent_Admin = async (req, res) => {
     }
 
     if (allPaidBanquets.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No paid banquet registrations found for this event",
-      });
+      return res.status(200).json({
+    success: true,
+    message: 'All paid banquets fetched successfully for the event admin',
+    totalBanquetRegistrations: 0,
+    data: [],
+  })
     }
 
     res.status(200).json({
