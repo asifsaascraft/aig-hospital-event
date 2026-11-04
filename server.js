@@ -3,99 +3,107 @@ import "./config/dns.js";
 
 import dotenv from "dotenv";
 dotenv.config();
-import multer from "multer";
-import express from "express";
-import cors from "cors";
-import morgan from "morgan";
+
 import cookieParser from "cookie-parser";
+import cors from "cors";
+import express from "express";
+import morgan from "morgan";
+import multer from "multer";
+
 import connectDB from "./config/db.js";
 
 // Routes
-import adminRoutes from "./routes/adminRoutes.js";
-import eventAdminRoutes from "./routes/eventAdminRoutes.js";
-import supportAdminRoutes from "./routes/supportAdminRoutes.js";
-import userRoutes from "./routes/userRoutes.js";
-import sponsorAuthRoutes from "./routes/sponsorAuthRoutes.js";
-import onsiteAuthRoutes from "./routes/onsiteAuthRoutes.js";
-
-
-import announcementRoutes from "./routes/announcementRoutes.js";
-import departmentRoutes from "./routes/departmentRoutes.js";
-import eventGroupRoutes from "./routes/eventGroupRoutes.js";
-import organizerRoutes from "./routes/organizerRoutes.js";
-import marketingTeamRoutes from "./routes/marketingTeamRoutes.js";
-import otherTeamRoutes from "./routes/otherTeamRoutes.js";
-import venueRoutes from "./routes/venueRoutes.js";
-import teamRoutes from "./routes/teamRoutes.js";
-import eventRoutes from "./routes/eventRoutes.js";
-import hotelRoutes from "./routes/hotelRoutes.js";
-import roomCategoryRoutes from "./routes/roomCategoryRoutes.js";
-import supplierRoutes from "./routes/supplierRoutes.js";
-import addRoomRoutes from "./routes/addRoomRoutes.js";
-import eventAssignRoutes from "./routes/eventAssignRoutes.js";
-import eventAdminSummaryRoutes from "./routes/eventAdminSummaryRoutes.js";
-import dynamicRegFormRoutes from "./routes/dynamicRegFormRoutes.js";
-import registrationSlabRoutes from "./routes/registrationSlabRoutes.js";
-import banquetRoutes from "./routes/banquetRoutes.js";
-import banquetRegistrationRoutes from "./routes/banquetRegistrationRoutes.js";
 import accompanyRoutes from "./routes/accompanyRoutes.js";
-import workshopCategoryRoutes from "./routes/workshopCategoryRoutes.js";
-import workshopRoutes from "./routes/workshopRoutes.js";
-import workshopRegistrationRoutes from "./routes/workshopRegistrationRoutes.js";
-import termsAndConditionRoutes from "./routes/termsAndConditionRoutes.js";
-import createUserRoutes from "./routes/createUserRoutes.js";
-import discountCodeRoutes from "./routes/discountCodeRoutes.js";
-import registrationSettingRoutes from "./routes/registrationSettingRoutes.js";
-import facultyCategoryRoutes from "./routes/facultyCategoryRoutes.js";
-import travelAgentRoutes from "./routes/travelAgentRoutes.js";
-import travelRoutes from "./routes/travelRoutes.js";
-import assignTravelRoutes from "./routes/assignTravelRoutes.js"; 
-import sponsorHallRoutes from "./routes/sponsorHallRoutes.js";
-import sponsorBoothRoutes from "./routes/sponsorBoothRoutes.js";
-import sponsorCategoryRoutes from "./routes/sponsorCategoryRoutes.js";
-import sponsorRoutes from "./routes/sponsorRoutes.js";
-import sponsorQuotaRoutes from "./routes/sponsorQuotaRoutes.js";
+import addRoomRoutes from "./routes/addRoomRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
+import allExpenseRoutes from "./routes/allExpenseRoutes.js";
+import announcementRoutes from "./routes/announcementRoutes.js";
+import appFeedbackResponseRoutes from "./routes/appFeedbackResponseRoutes.js";
+import appFeedbackRoutes from "./routes/appFeedbackRoutes.js";
+import appOrganizerRoutes from "./routes/appOrganizerRoutes.js";
+import appOrganizerTypeRoutes from "./routes/appOrganizerTypeRoutes.js";
+import appPollRoutes from "./routes/appPollRoutes.js";
+import appQuizRoutes from "./routes/appQuizRoutes.js";
+import appSessionCommentRoutes from "./routes/appSessionCommentRoutes.js";
+import appSessionRoutes from "./routes/appSessionRoutes.js";
+import appVenueRoutes from "./routes/appVenueRoutes.js";
+import assignAccomodationServiceRoutes from "./routes/assignAccomodationServiceRoutes.js";
 import assignBoothToSponsorRoutes from "./routes/assignBoothToSponsorRoutes.js";
-import sponsorRegistrationQuotaRoutes from "./routes/sponsorRegistrationQuotaRoutes.js";
-import sponsorAccomodationQuotaRoutes from "./routes/sponsorAccomodationQuotaRoutes.js";
-import sponsorTravelQuotaRoutes from "./routes/sponsorTravelQuotaRoutes.js";
-import sponsorWorkshopQuotaRoutes from "./routes/sponsorWorkshopQuotaRoutes.js";
-import sponsorTravelRoutes from "./routes/sponsorTravelRoutes.js";
+import assignTravelRoutes from "./routes/assignTravelRoutes.js";
+import assignTravelServiceRoutes from "./routes/assignTravelServiceRoutes.js";
+import badgeProfilePrivilegeRoutes from "./routes/badgeProfilePrivilegeRoutes.js";
+import banquetRegistrationRoutes from "./routes/banquetRegistrationRoutes.js";
+import banquetRoutes from "./routes/banquetRoutes.js";
+import cardProfileRoutes from "./routes/cardProfileRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
+import createUserRoutes from "./routes/createUserRoutes.js";
+import departmentRoutes from "./routes/departmentRoutes.js";
+import discountCodeRoutes from "./routes/discountCodeRoutes.js";
+import downloadRoutes from "./routes/downloadRoutes.js";
+import dynamicRegFormRoutes from "./routes/dynamicRegFormRoutes.js";
+import eventAdminRoutes from "./routes/eventAdminRoutes.js";
+import eventAdminSummaryRoutes from "./routes/eventAdminSummaryRoutes.js";
+import eventAssignRoutes from "./routes/eventAssignRoutes.js";
+import eventGroupRoutes from "./routes/eventGroupRoutes.js";
+import eventInfoRoutes from "./routes/eventInfoRoutes.js";
 import eventRegistrationRoutes from "./routes/eventRegistrationRoutes.js";
-import paymentRoutes from "./routes/paymentRoutes.js";
-import sponsorEventRegRoutes from "./routes/sponsorEventRegRoutes.js";
+import eventRoutes from "./routes/eventRoutes.js";
+import exhibitorRoutes from "./routes/exhibitorRoutes.js";
+import exhibitorTypeRoutes from "./routes/exhibitorTypeRoutes.js";
 import expenseCategoryRoutes from "./routes/expenseCategoryRoutes.js";
 import expenseHeadRoutes from "./routes/expenseHeadRoutes.js";
 import expenseRecordRoutes from "./routes/expenseRecordRoutes.js";
-import allExpenseRoutes from "./routes/allExpenseRoutes.js";
+import facultyCategoryRoutes from "./routes/facultyCategoryRoutes.js";
+import hotelRoutes from "./routes/hotelRoutes.js";
 import incomeRecordRoutes from "./routes/incomeRecordRoutes.js";
 import incomeRoutes from "./routes/incomeRoutes.js";
-import cardProfileRoutes from "./routes/cardProfileRoutes.js";
-import assignTravelServiceRoutes from "./routes/assignTravelServiceRoutes.js";
-import assignAccomodationServiceRoutes from "./routes/assignAccomodationServiceRoutes.js";
-import noteRoutes from "./routes/noteRoutes.js";
-import sponsorAccomodationRoutes from "./routes/sponsorAccomodationRoutes.js";
-import scanTypeRoutes from "./routes/scanTypeRoutes.js";
-import onsiteBadgeRoutes from "./routes/onsiteBadgeRoutes.js";
-import badgeProfilePrivilegeRoutes from './routes/badgeProfilePrivilegeRoutes.js'
 import loginGenerateTokenRoutes from "./routes/loginGenerateTokenRoutes.js";
+import marketingTeamRoutes from "./routes/marketingTeamRoutes.js";
+import noteRoutes from "./routes/noteRoutes.js";
+import onsiteAuthRoutes from "./routes/onsiteAuthRoutes.js";
+import onsiteBadgeRoutes from "./routes/onsiteBadgeRoutes.js";
 import onsiteScanRoutes from "./routes/onsiteScanRoutes.js";
-import eventInfoRoutes from './routes/eventInfoRoutes.js'
-import committeeTypeRoutes from "./routes/committeeTypeRoutes.js";
-import committeeMemberRoutes from "./routes/committeeMemberRoutes.js";
-import sessionHallRoutes from "./routes/sessionHallRoutes.js";
-import sessionTrackRoutes from "./routes/sessionTrackRoutes.js";
-import speakerTypeRoutes from "./routes/speakerTypeRoutes.js";
-import sessionRoutes from "./routes/sessionRoutes.js";
-import speakerRoutes from "./routes/speakerRoutes.js";
-import downloadRoutes from "./routes/downloadRoutes.js";
-import quickLinkRoutes from "./routes/quickLinkRoutes.js";
-import exhibitorTypeRoutes from "./routes/exhibitorTypeRoutes.js";
-import exhibitorRoutes from "./routes/exhibitorRoutes.js";
-import contactRoutes from "./routes/contactRoutes.js";
-import pollRoutes from "./routes/pollRoutes.js";
+import organizerRoutes from "./routes/organizerRoutes.js";
+import otherTeamRoutes from "./routes/otherTeamRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 import pollResponseRoutes from "./routes/pollResponseRoutes.js";
+import pollRoutes from "./routes/pollRoutes.js";
+import quickLinkRoutes from "./routes/quickLinkRoutes.js";
+import registrationSettingRoutes from "./routes/registrationSettingRoutes.js";
+import registrationSlabRoutes from "./routes/registrationSlabRoutes.js";
+import roomCategoryRoutes from "./routes/roomCategoryRoutes.js";
+import scanTypeRoutes from "./routes/scanTypeRoutes.js";
+import sessionHallRoutes from "./routes/sessionHallRoutes.js";
+import sessionRoutes from "./routes/sessionRoutes.js";
+import sessionTrackRoutes from "./routes/sessionTrackRoutes.js";
+import speakerRoutes from "./routes/speakerRoutes.js";
+import speakerTypeRoutes from "./routes/speakerTypeRoutes.js";
+import sponsorAccomodationQuotaRoutes from "./routes/sponsorAccomodationQuotaRoutes.js";
+import sponsorAccomodationRoutes from "./routes/sponsorAccomodationRoutes.js";
+import sponsorAuthRoutes from "./routes/sponsorAuthRoutes.js";
+import sponsorBoothRoutes from "./routes/sponsorBoothRoutes.js";
+import sponsorCategoryRoutes from "./routes/sponsorCategoryRoutes.js";
+import sponsorEventRegRoutes from "./routes/sponsorEventRegRoutes.js";
+import sponsorHallRoutes from "./routes/sponsorHallRoutes.js";
+import sponsorQuotaRoutes from "./routes/sponsorQuotaRoutes.js";
+import sponsorRegistrationQuotaRoutes from "./routes/sponsorRegistrationQuotaRoutes.js";
+import sponsorRoutes from "./routes/sponsorRoutes.js";
+import sponsorTravelQuotaRoutes from "./routes/sponsorTravelQuotaRoutes.js";
+import sponsorTravelRoutes from "./routes/sponsorTravelRoutes.js";
+import sponsorWorkshopQuotaRoutes from "./routes/sponsorWorkshopQuotaRoutes.js";
+import supplierRoutes from "./routes/supplierRoutes.js";
+import supportAdminRoutes from "./routes/supportAdminRoutes.js";
 import supportTicketRoutes from "./routes/supportTicketRoutes.js";
+import teamRoutes from "./routes/teamRoutes.js";
+import termsAndConditionRoutes from "./routes/termsAndConditionRoutes.js";
+import topicRoutes from "./routes/topicRoutes.js";
+import travelAgentRoutes from "./routes/travelAgentRoutes.js";
+import travelRoutes from "./routes/travelRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+import venueRoutes from "./routes/venueRoutes.js";
+import workshopCategoryRoutes from "./routes/workshopCategoryRoutes.js";
+import workshopRegistrationRoutes from "./routes/workshopRegistrationRoutes.js";
+import workshopRoutes from "./routes/workshopRoutes.js";
 
 await connectDB();
 
@@ -106,8 +114,6 @@ const app = express();
 // =======================
 const allowedOrigins = [
   "http://localhost:3000",
-  "exp://192.168.1.5:8081",
-  "http://localhost:8081",
   process.env.ADMIN_FRONTEND_URL,
   process.env.EVENT_ADMIN_FRONTEND_URL,
   process.env.USER_FRONTEND_URL,
@@ -143,93 +149,101 @@ app.get("/", (req, res) => {
   res.send("AIG Hospital Event Backend by SaaScraft Studio (India) Pvt. Ltd.");
 });
 
+
 // =======================
 // API Routes
 // =======================
-app.use("/api/admin", adminRoutes);
-app.use("/api/event-admin", eventAdminRoutes);
-app.use("/api/support-admin", supportAdminRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/sponsors", sponsorAuthRoutes);
-app.use("/api/onsite", onsiteAuthRoutes);
-
-app.use("/api", announcementRoutes);
-app.use("/api", departmentRoutes);
-app.use("/api", eventGroupRoutes);
-app.use("/api", organizerRoutes);
-app.use("/api", marketingTeamRoutes);
-app.use("/api", otherTeamRoutes);
-app.use("/api", venueRoutes);
-app.use("/api", teamRoutes);
-app.use("/api", eventRoutes);
-app.use("/api", hotelRoutes);
-app.use("/api", roomCategoryRoutes);
-app.use("/api", supplierRoutes);
-app.use("/api", addRoomRoutes);
-app.use("/api", eventAssignRoutes);
-app.use("/api", eventAdminSummaryRoutes);
-app.use("/api", dynamicRegFormRoutes);
-app.use("/api", registrationSlabRoutes);
-app.use("/api", banquetRoutes);
-app.use("/api", banquetRegistrationRoutes);
 app.use("/api", accompanyRoutes);
-app.use("/api", workshopCategoryRoutes);
-app.use("/api", workshopRoutes);
-app.use("/api", workshopRegistrationRoutes);
-app.use("/api", termsAndConditionRoutes);
-app.use("/api", createUserRoutes);
-app.use("/api", discountCodeRoutes);
-app.use("/api", registrationSettingRoutes);
-app.use("/api", facultyCategoryRoutes);
-app.use("/api", travelAgentRoutes);
-app.use("/api", travelRoutes);
-app.use("/api", assignTravelRoutes);
-app.use("/api", sponsorHallRoutes);
-app.use("/api", sponsorBoothRoutes);
-app.use("/api", sponsorCategoryRoutes);
-app.use("/api", sponsorRoutes);
-app.use("/api", sponsorQuotaRoutes);
+app.use("/api", addRoomRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api", allExpenseRoutes);
+app.use("/api", announcementRoutes);
+app.use("/api", appFeedbackResponseRoutes);
+app.use("/api", appFeedbackRoutes);
+app.use("/api", appOrganizerRoutes);
+app.use("/api", appOrganizerTypeRoutes);
+app.use("/api", appPollRoutes);
+app.use("/api", appQuizRoutes);
+app.use("/api", appSessionCommentRoutes);
+app.use("/api", appSessionRoutes);
+app.use("/api", appVenueRoutes);
+app.use("/api/onsite", onsiteAuthRoutes);
+app.use("/api/sponsors", sponsorAuthRoutes);
+app.use("/api", assignAccomodationServiceRoutes);
 app.use("/api", assignBoothToSponsorRoutes);
-app.use("/api", sponsorRegistrationQuotaRoutes);
-app.use("/api", sponsorAccomodationQuotaRoutes);
-app.use("/api", sponsorTravelQuotaRoutes);
-app.use("/api", sponsorWorkshopQuotaRoutes);
-app.use("/api", sponsorTravelRoutes);
+app.use("/api", assignTravelRoutes);
+app.use("/api", assignTravelServiceRoutes);
+app.use("/api", badgeProfilePrivilegeRoutes);
+app.use("/api", banquetRegistrationRoutes);
+app.use("/api", banquetRoutes);
+app.use("/api", cardProfileRoutes);
+app.use("/api", contactRoutes);
+app.use("/api", createUserRoutes);
+app.use("/api", departmentRoutes);
+app.use("/api", discountCodeRoutes);
+app.use("/api", downloadRoutes);
+app.use("/api", dynamicRegFormRoutes);
+app.use("/api/event-admin", eventAdminRoutes);
+app.use("/api", eventAdminSummaryRoutes);
+app.use("/api", eventAssignRoutes);
+app.use("/api", eventGroupRoutes);
+app.use("/api", eventInfoRoutes);
 app.use("/api", eventRegistrationRoutes);
-app.use("/api", paymentRoutes);
-app.use("/api", sponsorEventRegRoutes);
+app.use("/api", eventRoutes);
+app.use("/api", exhibitorRoutes);
+app.use("/api", exhibitorTypeRoutes);
 app.use("/api", expenseCategoryRoutes);
 app.use("/api", expenseHeadRoutes);
 app.use("/api", expenseRecordRoutes);
-app.use("/api", allExpenseRoutes);
+app.use("/api", facultyCategoryRoutes);
+app.use("/api", hotelRoutes);
 app.use("/api", incomeRecordRoutes);
 app.use("/api", incomeRoutes);
-app.use("/api", cardProfileRoutes);
-app.use("/api", assignTravelServiceRoutes);
-app.use("/api", assignAccomodationServiceRoutes);
+app.use("/api", loginGenerateTokenRoutes);
+app.use("/api", marketingTeamRoutes);
 app.use("/api", noteRoutes);
-app.use("/api", sponsorAccomodationRoutes);
+app.use("/api", onsiteBadgeRoutes);
+app.use("/api", onsiteScanRoutes);
+app.use("/api", organizerRoutes);
+app.use("/api", otherTeamRoutes);
+app.use("/api", paymentRoutes);
+app.use("/api", pollResponseRoutes);
+app.use("/api", pollRoutes);
+app.use("/api", quickLinkRoutes);
+app.use("/api", registrationSettingRoutes);
+app.use("/api", registrationSlabRoutes);
+app.use("/api", roomCategoryRoutes);
 app.use("/api", scanTypeRoutes);
-app.use('/api', onsiteBadgeRoutes)
-app.use('/api', badgeProfilePrivilegeRoutes)
-app.use('/api', loginGenerateTokenRoutes)
-app.use('/api', onsiteScanRoutes)
-app.use('/api', eventInfoRoutes)
-app.use('/api', committeeTypeRoutes)
-app.use('/api', committeeMemberRoutes)
-app.use('/api', sessionHallRoutes)
-app.use('/api', sessionTrackRoutes)
-app.use('/api', speakerTypeRoutes)
-app.use('/api', sessionRoutes)
-app.use('/api', speakerRoutes)
-app.use('/api', downloadRoutes)
-app.use('/api', quickLinkRoutes)
-app.use('/api', exhibitorTypeRoutes)
-app.use('/api', exhibitorRoutes)
-app.use('/api', contactRoutes)
-app.use('/api', pollRoutes)
-app.use('/api', pollResponseRoutes)
+app.use("/api", sessionHallRoutes);
+app.use("/api", sessionRoutes);
+app.use("/api", sessionTrackRoutes);
+app.use("/api", speakerRoutes);
+app.use("/api", speakerTypeRoutes);
+app.use("/api", sponsorAccomodationQuotaRoutes);
+app.use("/api", sponsorAccomodationRoutes);
+app.use("/api", sponsorBoothRoutes);
+app.use("/api", sponsorCategoryRoutes);
+app.use("/api", sponsorEventRegRoutes);
+app.use("/api", sponsorHallRoutes);
+app.use("/api", sponsorQuotaRoutes);
+app.use("/api", sponsorRegistrationQuotaRoutes);
+app.use("/api", sponsorRoutes);
+app.use("/api", sponsorTravelQuotaRoutes);
+app.use("/api", sponsorTravelRoutes);
+app.use("/api", sponsorWorkshopQuotaRoutes);
+app.use("/api", supplierRoutes);
+app.use("/api/support-admin", supportAdminRoutes);
 app.use("/api", supportTicketRoutes);
+app.use("/api", teamRoutes);
+app.use("/api", termsAndConditionRoutes);
+app.use("/api", topicRoutes);
+app.use("/api", travelAgentRoutes);
+app.use("/api", travelRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api", venueRoutes);
+app.use("/api", workshopCategoryRoutes);
+app.use("/api", workshopRegistrationRoutes);
+app.use("/api", workshopRoutes);
 
 // =======================
 // Multer & File Upload Error Handler
