@@ -30,7 +30,7 @@ const SupplierSchema = new mongoose.Schema(
       type: String,
       required: [true, "Mobile number is required"],
       trim: true,
-      match: [/^\d{10}$/, "Mobile number must be 10 digits only"],
+      match: [/^\d{5,15}$/, "Mobile number must be between 5 and 15 digits"],
       unique: true,
     },
     status: {
@@ -40,11 +40,9 @@ const SupplierSchema = new mongoose.Schema(
       required: [true, "Status is required"],
     },
   },
-  { timestamps: true } // adds createdAt and updatedAt automatically
+  { timestamps: true }, // adds createdAt and updatedAt automatically
 );
 
 // Avoid model overwrite during hot-reload
 export default mongoose.models.Supplier ||
   mongoose.model("Supplier", SupplierSchema);
-
-

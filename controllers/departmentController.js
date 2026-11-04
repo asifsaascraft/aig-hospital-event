@@ -21,8 +21,9 @@ export const getDepartments = async (req, res) => {
 // =======================
 export const getActiveDepartments = async (req, res) => {
   try {
-    const departments = await Department.find({ status: "Active" })
-      .sort({ createdAt: -1 });
+    const departments = await Department.find({ status: "Active" }).sort({
+      createdAt: -1,
+    });
 
     res.json({
       success: true,
@@ -42,12 +43,30 @@ export const getActiveDepartments = async (req, res) => {
 // =======================
 export const createDepartment = async (req, res) => {
   try {
-    const { departmentName, contactPersonName, contactPersonMobile, contactPersonEmail, status } = req.body;
+    const {
+      departmentName,
+      contactPersonName,
+      contactPersonMobile,
+      contactPersonEmail,
+      status,
+    } = req.body;
 
-    if (!departmentName || !contactPersonName || !contactPersonMobile || !contactPersonEmail) {
+    if (
+      !departmentName ||
+      !contactPersonName ||
+      !contactPersonMobile ||
+      !contactPersonEmail
+    ) {
       return res
         .status(400)
         .json({ success: false, message: "All fields are required" });
+    }
+
+    if (!/^\d{5,15}$/.test(String(contactPersonMobile).trim())) {
+      return res.status(400).json({
+        success: false,
+        message: "Mobile number must be between 5 and 15 digits",
+      });
     }
 
     //  Check if email already exists
@@ -92,7 +111,13 @@ export const createDepartment = async (req, res) => {
 export const updateDepartment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { departmentName, contactPersonName, contactPersonMobile, contactPersonEmail, status } = req.body;
+    const {
+      departmentName,
+      contactPersonName,
+      contactPersonMobile,
+      contactPersonEmail,
+      status,
+    } = req.body;
 
     //  Check if email already exists in another department
     if (contactPersonEmail) {
@@ -106,6 +131,16 @@ export const updateDepartment = async (req, res) => {
           message: "Email already exists",
         });
       }
+    }
+
+    if (
+      contactPersonMobile !== undefined &&
+      !/^\d{5,15}$/.test(String(contactPersonMobile).trim())
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Mobile number must be between 5 and 15 digits",
+      });
     }
 
     //  Check if mobile already exists in another department
@@ -124,8 +159,14 @@ export const updateDepartment = async (req, res) => {
 
     const department = await Department.findByIdAndUpdate(
       id,
-      { departmentName, contactPersonName, contactPersonMobile, contactPersonEmail, status },
-      { new: true, runValidators: true }
+      {
+        departmentName,
+        contactPersonName,
+        contactPersonMobile,
+        contactPersonEmail,
+        status,
+      },
+      { new: true, runValidators: true },
     );
 
     if (!department) {

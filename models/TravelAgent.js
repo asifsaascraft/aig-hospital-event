@@ -16,7 +16,7 @@ const TravelAgentSchema = new mongoose.Schema(
     },
     mobile: {
       type: String,
-      match: [/^\d{10}$/, "Mobile number must be 10 digits"],
+      match: [/^\d{5,15}$/, "Mobile number must be between 5 and 15 digits"],
       trim: true,
     },
     company: {
@@ -36,7 +36,7 @@ const TravelAgentSchema = new mongoose.Schema(
       required: [true, "Status is required"],
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.models.TravelAgent ||

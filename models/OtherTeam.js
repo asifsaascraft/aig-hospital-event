@@ -18,7 +18,7 @@ const OtherTeamSchema = new mongoose.Schema(
     contactPersonMobile: {
       type: String,
       required: [true, "Mobile number is required"],
-      match: [/^\d{10}$/, "Mobile number must be 10 digits"],
+      match: [/^\d{5,15}$/, "Mobile number must be between 5 and 15 digits"],
       trim: true,
       unique: true,
     },
@@ -29,10 +29,9 @@ const OtherTeamSchema = new mongoose.Schema(
       required: [true, "Status is required"],
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Avoid model overwrite during hot-reload
 export default mongoose.models.OtherTeam ||
   mongoose.model("OtherTeam", OtherTeamSchema);
-

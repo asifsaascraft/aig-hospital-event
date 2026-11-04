@@ -127,10 +127,10 @@ export const addAccompanies = async (req, res) => {
         });
       }
 
-      if (!a.mobile) {
+      if (!a.mobile || !/^\d{5,15}$/.test(String(a.mobile).trim())) {
         return res.status(400).json({
           success: false,
-          message: "Mobile is required for accompany",
+          message: "Mobile number must be between 5 and 15 digits",
         });
       }
     }
@@ -239,7 +239,7 @@ export const getAllPaidAccompaniesByUser = async (req, res) => {
     const paidAccompanies = accompanies
       .map((doc) => {
         const paidList = doc.accompanies.filter(
-          (a) => a.isPaid === true && a.isSuspended === false
+          (a) => a.isPaid === true && a.isSuspended === false,
         );
 
         if (paidList.length > 0) {
@@ -613,10 +613,10 @@ export const addAccompaniesByEventAdmin = async (req, res) => {
         });
       }
 
-      if (!a.mobile) {
+      if (!a.mobile || !/^\d{5,15}$/.test(String(a.mobile).trim())) {
         return res.status(400).json({
           success: false,
-          message: "Mobile is required for accompany",
+          message: "Mobile number must be between 5 and 15 digits",
         });
       }
     }

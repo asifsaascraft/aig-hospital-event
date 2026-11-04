@@ -27,16 +27,22 @@ export const createExpenseRecord = async (req, res) => {
     }
 
     // Manual Validations (extra safety)
-    if (!companyName || !contactPersonName || !invoiceNumber || !dateTime || !amount) {
+    if (
+      !companyName ||
+      !contactPersonName ||
+      !invoiceNumber ||
+      !dateTime ||
+      !amount
+    ) {
       return res.status(400).json({
         message: "All required fields must be provided",
       });
     }
 
     // Mobile validation
-    if (!/^\d{10}$/.test(contactPersonMobile)) {
+    if (!/^\d{5,15}$/.test(String(contactPersonMobile || "").trim())) {
       return res.status(400).json({
-        message: "Mobile number must be exactly 10 digits",
+        message: "Mobile number must be between 5 and 15 digits",
       });
     }
 
@@ -110,7 +116,6 @@ export const getExpenseRecordsByEvent = async (req, res) => {
   }
 };
 
-
 // =======================
 // Update Expense Record (EventAdmin)
 // =======================
@@ -135,9 +140,12 @@ export const updateExpenseRecord = async (req, res) => {
       amount,
     } = req.body;
 
-    if (contactPersonMobile && !/^\d{10}$/.test(contactPersonMobile)) {
+    if (
+      contactPersonMobile !== undefined &&
+      !/^\d{5,15}$/.test(String(contactPersonMobile).trim())
+    ) {
       return res.status(400).json({
-        message: "Mobile number must be exactly 10 digits",
+        message: "Mobile number must be between 5 and 15 digits",
       });
     }
 
@@ -212,7 +220,6 @@ export const deleteExpenseRecord = async (req, res) => {
   }
 };
 
-
 // =========================================
 // GET Combined Income and Expense Records by Event
 // =========================================
@@ -258,9 +265,7 @@ export const getFinancialRecordsByEvent = async (req, res) => {
         recordAmount: income.amountReceived,
       })),
     ].sort(
-      (a, b) =>
-        new Date(b.dateTime).getTime() -
-        new Date(a.dateTime).getTime(),
+      (a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime(),
     );
 
     return res.status(200).json({

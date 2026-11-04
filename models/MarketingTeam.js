@@ -23,7 +23,7 @@ const MarketingTeamSchema = new mongoose.Schema(
     contactPersonMobile: {
       type: String,
       required: [true, "Mobile number is required"],
-      match: [/^\d{10}$/, "Mobile number must be 10 digits"],
+      match: [/^\d{5,15}$/, "Mobile number must be between 5 and 15 digits"],
       trim: true,
       unique: true,
     },
