@@ -256,10 +256,13 @@ export const getAllPaidAccompaniesByUser = async (req, res) => {
       .filter(Boolean);
 
     if (paidAccompanies.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No paid accompanies found for this user",
-      });
+      // Return 200 even when no paid accompanies are found
+return res.status(200).json({
+  success: true,
+  message: 'All paid accompanies fetched successfully',
+  total: paidAccompanies.length,
+  data: paidAccompanies,
+})
     }
 
     return res.status(200).json({
