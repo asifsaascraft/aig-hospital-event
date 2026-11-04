@@ -27,10 +27,20 @@ router.post(
   "/event-admin/events/:eventId/speakers",
   protect,
   authorizeRoles("eventAdmin"),
-  uploadSpeakerImage.single("image"),
+  uploadSpeakerImage.single("speakerProfileImage"),
   createSpeaker
-);
+)
 
+// =======================
+// EventAdmin: Update Speaker
+// =======================
+router.put(
+  "/event-admin/speakers/:id",
+  protect,
+  authorizeRoles("eventAdmin"),
+  uploadSpeakerImage.single("speakerProfileImage"),
+  updateSpeaker
+)
 // =======================
 // Public/User: Get All Speakers
 // =======================
@@ -55,16 +65,6 @@ router.get(
   getSpeakerById
 );
 
-// =======================
-// EventAdmin: Update Speaker
-// =======================
-router.put(
-  "/event-admin/speakers/:id",
-  protect,
-  authorizeRoles("eventAdmin"),
-  uploadSpeakerImage.single("image"),
-  updateSpeaker
-);
 
 // =======================
 // EventAdmin: Delete Speaker
