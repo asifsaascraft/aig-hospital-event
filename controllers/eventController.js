@@ -3,51 +3,290 @@ import Event from "../models/Event.js";
 import EventVisitor from "../models/EventVisitor.js";
 import EventRegistration from "../models/EventRegistration.js";
 
+import {
+  getPagination,
+  buildPaginationMeta,
+} from '../utils/pagination.js'
+
 
 
 // =======================
 // Get Event Cards (Public)
+// Only Live & Upcoming Events
 // =======================
+
 export const getEventCards = async (req, res) => {
   try {
-    const now = new Date();
+    // =======================
+    // Pagination
+    // =======================
+    const { page, limit, skip } = getPagination(req)
 
-    const events = await Event.find(
+    // =======================
+    // Search
+    // =======================
+    const search = req.query.search?.trim()
+
+    // =======================
+    // Aggregation Pipeline
+    // =======================
+    const pipeline = [
+      // =======================
+      // Active Event App Events
+      // Exclude Past Events
+      // =======================
       {
-        isActive: true,
-        isEventApp: true,
-        endDateTime: { $gte: now },
+        $match: {
+          isActive: true,
+          isEventApp: true,
+          endDateTime: { $gte: new Date() },
+        },
+      },
+
+      // =======================
+      // Organizer
+      // =======================
+      {
+        $lookup: {
+          from: 'organizers',
+          localField: 'organizer',
+          foreignField: '_id',
+          as: 'organizerData',
+        },
       },
       {
-        eventName: 1,
-        eventImage: 1,
-        startDateTime: 1,
-        endDateTime: 1,
-      }
-    ).sort({ startDateTime: 1 });
+        $unwind: {
+          path: '$organizerData',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
 
+      // =======================
+      // Department
+      // =======================
+      {
+        $lookup: {
+          from: 'departments',
+          localField: 'department',
+          foreignField: '_id',
+          as: 'departmentData',
+        },
+      },
+      {
+        $unwind: {
+          path: '$departmentData',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+
+      // =======================
+      // Venue
+      // =======================
+      {
+        $lookup: {
+          from: 'venues',
+          localField: 'venueName',
+          foreignField: '_id',
+          as: 'venueData',
+        },
+      },
+      {
+        $unwind: {
+          path: '$venueData',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+
+      // =======================
+      // Search
+      // =======================
+      ...(search
+        ? [
+            {
+              $match: {
+                $or: [
+                  {
+                    eventName: {
+                      $regex: search,
+                      $options: 'i',
+                    },
+                  },
+                  {
+                    'venueData.venueName': {
+                      $regex: search,
+                      $options: 'i',
+                    },
+                  },
+                  {
+                    'departmentData.departmentName': {
+                      $regex: search,
+                      $options: 'i',
+                    },
+                  },
+                  {
+                    'organizerData.organizerName': {
+                      $regex: search,
+                      $options: 'i',
+                    },
+                  },
+                ],
+              },
+            },
+          ]
+        : []),
+
+      // =======================
+      // Calculate Dynamic Status
+      // =======================
+      {
+        $addFields: {
+          dynamicStatus: {
+            $switch: {
+              branches: [
+                {
+                  case: {
+                    $gt: ['$startDateTime', '$$NOW'],
+                  },
+                  then: 'Upcoming',
+                },
+                {
+                  case: {
+                    $and: [
+                      {
+                        $lte: ['$startDateTime', '$$NOW'],
+                      },
+                      {
+                        $gte: ['$endDateTime', '$$NOW'],
+                      },
+                    ],
+                  },
+                  then: 'Live',
+                },
+              ],
+              default: 'Unknown',
+            },
+          },
+        },
+      },
+
+      // =======================
+      // Only Live & Upcoming
+      // =======================
+      {
+        $match: {
+          dynamicStatus: {
+            $in: ['Live', 'Upcoming'],
+          },
+        },
+      },
+
+      // =======================
+      // Sort
+      // Live → Upcoming
+      // =======================
+      {
+        $addFields: {
+          statusOrder: {
+            $switch: {
+              branches: [
+                {
+                  case: {
+                    $eq: ['$dynamicStatus', 'Live'],
+                  },
+                  then: 1,
+                },
+                {
+                  case: {
+                    $eq: ['$dynamicStatus', 'Upcoming'],
+                  },
+                  then: 2,
+                },
+              ],
+              default: 3,
+            },
+          },
+        },
+      },
+      {
+        $sort: {
+          statusOrder: 1,
+          endDateTime: 1,
+          startDateTime: 1,
+        },
+      },
+
+      // =======================
+      // Pagination + Total
+      // =======================
+      {
+        $facet: {
+          data: [
+            {
+              $skip: skip,
+            },
+            {
+              $limit: limit,
+            },
+          ],
+          total: [
+            {
+              $count: 'count',
+            },
+          ],
+        },
+      },
+    ]
+
+    // =======================
+    // MongoDB
+    // =======================
+    const [result] = await Event.aggregate(pipeline)
+
+    const events = result?.data || []
+    const total = result?.total?.[0]?.count || 0
+
+    // =======================
+    // Response Data
+    // =======================
     const data = events.map((event) => ({
       _id: event._id,
       eventName: event.eventName,
       eventImage: event.eventImage,
       startDateTime: event.startDateTime,
       endDateTime: event.endDateTime,
+
+      // Status calculated by MongoDB
       dynamicStatus: event.dynamicStatus,
-    }));
+
+      organizer: event.organizerData?.organizerName || null,
+      department: event.departmentData?.departmentName || null,
+      venue: event.venueData?.venueName || null,
+    }))
+
+    // =======================
+    // Pagination
+    // =======================
+    const pagination = buildPaginationMeta(
+      total,
+      page,
+      limit,
+    )
 
     return res.status(200).json({
       success: true,
       count: data.length,
       data,
-    });
+      pagination,
+    })
   } catch (error) {
+    console.error('Get Event Cards Error:', error)
+
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch events",
-      error: error.message,
-    });
+      message: 'Failed to fetch events',
+    })
   }
-};
+}
 
 
 
