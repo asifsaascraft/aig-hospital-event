@@ -69,8 +69,8 @@ const messageImageFilter = (req, file, cb) => {
   }
 };
 
-// Committee Member Image Filter
-const committeeMemberImageFilter = (req, file, cb) => {
+// Organizer Member Image Filter
+const organizerMemberImageFilter = (req, file, cb) => {
   if (file.mimetype.startsWith("image/")) {
     cb(null, true);
   } else {
@@ -109,10 +109,13 @@ export const uploadMessageImages = createUploader(
   "messages",
   messageImageFilter
 );
-export const uploadCommitteeMemberImage = createUploader(
-  "committee-members",
-  committeeMemberImageFilter
+
+
+export const uploadOrganizerMemberImage = createUploader(
+  "organizer-members",
+  organizerMemberImageFilter
 );
+
 export const uploadSpeakerImage = createUploader(
   "speakers",
   speakerImageFilter
