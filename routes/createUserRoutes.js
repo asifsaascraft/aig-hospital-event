@@ -2,6 +2,7 @@ import express from "express";
 import {
   registerUserByEventAdmin,
   getAllUsers,
+  getUserRegistrationReport,
   getAllUsersCreatedByEventAdmin,
   getAllUsersCreatedBySponsor,
   updateUser,
@@ -45,6 +46,16 @@ router.get(
 );
 
 // =======================
+// Admin: User Registration Report
+// =======================
+router.get(
+  "/admin/users/registration-report/:userId",
+  protect,
+  authorizeRoles("admin"),
+  getUserRegistrationReport
+);
+
+// =======================
 // EventAdmin: Get ONLY EventAdmin Created Users
 // =======================
 router.get(
@@ -54,6 +65,7 @@ router.get(
   getAllUsersCreatedByEventAdmin,
 );
 
+
 // =======================
 // Sponsor: Get ONLY Sponsor Created Users
 // =======================
@@ -62,6 +74,7 @@ router.get(
   protectSponsor,
   getAllUsersCreatedBySponsor,
 );
+
 
 // =======================
 // only EventAdmin: Update User

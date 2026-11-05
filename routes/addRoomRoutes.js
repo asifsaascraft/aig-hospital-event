@@ -2,6 +2,7 @@ import express from "express";
 import {
   createAddRoom,
   getAddRoomsByEvent,
+  getAccommodationRoomReport,
   getAddRoomById,
   updateAddRoom,
   deleteAddRoom,
@@ -18,6 +19,12 @@ router.get(
   "/events/:eventId/add-rooms",
   protect,
   getAddRoomsByEvent
+);
+
+router.get(
+  "/events/:eventId/room-report",
+  protect,
+  getAccommodationRoomReport
 );
 
 router.get(

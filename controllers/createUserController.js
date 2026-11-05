@@ -3,6 +3,8 @@ import sendEmailWithTemplate from "../utils/sendEmail.js";
 import { generateStrongPassword } from "../utils/generatePassword.js";
 import EventRegistration from "../models/EventRegistration.js";
 import Event from "../models/Event.js";
+import { getPagination, buildPaginationMeta } from "../utils/pagination.js";
+import buildSearch from "../utils/search.js";
 
 // =======================
 // (EventAdmin Authorize): Create User (signup)
@@ -138,15 +140,26 @@ export const registerUserByEventAdmin = async (req, res) => {
 };
 
 // =======================
-// Admin: Get All Users
+// Admin: Get All Users (Pagination + Search)
 // =======================
 export const getAllUsers = async (req, res) => {
   try {
+    const { page, limit, skip } = getPagination(req);
+
+    // Search by name, email, and mobile
+    const searchQuery = buildSearch(req, ["name", "email", "mobile"]);
+
+    const matchQuery = {
+      role: "user",
+      ...searchQuery,
+    };
+
+    // Get total matching users
+    const totalUsers = await User.countDocuments(matchQuery);
+
     const users = await User.aggregate([
       {
-        $match: {
-          role: "user",
-        },
+        $match: matchQuery,
       },
 
       // Get first registration of the user
@@ -235,11 +248,20 @@ export const getAllUsers = async (req, res) => {
           createdAt: -1,
         },
       },
+
+      // Pagination
+      {
+        $skip: skip,
+      },
+      {
+        $limit: limit,
+      },
     ]);
 
     return res.status(200).json({
       success: true,
       count: users.length,
+      pagination: buildPaginationMeta(totalUsers, page, limit),
       users,
     });
   } catch (error) {
@@ -248,6 +270,99 @@ export const getAllUsers = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
+    });
+  }
+};
+
+// ========================================
+// Admin: Get User Registration Report
+// Get all registered events by User ID
+// ========================================
+export const getUserRegistrationReport = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Find user
+    const user = await User.findOne({
+      _id: userId,
+      role: "user",
+    }).select(
+      "-password -plainPassword -passwordResetToken -passwordResetExpires -otp -otpExpires",
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Find all event registrations for this user
+    const registrations = await EventRegistration.aggregate([
+      {
+        $match: {
+          userId: user._id,
+        },
+      },
+
+      // Get event details
+      {
+        $lookup: {
+          from: "events",
+          localField: "eventId",
+          foreignField: "_id",
+          as: "eventDetails",
+        },
+      },
+
+      {
+        $unwind: {
+          path: "$eventDetails",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+
+      // Return registration and event information
+      {
+        $project: {
+          _id: 1,
+          regNum: 1,
+          registrationType: 1,
+          registrationSlabId: 1,
+          isPaid: 1,
+          isSuspended: 1,
+          createdAt: 1,
+
+          event: {
+            _id: "$eventDetails._id",
+            eventName: "$eventDetails.eventName",
+            startDateTime: "$eventDetails.startDateTime",
+            endDateTime: "$eventDetails.endDateTime",
+          },
+        },
+      },
+
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: "User registration report fetched successfully",
+      user,
+      totalRegistrations: registrations.length,
+      registrations,
+    });
+  } catch (error) {
+    console.error("User registration report error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch user registration report",
+      error: error.message,
     });
   }
 };

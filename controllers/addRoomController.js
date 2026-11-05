@@ -1,7 +1,10 @@
+import mongoose from "mongoose";
 import AddRoom from "../models/AddRoom.js";
 import Event from "../models/Event.js";
 import Hotel from "../models/Hotel.js";
 import RoomCategory from "../models/RoomCategory.js";
+import SponsorAccomodationQuota from "../models/SponsorAccomodationQuota.js";
+
 
 const parseFullDateTime = (value) => {
   if (typeof value !== "string" || !value.trim()) {
@@ -190,7 +193,6 @@ export const getAddRoomsByEvent = async (req, res) => {
       .populate("hotelId", "hotelName checkinTime checkoutTime")
       .populate("roomCategoryId", "roomCategoryName")
       .sort({ createdAt: -1 });
-
     res.status(200).json({
       success: true,
       message: "Rooms fetched successfully",
@@ -201,6 +203,181 @@ export const getAddRoomsByEvent = async (req, res) => {
 
     res.status(500).json({
       message: "Server Error",
+    });
+  }
+};
+
+
+// =======================
+// Get all rooms report by event
+// =======================
+export const getAccommodationRoomReport = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    // Validate event ID
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid event ID",
+      });
+    }
+
+    // Check event
+    const event = await Event.findById(eventId).select(
+      "eventName shortName"
+    );
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    // Fetch all rooms for this event
+    const rooms = await AddRoom.find({ eventId })
+      .populate("hotelId", "hotelName")
+      .populate("roomCategoryId", "roomCategoryName")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Fetch sponsor allocations for this event
+    const sponsorQuotas = await SponsorAccomodationQuota.find({ eventId })
+      .populate("sponsorId", "sponsorName contactPersonName email mobile")
+      .lean();
+
+    // Map sponsor allocations by AddRoom ID
+    const allocationMap = new Map();
+
+    for (const sponsorQuota of sponsorQuotas) {
+      const sponsor = sponsorQuota.sponsorId;
+
+      if (!sponsor) continue;
+
+      for (const quota of sponsorQuota.quotas || []) {
+        const quotaId = quota.quotaId?.toString();
+
+        if (!quotaId) continue;
+
+        if (!allocationMap.has(quotaId)) {
+          allocationMap.set(quotaId, []);
+        }
+
+        allocationMap.get(quotaId).push({
+          sponsorId: sponsor._id,
+          sponsorName: sponsor.sponsorName,
+          contactPersonName: sponsor.contactPersonName,
+          email: sponsor.email,
+          mobile: sponsor.mobile,
+          numberOfRooms: quota.numberOfQuota,
+          roomCategoryId: quota.roomCategoryId,
+        });
+      }
+    }
+
+    // Group rooms by hotel and room category
+    const hotelMap = new Map();
+
+    for (const room of rooms) {
+      if (!room.hotelId || !room.roomCategoryId) continue;
+
+      const hotelId = room.hotelId._id.toString();
+      const categoryId = room.roomCategoryId._id.toString();
+
+      if (!hotelMap.has(hotelId)) {
+        hotelMap.set(hotelId, {
+          hotelId: room.hotelId._id,
+          hotelName: room.hotelId.hotelName,
+          totalRooms: 0,
+          allocatedRooms: 0,
+          availableRooms: 0,
+          roomCategories: new Map(),
+        });
+      }
+
+      const hotel = hotelMap.get(hotelId);
+
+      if (!hotel.roomCategories.has(categoryId)) {
+        hotel.roomCategories.set(categoryId, {
+          roomCategoryId: room.roomCategoryId._id,
+          roomCategoryName: room.roomCategoryId.roomCategoryName,
+          totalRooms: 0,
+          allocatedRooms: 0,
+          availableRooms: 0,
+          stays: [],
+        });
+      }
+
+      const category = hotel.roomCategories.get(categoryId);
+
+      const totalRooms = room.numberOfRooms || 0;
+      const availableRooms = room.availableRooms || 0;
+      const allocatedRooms = totalRooms - availableRooms;
+
+      const sponsors = allocationMap.get(room._id.toString()) || [];
+
+      category.totalRooms += totalRooms;
+      category.allocatedRooms += allocatedRooms;
+      category.availableRooms += availableRooms;
+
+      hotel.totalRooms += totalRooms;
+      hotel.allocatedRooms += allocatedRooms;
+      hotel.availableRooms += availableRooms;
+
+      category.stays.push({
+        quotaId: room._id,
+        checkinDateTime: room.checkinDateTime,
+        checkoutDateTime: room.checkoutDateTime,
+        remark: room.remark,
+        totalRooms,
+        allocatedRooms,
+        availableRooms,
+        sponsors,
+      });
+    }
+
+    // Convert Maps into arrays
+    const report = Array.from(hotelMap.values()).map((hotel) => ({
+      ...hotel,
+      roomCategories: Array.from(hotel.roomCategories.values()),
+    }));
+
+    // Overall summary
+    const summary = report.reduce(
+      (result, hotel) => {
+        result.totalHotels += 1;
+        result.totalRooms += hotel.totalRooms;
+        result.allocatedRooms += hotel.allocatedRooms;
+        result.availableRooms += hotel.availableRooms;
+        return result;
+      },
+      {
+        totalHotels: 0,
+        totalRooms: 0,
+        allocatedRooms: 0,
+        availableRooms: 0,
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Accommodation room report fetched successfully",
+      event: {
+        _id: event._id,
+        eventName: event.eventName,
+        shortName: event.shortName,
+      },
+      summary,
+      data: report,
+    });
+  } catch (error) {
+    console.error("Get Accommodation Room Report Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
     });
   }
 };
