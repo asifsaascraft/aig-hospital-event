@@ -250,6 +250,53 @@ export const getActiveLiveSessionsByEvent = async (req, res) => {
 
 /*
 ========================================================
+  Get Active Live Session By ID
+  User - Live Session Details
+========================================================
+*/
+export const getActiveLiveSessionById = async (req, res) => {
+  try {
+    const { id } = req.params
+
+    // Validate live session ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid live session ID',
+      })
+    }
+
+    // Fetch only active sessions
+    const liveSession = await LiveSession.findOne({
+      _id: id,
+      status: 'Active',
+    }).lean()
+
+    if (!liveSession) {
+      return res.status(404).json({
+        success: false,
+        message: 'Active live session not found',
+      })
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Live session fetched successfully',
+      data: liveSession,
+    })
+  } catch (error) {
+    console.error('Get active live session by ID error:', error)
+
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch live session',
+    })
+  }
+}
+
+
+/*
+========================================================
   Update Live Session
   Event Admin
 ========================================================

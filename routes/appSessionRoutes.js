@@ -4,6 +4,7 @@ import {
   createLiveSession,
   getLiveSessionsByEvent,
   getActiveLiveSessionsByEvent,
+  getActiveLiveSessionById, // NEW
   updateLiveSession,
   deleteLiveSession,
 } from '../controllers/appSessionController.js'
@@ -32,6 +33,12 @@ router.get(
   protect,
   authorizeRoles('eventAdmin'),
   getLiveSessionsByEvent,
+)
+
+// Get one active live session by ID
+router.get(
+  '/live-sessions/:id',
+  getActiveLiveSessionById,
 )
 
 // Update live session
