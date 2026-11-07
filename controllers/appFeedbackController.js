@@ -1,6 +1,25 @@
+
 import mongoose from 'mongoose'
 import ConferenceFeedback from '../models/AppFeedback.js'
 import Event from '../models/Event.js'
+
+/*
+========================================================
+  Date/Time Helpers
+========================================================
+*/
+
+const isValidDateTime = (value) =>
+  value !== undefined &&
+  value !== null &&
+  value !== '' &&
+  !Number.isNaN(new Date(value).getTime())
+
+const validateFeedbackDateRange = (startDateTime, endDateTime) => {
+  if (endDateTime <= startDateTime) {
+    throw new Error('End date/time must be later than start date/time')
+  }
+}
 
 /*
 ========================================================
@@ -9,11 +28,22 @@ import Event from '../models/Event.js'
 ========================================================
 */
 export const createConferenceFeedback = async (req, res) => {
+  
   try {
     const { eventId } = req.params
-    const { title, description, status, questions } = req.body
+    const {
+      title,
+      description,
+      status,
+      questions,
+      startDateTime,
+      endDateTime,
+    } = req.body
 
-    if (!title) {
+
+    
+
+    if (!title || !title.trim()) {
       return res.status(400).json({
         success: false,
         message: 'Feedback title is required',
@@ -27,7 +57,7 @@ export const createConferenceFeedback = async (req, res) => {
       })
     }
 
-    if (questions && !Array.isArray(questions)) {
+    if (questions !== undefined && !Array.isArray(questions)) {
       return res.status(400).json({
         success: false,
         message: 'Questions must be an array',
@@ -40,6 +70,35 @@ export const createConferenceFeedback = async (req, res) => {
         message: 'Invalid event ID',
       })
     }
+
+    // Both dates are mandatory when creating feedback.
+    if (!startDateTime || !endDateTime) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start and End date time are required',
+      })
+    }
+
+    // Validate date formats.
+    if (!isValidDateTime(startDateTime)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid startDateTime format',
+      })
+    }
+
+    if (!isValidDateTime(endDateTime)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid endDateTime format',
+      })
+    }
+
+    // Convert incoming values to JavaScript Date objects.
+    const parsedStartDateTime = new Date(startDateTime)
+    const parsedEndDateTime = new Date(endDateTime)
+
+    validateFeedbackDateRange(parsedStartDateTime, parsedEndDateTime)
 
     const event = await Event.findById(eventId)
 
@@ -61,15 +120,19 @@ export const createConferenceFeedback = async (req, res) => {
       })
     }
 
+    const feedbackStatus = status || 'Draft'
+
     const feedback = await ConferenceFeedback.create({
       eventId,
       title,
       description,
-      status: status || 'Draft',
+      status: feedbackStatus,
       questions: questions || [],
+      startDateTime: parsedStartDateTime,
+      endDateTime: parsedEndDateTime,
       createdBy: req.user._id,
       updatedBy: req.user._id,
-      ...(status === 'Published'
+      ...(feedbackStatus === 'Published'
         ? {
             publishedBy: req.user._id,
             publishedAt: new Date(),
@@ -92,9 +155,9 @@ export const createConferenceFeedback = async (req, res) => {
       })
     }
 
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: 'Server Error',
+      message: error.message || 'Unable to create feedback form',
     })
   }
 }
@@ -155,13 +218,15 @@ export const getConferenceFeedback = async (req, res) => {
   }
 }
 
-
-
-
 /*
 ========================================================
   Get Conference Feedback For User
   Logged-in User
+
+  Available only when:
+  1. Status is Published
+  2. Current server time >= startDateTime
+  3. Current server time <= endDateTime
 ========================================================
 */
 export const getConferenceFeedbackForUser = async (req, res) => {
@@ -175,7 +240,7 @@ export const getConferenceFeedbackForUser = async (req, res) => {
       })
     }
 
-    const event = await Event.findById(eventId)
+    const event = await Event.findById(eventId).lean()
 
     if (!event) {
       return res.status(404).json({
@@ -184,9 +249,15 @@ export const getConferenceFeedbackForUser = async (req, res) => {
       })
     }
 
+    // Always use backend server time.
+    // JavaScript Date represents an absolute timestamp.
+    const now = new Date()
+
     const feedback = await ConferenceFeedback.findOne({
       eventId,
       status: 'Published',
+      startDateTime: { $lte: now },
+      endDateTime: { $gte: now },
     }).lean()
 
     if (!feedback) {
@@ -202,11 +273,8 @@ export const getConferenceFeedbackForUser = async (req, res) => {
       message: 'Feedback form fetched successfully',
       data: {
         ...feedback,
-
         eventName: event.eventName,
         dynamicStatus: event.dynamicStatus,
-        startDateTime: event.startDateTime,
-        endDateTime: event.endDateTime,
       },
     })
   } catch (error) {
@@ -231,7 +299,14 @@ export const getConferenceFeedbackForUser = async (req, res) => {
 export const updateConferenceFeedback = async (req, res) => {
   try {
     const { eventId } = req.params
-    const { title, description, questions, status } = req.body
+    const {
+      title,
+      description,
+      questions,
+      status,
+      startDateTime,
+      endDateTime,
+    } = req.body
 
     if (!mongoose.Types.ObjectId.isValid(eventId)) {
       return res.status(400).json({
@@ -251,6 +326,15 @@ export const updateConferenceFeedback = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Questions must be an array',
+      })
+    }
+
+    if (title !== undefined && (
+      typeof title !== 'string' || !title.trim()
+    )) {
+      return res.status(400).json({
+        success: false,
+        message: 'Feedback title is required',
       })
     }
 
@@ -279,8 +363,42 @@ export const updateConferenceFeedback = async (req, res) => {
       })
     }
 
+    // Preserve existing dates when only one date is updated.
+    if (startDateTime !== undefined && !isValidDateTime(startDateTime)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid startDateTime format',
+      })
+    }
+
+    if (endDateTime !== undefined && !isValidDateTime(endDateTime)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid endDateTime format',
+      })
+    }
+
+    const finalStartDateTime =
+      startDateTime !== undefined
+        ? new Date(startDateTime)
+        : feedback.startDateTime
+
+    const finalEndDateTime =
+      endDateTime !== undefined
+        ? new Date(endDateTime)
+        : feedback.endDateTime
+
+    if (!finalStartDateTime || !finalEndDateTime) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start and End date time are required',
+      })
+    }
+
+    validateFeedbackDateRange(finalStartDateTime, finalEndDateTime)
+
     if (title !== undefined) {
-      feedback.title = title
+      feedback.title = title.trim()
     }
 
     if (description !== undefined) {
@@ -290,6 +408,9 @@ export const updateConferenceFeedback = async (req, res) => {
     if (questions !== undefined) {
       feedback.questions = questions
     }
+
+    feedback.startDateTime = finalStartDateTime
+    feedback.endDateTime = finalEndDateTime
 
     if (status !== undefined) {
       feedback.status = status
@@ -302,6 +423,7 @@ export const updateConferenceFeedback = async (req, res) => {
 
     feedback.updatedBy = req.user._id
 
+    // save() runs document and embedded-question validation.
     await feedback.save()
 
     return res.status(200).json({
@@ -312,9 +434,9 @@ export const updateConferenceFeedback = async (req, res) => {
   } catch (error) {
     console.error('Update Conference Feedback Error:', error)
 
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: 'Server Error',
+      message: error.message || 'Unable to update feedback form',
     })
   }
 }

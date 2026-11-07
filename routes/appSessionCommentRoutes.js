@@ -3,6 +3,7 @@ import express from 'express'
 import {
   getLiveSessionComments,
   addLiveSessionComment,
+  editLiveSessionComment,
   deleteLiveSessionComment,
 } from '../controllers/appSessionCommentController.js'
 
@@ -16,7 +17,10 @@ const router = express.Router()
 ========================================================
 */
 
-router.get('/public/live-sessions/:sessionId/comments', getLiveSessionComments)
+router.get(
+  '/public/live-sessions/:sessionId/comments',
+  getLiveSessionComments,
+)
 
 /*
 ========================================================
@@ -38,6 +42,14 @@ router.post(
   protect,
   authorizeRoles('user'),
   addLiveSessionComment,
+)
+
+// Edit own comment
+router.put(
+  '/live-session-comments/:commentId',
+  protect,
+  authorizeRoles('user'),
+  editLiveSessionComment,
 )
 
 // Delete own comment

@@ -2,14 +2,41 @@ import mongoose from 'mongoose'
 import ConferenceFeedback from '../models/AppFeedback.js'
 import ConferenceFeedbackResponse from '../models/AppFeedbackResponse.js'
 import Event from '../models/Event.js'
-import EventRegistration from '../models/EventRegistration.js'
 
-/*
-========================================================
-  Submit Conference Feedback
-  Logged-in User
-========================================================
-*/
+
+
+
+const validateFeedbackWindow = (feedback) => {
+  const now = new Date()
+
+  const startDate = new Date(feedback.startDateTime)
+  const endDate = new Date(feedback.endDateTime)
+
+  if (
+    !feedback.startDateTime ||
+    !feedback.endDateTime ||
+    Number.isNaN(startDate.getTime()) ||
+    Number.isNaN(endDate.getTime())
+  ) {
+    return 'Feedback form availability dates are not configured'
+  }
+
+  if (startDate > endDate) {
+    return 'Invalid feedback form availability dates'
+  }
+
+  if (now < startDate) {
+    return 'Feedback form is not open yet'
+  }
+
+  if (now > endDate) {
+    return 'Feedback form has closed'
+  }
+
+  return null
+}
+
+
 export const submitConferenceFeedback = async (req, res) => {
   try {
     const { eventId } = req.params
@@ -30,6 +57,7 @@ export const submitConferenceFeedback = async (req, res) => {
       })
     }
 
+    // Verify event exists.
     const event = await Event.findById(eventId)
 
     if (!event) {
@@ -39,38 +67,7 @@ export const submitConferenceFeedback = async (req, res) => {
       })
     }
 
-    /*
-    ----------------------------------------------------
-      Feedback becomes available immediately after the
-      event ends.
-    ----------------------------------------------------
-    */
-    if (!event.endDateTime || new Date() <= new Date(event.endDateTime)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Feedback is available after the conference ends',
-      })
-    }
-
-    /*
-    ----------------------------------------------------
-      User must have a paid, non-suspended registration.
-    ----------------------------------------------------
-    */
-    const registration = await EventRegistration.findOne({
-      eventId,
-      userId,
-      isPaid: true,
-      isSuspended: false,
-    })
-
-    if (!registration) {
-      return res.status(403).json({
-        success: false,
-        message: 'You are not eligible to submit feedback for this event',
-      })
-    }
-
+    // Get the published feedback form.
     const feedback = await ConferenceFeedback.findOne({
       eventId,
       status: 'Published',
@@ -83,11 +80,18 @@ export const submitConferenceFeedback = async (req, res) => {
       })
     }
 
-    /*
-    ----------------------------------------------------
-      Prevent duplicate submission.
-    ----------------------------------------------------
-    */
+    // Validate feedback form availability dates.
+    // Event startDateTime and endDateTime are not used.
+    const dateError = validateFeedbackWindow(feedback)
+
+    if (dateError) {
+      return res.status(400).json({
+        success: false,
+        message: dateError,
+      })
+    }
+
+    // Prevent duplicate submission.
     const existingResponse = await ConferenceFeedbackResponse.findOne({
       eventId,
       userId,
@@ -100,11 +104,7 @@ export const submitConferenceFeedback = async (req, res) => {
       })
     }
 
-    /*
-    ----------------------------------------------------
-      Validate answers against published questions.
-    ----------------------------------------------------
-    */
+    // Validate answers against published questions.
     const submittedAnswerMap = new Map(
       answers.map((answer) => [answer.id, answer]),
     )
@@ -176,12 +176,9 @@ export const submitConferenceFeedback = async (req, res) => {
   }
 }
 
-/*
-========================================================
-  Get My Feedback Status
-  Logged-in User
-========================================================
-*/
+
+
+
 export const getMyConferenceFeedback = async (req, res) => {
   try {
     const { eventId } = req.params
@@ -203,27 +200,6 @@ export const getMyConferenceFeedback = async (req, res) => {
       })
     }
 
-    if (!event.endDateTime || new Date() <= new Date(event.endDateTime)) {
-      return res.status(403).json({
-        success: false,
-        message: 'Feedback is available after the conference ends',
-      })
-    }
-
-    const registration = await EventRegistration.findOne({
-      eventId,
-      userId,
-      isPaid: true,
-      isSuspended: false,
-    })
-
-    if (!registration) {
-      return res.status(403).json({
-        success: false,
-        message: 'You are not eligible to submit feedback',
-      })
-    }
-
     const feedback = await ConferenceFeedback.findOne({
       eventId,
       status: 'Published',
@@ -236,6 +212,8 @@ export const getMyConferenceFeedback = async (req, res) => {
       })
     }
 
+    // Check whether this user has already submitted.
+    // Return submitted status even if the feedback deadline has passed.
     const response = await ConferenceFeedbackResponse.findOne({
       eventId,
       userId,
@@ -246,6 +224,17 @@ export const getMyConferenceFeedback = async (req, res) => {
         success: true,
         submitted: true,
         message: 'Feedback Submitted Successfully',
+      })
+    }
+
+    // Validate feedback form dates, not event dates.
+    const dateError = validateFeedbackWindow(feedback)
+
+    if (dateError) {
+      return res.status(403).json({
+        success: false,
+        submitted: false,
+        message: dateError,
       })
     }
 
@@ -264,6 +253,7 @@ export const getMyConferenceFeedback = async (req, res) => {
     })
   }
 }
+
 
 /*
 ========================================================

@@ -54,6 +54,19 @@ const FeedbackQuestionSchema = new mongoose.Schema(
   },
 )
 
+// Automatically enforce rating and NPS boundaries.
+FeedbackQuestionSchema.pre('validate', function () {
+  if (this.type === 'rating') {
+    this.minValue = 1
+    this.maxValue = 5
+  }
+
+  if (this.type === 'nps') {
+    this.minValue = 0
+    this.maxValue = 10
+  }
+})
+
 const ConferenceFeedbackSchema = new mongoose.Schema(
   {
     eventId: {
@@ -86,6 +99,16 @@ const ConferenceFeedbackSchema = new mongoose.Schema(
       default: [],
     },
 
+    startDateTime: {
+      type: Date,
+      required: true,
+    },
+
+    endDateTime: {
+      type: Date,
+      required: true,
+    },
+
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -111,4 +134,5 @@ const ConferenceFeedbackSchema = new mongoose.Schema(
   },
 )
 
-export default mongoose.model('ConferenceFeedback', ConferenceFeedbackSchema)
+export default mongoose.models.ConferenceFeedback ||
+  mongoose.model('ConferenceFeedback', ConferenceFeedbackSchema)

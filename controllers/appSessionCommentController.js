@@ -1,21 +1,37 @@
 import mongoose from 'mongoose'
 
-import Event from '../models/Event.js'
-import EventRegistration from '../models/EventRegistration.js'
 import LiveSession from '../models/AppSession.js'
 import LiveSessionComment from '../models/AppSessionComment.js'
+import { getPagination, buildPaginationMeta } from '../utils/pagination.js'
+
+const formatComment = (item) => ({
+  _id: item._id,
+  sessionId: item.sessionId,
+  eventId: item.eventId,
+  comment: item.isDeleted ? null : item.comment,
+  isDeleted: item.isDeleted,
+  createdAt: item.createdAt,
+  updatedAt: item.updatedAt,
+  user: item.userId
+    ? {
+        _id: item.userId._id,
+        name: item.userId.name,
+        profilePicture: item.userId.profilePicture || null,
+      }
+    : null,
+})
 
 /*
 ========================================================
   Get Live Session Comments
   Public
+  Paginated
 ========================================================
 */
 export const getLiveSessionComments = async (req, res) => {
   try {
     const { sessionId } = req.params
 
-    // Validate sessionId
     if (!mongoose.Types.ObjectId.isValid(sessionId)) {
       return res.status(400).json({
         success: false,
@@ -32,32 +48,39 @@ export const getLiveSessionComments = async (req, res) => {
       })
     }
 
-    const comments = await LiveSessionComment.find({
-      sessionId,
-    })
-      .populate('userId', 'name')
-      .sort({ createdAt: 1 })
-      .lean()
+    const { page, limit, skip } = getPagination(req)
 
-    const formattedComments = comments.map((item) => ({
-      _id: item._id,
-      sessionId: item.sessionId,
-      eventId: item.eventId,
-      comment: item.isDeleted ? null : item.comment,
-      isDeleted: item.isDeleted,
-      createdAt: item.createdAt,
-      user: item.userId
-        ? {
-            _id: item.userId._id,
-            name: item.userId.name,
-          }
-        : null,
-    }))
+    const query = { sessionId }
+
+    const [comments, total, totalComments] = await Promise.all([
+      LiveSessionComment.find(query)
+        .populate({
+  path: 'userId',
+  select: 'name profilePicture',
+})
+        .sort({ createdAt: 1, _id: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
+      // Total conversation entries, including deleted placeholders.
+      LiveSessionComment.countDocuments(query),
+
+      // Actual visible comments for the frontend count.
+      LiveSessionComment.countDocuments({
+        sessionId,
+        isDeleted: false,
+      }),
+    ])
+
+    const pagination = buildPaginationMeta(total, page, limit)
 
     return res.status(200).json({
       success: true,
       message: 'Live session comments fetched successfully',
-      data: formattedComments,
+      data: comments.map(formatComment),
+      totalComments,
+      pagination,
     })
   } catch (error) {
     console.error('Get live session comments error:', error)
@@ -73,16 +96,15 @@ export const getLiveSessionComments = async (req, res) => {
 ========================================================
   Add Comment To Live Session
   Logged-in User
+  Maximum 5 active comments per user per session
 ========================================================
 */
 export const addLiveSessionComment = async (req, res) => {
   try {
     const { sessionId } = req.params
     const userId = req.user._id
-
     const { comment } = req.body
 
-    // Validate sessionId
     if (!mongoose.Types.ObjectId.isValid(sessionId)) {
       return res.status(400).json({
         success: false,
@@ -90,8 +112,7 @@ export const addLiveSessionComment = async (req, res) => {
       })
     }
 
-    // Validate comment
-    if (!comment?.trim()) {
+    if (typeof comment !== 'string' || !comment.trim()) {
       return res.status(400).json({
         success: false,
         message: 'Comment is required',
@@ -107,7 +128,8 @@ export const addLiveSessionComment = async (req, res) => {
       })
     }
 
-    // Session must be Active
+    // Keep the existing session status restriction.
+    // There is no startDateTime/endDateTime restriction.
     if (liveSession.status !== 'Active') {
       return res.status(400).json({
         success: false,
@@ -115,51 +137,17 @@ export const addLiveSessionComment = async (req, res) => {
       })
     }
 
-    // Check session live window
-    const now = new Date()
-
-    if (now < liveSession.startDateTime || now > liveSession.endDateTime) {
-      return res.status(400).json({
-        success: false,
-        message: 'Comments are allowed only while the session is live',
-      })
-    }
-
-    // Validate event
-    const event = await Event.findById(liveSession.eventId)
-
-    if (!event) {
-      return res.status(404).json({
-        success: false,
-        message: 'Event not found',
-      })
-    }
-
-    // Validate paid event registration
-    const registration = await EventRegistration.findOne({
-      userId,
-      eventId: liveSession.eventId,
-      isPaid: true,
-      isSuspended: false,
-    })
-
-    if (!registration) {
-      return res.status(403).json({
-        success: false,
-        message: 'You are not eligible to comment on this session',
-      })
-    }
-
-    // Maximum 5 comments created by this user for this session
+    // No event registration or payment validation is required.
     const commentCount = await LiveSessionComment.countDocuments({
       sessionId,
       userId,
+      isDeleted: false,
     })
 
     if (commentCount >= 5) {
       return res.status(400).json({
         success: false,
-        message: 'You can add a maximum of 5 comments for this session',
+        message: 'You can have a maximum of 5 active comments for this session',
       })
     }
 
@@ -174,28 +162,16 @@ export const addLiveSessionComment = async (req, res) => {
     const populatedComment = await LiveSessionComment.findById(
       liveSessionComment._id,
     )
-      .populate('userId', 'name')
+      .populate({
+  path: 'userId',
+  select: 'name profilePicture',
+})
       .lean()
 
     return res.status(201).json({
       success: true,
       message: 'Comment added successfully',
-      data: populatedComment
-        ? {
-            _id: populatedComment._id,
-            sessionId: populatedComment.sessionId,
-            eventId: populatedComment.eventId,
-            comment: populatedComment.comment,
-            isDeleted: populatedComment.isDeleted,
-            createdAt: populatedComment.createdAt,
-            user: populatedComment.userId
-              ? {
-                  _id: populatedComment.userId._id,
-                  name: populatedComment.userId.name,
-                }
-              : null,
-          }
-        : null,
+      data: populatedComment ? formatComment(populatedComment) : null,
     })
   } catch (error) {
     console.error('Add live session comment error:', error)
@@ -209,8 +185,83 @@ export const addLiveSessionComment = async (req, res) => {
 
 /*
 ========================================================
+  Edit Own Comment
+  Logged-in User
+========================================================
+*/
+export const editLiveSessionComment = async (req, res) => {
+  try {
+    const { commentId } = req.params
+    const userId = req.user._id
+    const { comment } = req.body
+
+    if (!mongoose.Types.ObjectId.isValid(commentId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid comment ID',
+      })
+    }
+
+    if (typeof comment !== 'string' || !comment.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Comment is required',
+      })
+    }
+
+    const liveSessionComment = await LiveSessionComment.findById(commentId)
+
+    if (!liveSessionComment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found',
+      })
+    }
+
+    if (liveSessionComment.userId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can edit only your own comment',
+      })
+    }
+
+    if (liveSessionComment.isDeleted) {
+      return res.status(400).json({
+        success: false,
+        message: 'Deleted comments cannot be edited',
+      })
+    }
+
+    liveSessionComment.comment = comment.trim()
+    await liveSessionComment.save()
+
+    const updatedComment = await LiveSessionComment.findById(commentId)
+      .populate({
+  path: 'userId',
+  select: 'name profilePicture',
+})
+      .lean()
+
+    return res.status(200).json({
+      success: true,
+      message: 'Comment updated successfully',
+      data: updatedComment ? formatComment(updatedComment) : null,
+    })
+  } catch (error) {
+    console.error('Edit live session comment error:', error)
+
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update comment',
+    })
+  }
+}
+
+/*
+========================================================
   Delete Own Comment
   Logged-in User
+  Soft Delete
 ========================================================
 */
 export const deleteLiveSessionComment = async (req, res) => {
@@ -218,7 +269,6 @@ export const deleteLiveSessionComment = async (req, res) => {
     const { commentId } = req.params
     const userId = req.user._id
 
-    // Validate commentId
     if (!mongoose.Types.ObjectId.isValid(commentId)) {
       return res.status(400).json({
         success: false,
@@ -235,7 +285,6 @@ export const deleteLiveSessionComment = async (req, res) => {
       })
     }
 
-    // Only comment owner can delete
     if (liveSessionComment.userId.toString() !== userId.toString()) {
       return res.status(403).json({
         success: false,
@@ -243,7 +292,6 @@ export const deleteLiveSessionComment = async (req, res) => {
       })
     }
 
-    // Already deleted
     if (liveSessionComment.isDeleted) {
       return res.status(400).json({
         success: false,
@@ -251,9 +299,7 @@ export const deleteLiveSessionComment = async (req, res) => {
       })
     }
 
-    // Soft delete
     liveSessionComment.isDeleted = true
-
     await liveSessionComment.save()
 
     return res.status(200).json({
