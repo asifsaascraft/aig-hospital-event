@@ -12,6 +12,12 @@ import {
   retryNotification,
 } from '../controllers/appNotificationController.js'
 
+import {
+  getMobileEventNotifications,
+  getMobileUnreadNotificationCount,
+  markMobileNotificationAsRead,
+  markAllMobileNotificationsAsRead,
+} from '../controllers/appNotificationController.js'
 
 import {
   protect,
@@ -20,8 +26,37 @@ import {
 
 const router = express.Router()
 
-// All notification management routes require Event Admin authentication.
-//router.use(protect, authorizeRoles('eventAdmin'))
+// ======================================
+// Public Mobile App Notification Routes
+// ======================================
+
+// Get notifications for a device and event
+router.get(
+  '/app/notifications/:eventId',
+  getMobileEventNotifications,
+)
+
+// Get unread notification count for a device and event
+router.get(
+  '/app/notifications/:eventId/unread-count',
+  getMobileUnreadNotificationCount,
+)
+
+// Mark one notification as read
+router.patch(
+  '/app/notifications/:notificationId/read',
+  markMobileNotificationAsRead,
+)
+
+// Mark all notifications for an event as read
+router.patch(
+  '/app/notifications/:eventId/read-all',
+  markAllMobileNotificationsAsRead,
+)
+
+// ======================================
+// Protected Event Admin Routes
+// ======================================
 
 // Create notification for an event
 router.post(
@@ -36,7 +71,7 @@ router.get(
   '/event-admin/events/:eventId/notifications',
   protect,
   authorizeRoles('eventAdmin'),
-  getNotificationsByEvent
+  getNotificationsByEvent,
 )
 
 // Get notification by ID
@@ -44,7 +79,7 @@ router.get(
   '/event-admin/notifications/:id',
   protect,
   authorizeRoles('eventAdmin'),
-  getNotificationById
+  getNotificationById,
 )
 
 // Update draft or scheduled notification
@@ -52,7 +87,7 @@ router.put(
   '/event-admin/notifications/:id',
   protect,
   authorizeRoles('eventAdmin'),
-  updateNotification
+  updateNotification,
 )
 
 // Cancel scheduled notification
@@ -60,7 +95,7 @@ router.patch(
   '/event-admin/notifications/:id/cancel',
   protect,
   authorizeRoles('eventAdmin'),
-  cancelScheduledNotification
+  cancelScheduledNotification,
 )
 
 // Delete draft or failed notification
@@ -68,7 +103,7 @@ router.delete(
   '/event-admin/notifications/:id',
   protect,
   authorizeRoles('eventAdmin'),
-  deleteNotification
+  deleteNotification,
 )
 
 // Send a draft notification immediately
@@ -76,7 +111,7 @@ router.post(
   '/event-admin/notifications/:id/send',
   protect,
   authorizeRoles('eventAdmin'),
-  sendNotificationNow
+  sendNotificationNow,
 )
 
 // Retry a failed notification
@@ -84,7 +119,7 @@ router.post(
   '/event-admin/notifications/:id/retry',
   protect,
   authorizeRoles('eventAdmin'),
-  retryNotification
+  retryNotification,
 )
 
 export default router

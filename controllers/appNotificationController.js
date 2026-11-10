@@ -5,6 +5,9 @@ import Event from '../models/Event.js'
 import {
   claimAndDeliverNotification,
 } from '../services/notification/notificationDelivery.service.js'
+import AppNotificationDevice from '../models/AppNotificationDevice.js'
+
+
 
 
 
@@ -532,3 +535,259 @@ export const retryNotification = async (req, res) => {
     })
   }
 }
+
+
+
+/**
+ * Resolve the registered mobile device from x-installation-id.
+ *
+ * This is a public mobile API, so no login token is required.
+ */
+const getMobileDevice = async (req, res) => {
+  const installationId = req.get('x-installation-id')?.trim()
+
+  if (!installationId) {
+    res.status(400).json({
+      success: false,
+      message: 'Installation ID is required',
+    })
+
+    return null
+  }
+
+  const device = await AppNotificationDevice.findOne({
+    installationId,
+  })
+
+  if (!device) {
+    res.status(404).json({
+      success: false,
+      message: 'Registered device not found. Please register this device first.',
+    })
+
+    return null
+  }
+
+  return device
+}
+
+// =======================
+// Get Event Notification Inbox
+// =======================
+export const getMobileEventNotifications = async (req, res) => {
+  try {
+    const { eventId } = req.params
+
+    if (!mongoose.isValidObjectId(eventId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid event ID',
+      })
+    }
+
+    const device = await getMobileDevice(req, res)
+
+    if (!device) return
+
+    const recipients = await AppNotificationRecipient.find({
+      deviceId: device._id,
+      eventId,
+      ticketStatus: 'ok',
+    })
+      .populate({
+        path: 'notificationId',
+        match: {
+          status: 'sent',
+          eventId,
+        },
+        select:
+          '_id eventId title message notificationType status sentAt createdAt',
+      })
+      .sort({
+        sentAt: -1,
+        createdAt: -1,
+      })
+      .lean()
+
+    // A populated notification is null when it is not in sent status.
+    const notifications = recipients.filter(
+      (recipient) => recipient.notificationId,
+    )
+
+    return res.status(200).json({
+      success: true,
+      message: 'Notifications fetched successfully',
+      data: notifications,
+    })
+  } catch (error) {
+    console.error('Get Mobile Event Notifications Error:', error)
+
+    return res.status(500).json({
+      success: false,
+      message: 'Server Error',
+    })
+  }
+}
+
+// =======================
+// Get Event Unread Count
+// =======================
+export const getMobileUnreadNotificationCount = async (req, res) => {
+  try {
+    const { eventId } = req.params
+
+    if (!mongoose.isValidObjectId(eventId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid event ID',
+      })
+    }
+
+    const device = await getMobileDevice(req, res)
+
+    if (!device) return
+
+    const unreadCount = await AppNotificationRecipient.countDocuments({
+      deviceId: device._id,
+      eventId,
+      ticketStatus: 'ok',
+      readAt: null,
+    })
+
+    return res.status(200).json({
+      success: true,
+      message: 'Unread notification count fetched successfully',
+      data: {
+        unreadCount,
+      },
+    })
+  } catch (error) {
+    console.error('Get Mobile Unread Count Error:', error)
+
+    return res.status(500).json({
+      success: false,
+      message: 'Server Error',
+    })
+  }
+}
+
+// =======================
+// Mark One Notification As Read
+// =======================
+export const markMobileNotificationAsRead = async (req, res) => {
+  try {
+    const { notificationId } = req.params
+
+    if (!mongoose.isValidObjectId(notificationId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid notification ID',
+      })
+    }
+
+    const device = await getMobileDevice(req, res)
+
+    if (!device) return
+
+    // Only notifications successfully delivered to this device are accessible.
+    const recipient = await AppNotificationRecipient.findOne({
+      notificationId,
+      deviceId: device._id,
+      ticketStatus: 'ok',
+    })
+
+    if (!recipient) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found for this device',
+      })
+    }
+
+    const notification = await AppNotification.findOne({
+      _id: notificationId,
+      eventId: recipient.eventId,
+      status: 'sent',
+    }).select('_id')
+
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found',
+      })
+    }
+
+    // Preserve the original read timestamp when the request is repeated.
+    if (!recipient.readAt) {
+      recipient.readAt = new Date()
+      await recipient.save()
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Notification marked as read',
+      data: {
+        readAt: recipient.readAt,
+      },
+    })
+  } catch (error) {
+    console.error('Mark Mobile Notification As Read Error:', error)
+
+    return res.status(500).json({
+      success: false,
+      message: 'Server Error',
+    })
+  }
+}
+
+// =======================
+// Mark All Event Notifications As Read
+// =======================
+export const markAllMobileNotificationsAsRead = async (req, res) => {
+  try {
+    const { eventId } = req.params
+
+    if (!mongoose.isValidObjectId(eventId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid event ID',
+      })
+    }
+
+    const device = await getMobileDevice(req, res)
+
+    if (!device) return
+
+    const readAt = new Date()
+
+    const result = await AppNotificationRecipient.updateMany(
+      {
+        deviceId: device._id,
+        eventId,
+        ticketStatus: 'ok',
+        readAt: null,
+      },
+      {
+        $set: {
+          readAt,
+        },
+      },
+    )
+
+    return res.status(200).json({
+      success: true,
+      message: 'All notifications marked as read',
+      data: {
+        modifiedCount: result.modifiedCount,
+        readAt,
+      },
+    })
+  } catch (error) {
+    console.error('Mark All Mobile Notifications As Read Error:', error)
+
+    return res.status(500).json({
+      success: false,
+      message: 'Server Error',
+    })
+  }
+}
+
