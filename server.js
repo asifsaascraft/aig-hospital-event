@@ -11,6 +11,9 @@ import morgan from "morgan";
 import multer from "multer";
 
 import connectDB from "./config/db.js";
+import {
+  startNotificationScheduler,
+} from './services/notification/notificationScheduler.service.js'
 
 // Routes
 import accompanyRoutes from "./routes/accompanyRoutes.js";
@@ -21,6 +24,8 @@ import announcementRoutes from "./routes/announcementRoutes.js";
 import appAuthRoutes from "./routes/appAuthRoutes.js";
 import appFeedbackResponseRoutes from "./routes/appFeedbackResponseRoutes.js";
 import appFeedbackRoutes from "./routes/appFeedbackRoutes.js";
+import appNotificationRoutes from './routes/appNotificationRoutes.js'
+import appNotificationDeviceRoutes from './routes/appNotificationDeviceRoutes.js'
 import appOrganizerRoutes from "./routes/appOrganizerRoutes.js";
 import appOrganizerTypeRoutes from "./routes/appOrganizerTypeRoutes.js";
 import appPollRoutes from "./routes/appPollRoutes.js";
@@ -108,6 +113,8 @@ import workshopRoutes from "./routes/workshopRoutes.js";
 
 await connectDB();
 
+startNotificationScheduler();
+
 const app = express();
 
 // =======================
@@ -162,6 +169,8 @@ app.use("/api", announcementRoutes);
 app.use("/api/users/app", appAuthRoutes);
 app.use("/api", appFeedbackResponseRoutes);
 app.use("/api", appFeedbackRoutes);
+app.use('/api', appNotificationRoutes)
+app.use('/api', appNotificationDeviceRoutes)
 app.use("/api", appOrganizerRoutes);
 app.use("/api", appOrganizerTypeRoutes);
 app.use("/api", appPollRoutes);
