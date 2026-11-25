@@ -2,6 +2,7 @@ import express from "express";
 import {
   registerUserByEventAdmin,
   getAllUsers,
+  getAllUsersWithoutPagination,
   getUserRegistrationReport,
   getAllUsersCreatedByEventAdmin,
   getAllUsersCreatedBySponsor,
@@ -45,6 +46,16 @@ router.get(
   protect,
   authorizeRoles("admin"),
   getAllUsers
+);
+
+// =======================
+// Admin: Get All Users (Without Pagination)
+// =======================
+router.get(
+  "/admin/users/all",
+  protect,
+  authorizeRoles("admin"),
+  getAllUsersWithoutPagination
 );
 
 // =======================
