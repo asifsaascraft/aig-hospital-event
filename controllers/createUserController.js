@@ -1,3 +1,4 @@
+import XLSX from "xlsx";
 import User from "../models/User.js";
 import sendEmailWithTemplate from "../utils/sendEmail.js";
 import { generateStrongPassword } from "../utils/generatePassword.js";
@@ -817,6 +818,171 @@ export const registerUserBySponsor = async (req, res) => {
   } catch (error) {
     console.error("Create user error:", error);
     res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// =======================
+// (Admin Only): Create User (import)
+// =======================
+export const importUsersByAdmin = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "CSV or Excel file is required",
+      });
+    }
+
+    const workbook = XLSX.read(req.file.buffer, {
+      type: "buffer",
+    });
+
+    const sheetName = workbook.SheetNames[0];
+
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+      defval: "",
+    });
+
+    if (!rows.length) {
+      return res.status(400).json({
+        success: false,
+        message: "File contains no data",
+      });
+    }
+
+    const usersToInsert = [];
+
+    const skipped = [];
+
+    // Existing emails
+    const existingEmails = new Set(
+      (await User.find({}, { email: 1 }).lean()).map((u) =>
+        u.email.toLowerCase(),
+      ),
+    );
+
+    const duplicateEmailsInFile = new Set();
+
+    for (let index = 0; index < rows.length; index++) {
+      const row = rows[index];
+
+      const rowNumber = index + 2; // header = row 1
+
+      const name = row.name?.toString().trim();
+      const email = row.email?.toString().trim().toLowerCase();
+
+      // Required checks
+      if (!name) {
+        skipped.push({
+          row: rowNumber,
+          name: name || null,
+          email: email || null,
+          reason: "Name is required",
+        });
+        continue;
+      }
+
+      if (!email) {
+        skipped.push({
+          row: rowNumber,
+          name: name || null,
+          email: null,
+          reason: "Email is required",
+        });
+        continue;
+      }
+
+      // Email format validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!emailRegex.test(email)) {
+        skipped.push({
+          row: rowNumber,
+          email,
+          reason: "Invalid email format",
+        });
+        continue;
+      }
+
+      // DB duplicate
+      if (existingEmails.has(email)) {
+        skipped.push({
+          row: rowNumber,
+          name,
+          email,
+          reason: "Email already exists",
+        });
+        continue;
+      }
+
+      // Duplicate inside uploaded file
+      if (duplicateEmailsInFile.has(email)) {
+        skipped.push({
+          row: rowNumber,
+          email,
+          reason: "Duplicate email in uploaded file",
+        });
+        continue;
+      }
+
+      duplicateEmailsInFile.add(email);
+
+      const plainPassword = generateStrongPassword();
+
+      usersToInsert.push({
+        name,
+        email,
+
+        mobile: row.mobile?.toString().trim() || undefined,
+        prefix: row.prefix || "",
+        designation: row.designation || "",
+        affiliation: row.affiliation || "",
+        address: row.address || "",
+        gender: row.gender || "",
+        country: row.country || "",
+        city: row.city || "",
+        state: row.state || "",
+        pincode: row.pincode || "",
+        department: row.department || "",
+
+        password: plainPassword,
+        plainPassword,
+
+        role: "user",
+        status: "Active",
+
+        termAndCondition: true,
+        createdBy: "admin",
+      });
+    }
+
+    let insertedUsers = [];
+
+    if (usersToInsert.length > 0) {
+      insertedUsers = await User.insertMany(usersToInsert, {
+        ordered: false,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "User import completed",
+
+      summary: {
+        totalRows: rows.length,
+        imported: insertedUsers.length,
+        skipped: skipped.length,
+      },
+
+      skippedRecords: skipped,
+    });
+  } catch (error) {
+    console.error("Import user error:", error);
+
+    return res.status(500).json({
       success: false,
       message: error.message,
     });

@@ -38,9 +38,7 @@ const UserSchema = new mongoose.Schema(
     },
     mobile: {
       type: String,
-      match: [/^\d{5,15}$/, "Mobile number must be between 5 and 15 digits"],
       trim: true,
-      unique: true,
     },
     //  For forgot-password/reset-password
     passwordResetToken: {
@@ -121,7 +119,7 @@ const UserSchema = new mongoose.Schema(
     },
     createdBy: {
       type: String,
-      enum: ["self", "eventAdmin", "sponsor"],
+      enum: ["self", "eventAdmin", "sponsor", "admin"],
     },
     createdById: {
       type: mongoose.Schema.Types.ObjectId,
@@ -150,5 +148,20 @@ UserSchema.methods.getJwtToken = function () {
     expiresIn: "1d",
   });
 };
+
+UserSchema.pre("insertMany", async function (next, docs) {
+  try {
+    for (const doc of docs) {
+      if (doc.password) {
+        const salt = await bcrypt.genSalt(10);
+        doc.password = await bcrypt.hash(doc.password, salt);
+      }
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default mongoose.models.User || mongoose.model("User", UserSchema);

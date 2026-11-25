@@ -10,9 +10,11 @@ import {
   deleteUser,
   checkUserEmailExists,
   registerUserBySponsor,
+  importUsersByAdmin,
 } from "../controllers/createUserController.js";
 import { protectSponsor } from "../middlewares/sponsorAuthMiddleware.js";
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
+import { uploadUserImport } from "../middlewares/importUserUpload.js";
 
 const router = express.Router();
 
@@ -116,5 +118,15 @@ router.post(
   checkUserEmailExists
 );
 
+// =======================
+// only Admin: create User (import)
+// =======================
+router.post(
+  "/admin/import-users",
+  protect,
+  authorizeRoles("admin"),
+  uploadUserImport.single("file"),
+  importUsersByAdmin
+);
 
 export default router;
