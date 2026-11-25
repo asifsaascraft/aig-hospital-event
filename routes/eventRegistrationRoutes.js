@@ -26,9 +26,11 @@ import {
   sendSingleRegistrationSuccessWhatsApp,
   sendBulkRegistrationSuccessWhatsApps,
   getPublicRegistrationByToken,
+  importSponsorRegistrationsByEventAdmin,
 } from '../controllers/eventRegistrationController.js'
 import { protect, authorizeRoles } from "../middlewares/authMiddleware.js";
 import { eventUpload } from "../middlewares/eventUploadMiddleware.js";
+import { uploadUserImport } from "../middlewares/importUserUpload.js";
 
 
 const router = express.Router();
@@ -262,6 +264,18 @@ router.post(
   protect,
   authorizeRoles("eventAdmin"),
   sendBulkRegistrationSuccessWhatsApps
+);
+
+
+// =====================================
+// 22. Import Sponsor Registrations By Event Admin
+// =====================================
+router.post(
+  "/event-admin/events/:eventId/import-sponsor-registration",
+  protect,
+  authorizeRoles("eventAdmin"),
+  uploadUserImport.single("file"),
+  importSponsorRegistrationsByEventAdmin
 );
 
 

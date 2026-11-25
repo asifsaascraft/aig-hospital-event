@@ -22,6 +22,9 @@ import {
 } from "../utils/registrationToken.js";
 import { getPagination, buildPaginationMeta } from "../utils/pagination.js";
 import buildSearchQuery from "../utils/search.js";
+import XLSX from "xlsx";
+import Sponsor from "../models/Sponsor.js";
+import SponsorRegistrationQuota from "../models/SponsorRegistrationQuota.js";
 
 // helper function for Conference reminder email
 const sendRegistrationSuccessEmail = async (registration, event) => {
@@ -3468,6 +3471,607 @@ export const getPublicRegistrationByToken = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server Error",
+    });
+  }
+};
+
+
+// =====================================
+// Import Sponsor Registrations By Event Admin
+// =====================================
+export const importSponsorRegistrationsByEventAdmin = async (
+  req,
+  res
+) => {
+  try {
+    const { eventId } = req.params;
+
+    const {
+      sponsorId,
+      registrationSlabId,
+      cardProfileId,
+    } = req.body;
+
+    // ==========================================
+    // File Required
+    // ==========================================
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "CSV or Excel file is required",
+      });
+    }
+
+    // ==========================================
+    // Required IDs
+    // ==========================================
+    if (!sponsorId) {
+      return res.status(400).json({
+        success: false,
+        message: "sponsorId is required",
+      });
+    }
+
+    if (!registrationSlabId) {
+      return res.status(400).json({
+        success: false,
+        message: "registrationSlabId is required",
+      });
+    }
+
+    if (!cardProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: "cardProfileId is required",
+      });
+    }
+
+    // ==========================================
+    // Event Validation
+    // ==========================================
+    const event = await Event.findById(eventId).populate({
+      path: "venueName",
+      select: "venueName venueAddress",
+    });
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    // ==========================================
+    // Sponsor Validation
+    // ==========================================
+    const sponsor = await Sponsor.findOne({
+      _id: sponsorId,
+      eventId,
+      status: "Active",
+    });
+
+    if (!sponsor) {
+      return res.status(404).json({
+        success: false,
+        message: "Sponsor not found",
+      });
+    }
+
+    // ==========================================
+    // Registration Slab Validation
+    // ==========================================
+    const registrationSlab =
+      await RegistrationSlab.findOne({
+        _id: registrationSlabId,
+        eventId,
+        slabType: "sponsor",
+      });
+
+    if (!registrationSlab) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Sponsor registration slab not found",
+      });
+    }
+
+    // ==========================================
+    // Card Profile Validation
+    // ==========================================
+    const cardProfile = await CardProfile.findOne({
+      _id: cardProfileId,
+      status: "Active",
+    });
+
+    if (!cardProfile) {
+      return res.status(404).json({
+        success: false,
+        message: "Card profile not found",
+      });
+    }
+
+    // ==========================================
+    // Sponsor Quota Validation
+    // ==========================================
+    const quotaRecord =
+      await SponsorRegistrationQuota.findOne({
+        sponsorId,
+        eventId,
+      });
+
+    if (!quotaRecord) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "No registration quota assigned for this sponsor",
+      });
+    }
+
+    const now = new Date();
+
+    if (
+      quotaRecord.startDateTime &&
+      now < quotaRecord.startDateTime
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Registration has not started yet",
+      });
+    }
+
+    if (
+      quotaRecord.endDateTime &&
+      now > quotaRecord.endDateTime
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Registration has ended",
+      });
+    }
+
+    // ==========================================
+    // Read Excel
+    // ==========================================
+    const workbook = XLSX.read(req.file.buffer, {
+      type: "buffer",
+    });
+
+    const sheetName =
+      workbook.SheetNames[0];
+
+    const rows = XLSX.utils.sheet_to_json(
+      workbook.Sheets[sheetName],
+      {
+        defval: "",
+      }
+    );
+
+    if (!rows.length) {
+      return res.status(400).json({
+        success: false,
+        message: "File contains no data",
+      });
+    }
+
+    // ==========================================
+    // Quota Calculation
+    // ==========================================
+    const alreadyUsed =
+      await EventRegistration.countDocuments({
+        sponsorId,
+        eventId,
+        registrationType:
+          "Sponsor Registration",
+        isSuspended: false,
+      });
+
+    const totalQuota =
+      quotaRecord.quota;
+
+    const remainingQuota =
+      totalQuota - alreadyUsed;
+
+    if (remainingQuota <= 0) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Sponsor quota has already been exhausted",
+      });
+    }
+
+    // ==========================================
+    // Preload Users
+    // ==========================================
+    const emails = rows
+      .map((r) =>
+        r.email?.toString().trim().toLowerCase()
+      )
+      .filter(Boolean);
+
+    const users = await User.find({
+      email: { $in: emails },
+      role: "user",
+    });
+
+    const userMap = new Map();
+
+    users.forEach((user) => {
+      userMap.set(
+        user.email.toLowerCase(),
+        user
+      );
+    });
+
+    // Existing registrations
+    const existingRegistrations =
+      await EventRegistration.find({
+        eventId,
+        email: { $in: emails },
+        isPaid: true,
+      }).select(
+        "email isSuspended"
+      );
+
+    const existingMap = new Map();
+
+    existingRegistrations.forEach(
+      (reg) => {
+        existingMap.set(
+          reg.email.toLowerCase(),
+          reg
+        );
+      }
+    );
+
+    const duplicateEmailsInFile =
+      new Set();
+
+    const skipped = [];
+
+    let importedCount = 0;
+
+    // ==========================================
+    // Start Processing Rows
+    // ==========================================
+    for (
+      let index = 0;
+      index < rows.length;
+      index++
+    ) {
+      const row = rows[index];
+
+      const rowNumber = index + 2;
+
+      const email = row.email
+        ?.toString()
+        .trim()
+        .toLowerCase();
+
+      const name = row.name
+        ?.toString()
+        .trim();
+
+      // -----------------------
+      // QUOTA EXHAUSTED
+      // -----------------------
+      if (
+        importedCount >= remainingQuota
+      ) {
+        skipped.push({
+          row: rowNumber,
+          name,
+          email,
+          reason:
+            "Sponsor quota exceeded",
+        });
+        continue;
+      }
+
+      // -----------------------
+      // NAME
+      // -----------------------
+      if (!name) {
+        skipped.push({
+          row: rowNumber,
+          name: null,
+          email,
+          reason:
+            "Name is required",
+        });
+        continue;
+      }
+
+      // -----------------------
+      // EMAIL
+      // -----------------------
+      if (!email) {
+        skipped.push({
+          row: rowNumber,
+          name,
+          email: null,
+          reason:
+            "Email is required",
+        });
+        continue;
+      }
+
+      // -----------------------
+      // Email Format
+      // -----------------------
+      const emailRegex =
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (
+        !emailRegex.test(email)
+      ) {
+        skipped.push({
+          row: rowNumber,
+          name,
+          email,
+          reason:
+            "Invalid email format",
+        });
+        continue;
+      }
+
+      // -----------------------
+      // Duplicate In File
+      // -----------------------
+      if (
+        duplicateEmailsInFile.has(
+          email
+        )
+      ) {
+        skipped.push({
+          row: rowNumber,
+          name,
+          email,
+          reason:
+            "Duplicate email in uploaded file",
+        });
+        continue;
+      }
+
+      duplicateEmailsInFile.add(
+        email
+      );
+
+      // -----------------------
+      // User Exists
+      // -----------------------
+      const user =
+        userMap.get(email);
+
+      if (!user) {
+        skipped.push({
+          row: rowNumber,
+          name,
+          email,
+          reason:
+            "User not found with role user",
+        });
+        continue;
+      }
+
+      // -----------------------
+      // Existing Registration
+      // -----------------------
+      const existing =
+        existingMap.get(email);
+
+      if (
+        existing &&
+        existing.isSuspended
+      ) {
+        skipped.push({
+          row: rowNumber,
+          name,
+          email,
+          reason:
+            "User registration is suspended",
+        });
+        continue;
+      }
+
+      if (existing) {
+        skipped.push({
+          row: rowNumber,
+          name,
+          email,
+          reason:
+            "User already registered for this event",
+        });
+        continue;
+      }
+
+      // ==================================
+      // Create Registration
+      // ==================================
+      const session =
+        await mongoose.startSession();
+
+      try {
+        await session.withTransaction(
+          async () => {
+            const generatedRegNum =
+              await generateRegistrationNumber(
+                event._id,
+                session
+              );
+
+            const publicToken =
+              generateRegistrationPublicToken();
+
+            const registration =
+              new EventRegistration({
+                sponsorId,
+
+                userId:
+                  user._id,
+
+                eventId,
+
+                registrationSlabId,
+
+                cardProfileId,
+
+                prefix:
+                  row.prefix ||
+                  user.prefix ||
+                  "",
+
+                name,
+
+                gender:
+                  row.gender ||
+                  user.gender ||
+                  "",
+
+                email,
+
+                mobile:
+                  row.mobile ||
+                  user.mobile ||
+                  "",
+
+                designation:
+                  row.designation ||
+                  user.designation ||
+                  "",
+
+                affiliation:
+                  row.affiliation ||
+                  user.affiliation ||
+                  "",
+
+                mciNumber:
+                  row.mciNumber ||
+                  user.mciNumber ||
+                  "",
+
+                mciState:
+                  row.mciState ||
+                  user.mciState ||
+                  "",
+
+                department:
+                  row.department ||
+                  user.department ||
+                  "",
+
+                alternateEmail:
+                  row.alternateEmail ||
+                  "",
+
+                alternateMobile:
+                  row.alternateMobile ||
+                  "",
+
+                country:
+                  row.country ||
+                  user.country ||
+                  "",
+
+                city:
+                  row.city ||
+                  user.city ||
+                  "",
+
+                state:
+                  row.state ||
+                  user.state ||
+                  "",
+
+                address:
+                  row.address ||
+                  user.address ||
+                  "",
+
+                pincode:
+                  row.pincode ||
+                  user.pincode ||
+                  "",
+
+                isPaid: true,
+
+                regNumGenerated: true,
+
+                regNum:
+                  generatedRegNum,
+
+                isSuspended: false,
+
+                publicToken,
+
+                registrationType:
+                  "Sponsor Registration",
+              });
+
+            await registration.save({
+              session,
+            });
+          }
+        );
+
+        importedCount++;
+      } catch (error) {
+        skipped.push({
+          row: rowNumber,
+          name,
+          email,
+          reason:
+            error.message ||
+            "Registration failed",
+        });
+      } finally {
+        await session.endSession();
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Sponsor registration import completed",
+
+      summary: {
+        sponsorId,
+
+        totalRows: rows.length,
+
+        imported:
+          importedCount,
+
+        skipped:
+          skipped.length,
+
+        totalQuota,
+
+        alreadyUsed,
+
+        quotaConsumedInImport:
+          importedCount,
+
+        quotaRemaining:
+          totalQuota -
+          alreadyUsed -
+          importedCount,
+      },
+
+      skippedRecords:
+        skipped,
+    });
+  } catch (error) {
+    console.error(
+      "Import sponsor registration error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Server Error",
     });
   }
 };
