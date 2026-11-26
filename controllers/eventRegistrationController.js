@@ -779,7 +779,6 @@ export const getEventAdminRegistrationById = async (req, res) => {
   }
 };
 
-
 /*
 ========================================================
   Get All Paid Registrations for an Event
@@ -2291,9 +2290,7 @@ export const updateEventRegistration = async (req, res) => {
 
     if (typeof updateData.dynamicFormAnswers === "string") {
       try {
-        incomingDynamicAnswers = JSON.parse(
-          updateData.dynamicFormAnswers
-        );
+        incomingDynamicAnswers = JSON.parse(updateData.dynamicFormAnswers);
       } catch (error) {
         return res.status(400).json({
           success: false,
@@ -2310,9 +2307,7 @@ export const updateEventRegistration = async (req, res) => {
 
     if (typeof updateData.additionalAnswers === "string") {
       try {
-        incomingAdditionalAnswers = JSON.parse(
-          updateData.additionalAnswers
-        );
+        incomingAdditionalAnswers = JSON.parse(updateData.additionalAnswers);
       } catch (error) {
         return res.status(400).json({
           success: false,
@@ -2356,95 +2351,84 @@ export const updateEventRegistration = async (req, res) => {
     // ==========================================
     if (Array.isArray(incomingDynamicAnswers)) {
       const existingDynamicAnswers = Array.isArray(
-        registration.dynamicFormAnswers
+        registration.dynamicFormAnswers,
       )
         ? registration.dynamicFormAnswers
         : [];
 
       const existingDynamicMap = new Map(
-        existingDynamicAnswers.map((answer) => [
-          String(answer.id),
-          answer,
-        ])
+        existingDynamicAnswers.map((answer) => [String(answer.id), answer]),
       );
 
-      const updatedDynamicAnswers =
-        incomingDynamicAnswers.map((answer) => {
-          const id = String(answer.id);
+      const updatedDynamicAnswers = incomingDynamicAnswers.map((answer) => {
+        const id = String(answer.id);
 
-          const existingAnswer = existingDynamicMap.get(id);
+        const existingAnswer = existingDynamicMap.get(id);
 
-          // --------------------------------------
-          // Check for newly uploaded replacement
-          // --------------------------------------
-          const newFile =
-            fileMap[`file_dyn_${id}`]?.[0] || null;
+        // --------------------------------------
+        // Check for newly uploaded replacement
+        // --------------------------------------
+        const newFile = fileMap[`file_dyn_${id}`]?.[0] || null;
 
-          // --------------------------------------
-          // NEW FILE
-          // --------------------------------------
-          if (newFile) {
-            return {
-              ...(existingAnswer || {}),
-              ...answer,
-
-              value: null,
-              fileUrl: newFile.location,
-            };
-          }
-
-          // --------------------------------------
-          // EXISTING FILE - NO NEW FILE
-          //
-          // Frontend sends:
-          // {
-          //   id,
-          //   value: null,
-          //   fileUrl: oldUrl
-          // }
-          // --------------------------------------
-          if (answer.fileUrl) {
-            return {
-              ...(existingAnswer || {}),
-              ...answer,
-
-              value: null,
-              fileUrl: answer.fileUrl,
-            };
-          }
-
-          // --------------------------------------
-          // EXISTING FILE - SAFETY FALLBACK
-          //
-          // If frontend didn't send fileUrl but
-          // database already has one, preserve it.
-          // --------------------------------------
-          if (
-            existingAnswer?.fileUrl &&
-            answer.value == null
-          ) {
-            return {
-              ...(existingAnswer || {}),
-              ...answer,
-
-              value: null,
-              fileUrl: existingAnswer.fileUrl,
-            };
-          }
-
-          // --------------------------------------
-          // NORMAL NON-FILE ANSWER
-          // --------------------------------------
+        // --------------------------------------
+        // NEW FILE
+        // --------------------------------------
+        if (newFile) {
           return {
             ...(existingAnswer || {}),
             ...answer,
 
-            fileUrl:
-              answer.fileUrl ??
-              existingAnswer?.fileUrl ??
-              null,
+            value: null,
+            fileUrl: newFile.location,
           };
-        });
+        }
+
+        // --------------------------------------
+        // EXISTING FILE - NO NEW FILE
+        //
+        // Frontend sends:
+        // {
+        //   id,
+        //   value: null,
+        //   fileUrl: oldUrl
+        // }
+        // --------------------------------------
+        if (answer.fileUrl) {
+          return {
+            ...(existingAnswer || {}),
+            ...answer,
+
+            value: null,
+            fileUrl: answer.fileUrl,
+          };
+        }
+
+        // --------------------------------------
+        // EXISTING FILE - SAFETY FALLBACK
+        //
+        // If frontend didn't send fileUrl but
+        // database already has one, preserve it.
+        // --------------------------------------
+        if (existingAnswer?.fileUrl && answer.value == null) {
+          return {
+            ...(existingAnswer || {}),
+            ...answer,
+
+            value: null,
+            fileUrl: existingAnswer.fileUrl,
+          };
+        }
+
+        // --------------------------------------
+        // NORMAL NON-FILE ANSWER
+        // --------------------------------------
+        return {
+          ...(existingAnswer || {}),
+          ...answer,
+
+          fileUrl: answer.fileUrl ?? existingAnswer?.fileUrl ?? null,
+        };
+      });
 
       updateData.dynamicFormAnswers = updatedDynamicAnswers;
     }
@@ -2454,30 +2438,25 @@ export const updateEventRegistration = async (req, res) => {
     // ==========================================
     if (Array.isArray(incomingAdditionalAnswers)) {
       const existingAdditionalAnswers = Array.isArray(
-        registration.additionalAnswers
+        registration.additionalAnswers,
       )
         ? registration.additionalAnswers
         : [];
 
       const existingAdditionalMap = new Map(
-        existingAdditionalAnswers.map((answer) => [
-          String(answer.id),
-          answer,
-        ])
+        existingAdditionalAnswers.map((answer) => [String(answer.id), answer]),
       );
 
-      const updatedAdditionalAnswers =
-        incomingAdditionalAnswers.map((answer) => {
+      const updatedAdditionalAnswers = incomingAdditionalAnswers.map(
+        (answer) => {
           const id = String(answer.id);
 
-          const existingAnswer =
-            existingAdditionalMap.get(id);
+          const existingAnswer = existingAdditionalMap.get(id);
 
           // --------------------------------------
           // Check for newly uploaded replacement
           // --------------------------------------
-          const newFile =
-            fileMap[`file_${id}`]?.[0] || null;
+          const newFile = fileMap[`file_${id}`]?.[0] || null;
 
           // --------------------------------------
           // NEW FILE
@@ -2508,10 +2487,7 @@ export const updateEventRegistration = async (req, res) => {
           // --------------------------------------
           // EXISTING FILE - SAFETY FALLBACK
           // --------------------------------------
-          if (
-            existingAnswer?.fileUrl &&
-            answer.value == null
-          ) {
+          if (existingAnswer?.fileUrl && answer.value == null) {
             return {
               ...(existingAnswer || {}),
               ...answer,
@@ -2528,15 +2504,12 @@ export const updateEventRegistration = async (req, res) => {
             ...(existingAnswer || {}),
             ...answer,
 
-            fileUrl:
-              answer.fileUrl ??
-              existingAnswer?.fileUrl ??
-              null,
+            fileUrl: answer.fileUrl ?? existingAnswer?.fileUrl ?? null,
           };
-        });
+        },
+      );
 
-      updateData.additionalAnswers =
-        updatedAdditionalAnswers;
+      updateData.additionalAnswers = updatedAdditionalAnswers;
     }
 
     // ==========================================
@@ -3475,22 +3448,14 @@ export const getPublicRegistrationByToken = async (req, res) => {
   }
 };
 
-
 // =====================================
 // Import Sponsor Registrations By Event Admin
 // =====================================
-export const importSponsorRegistrationsByEventAdmin = async (
-  req,
-  res
-) => {
+export const importSponsorRegistrationsByEventAdmin = async (req, res) => {
   try {
     const { eventId } = req.params;
 
-    const {
-      sponsorId,
-      registrationSlabId,
-      cardProfileId,
-    } = req.body;
+    const { sponsorId, registrationSlabId, cardProfileId } = req.body;
 
     // ==========================================
     // File Required
@@ -3560,18 +3525,16 @@ export const importSponsorRegistrationsByEventAdmin = async (
     // ==========================================
     // Registration Slab Validation
     // ==========================================
-    const registrationSlab =
-      await RegistrationSlab.findOne({
-        _id: registrationSlabId,
-        eventId,
-        slabType: "sponsor",
-      });
+    const registrationSlab = await RegistrationSlab.findOne({
+      _id: registrationSlabId,
+      eventId,
+      slabType: "sponsor",
+    });
 
     if (!registrationSlab) {
       return res.status(404).json({
         success: false,
-        message:
-          "Sponsor registration slab not found",
+        message: "Sponsor registration slab not found",
       });
     }
 
@@ -3593,37 +3556,28 @@ export const importSponsorRegistrationsByEventAdmin = async (
     // ==========================================
     // Sponsor Quota Validation
     // ==========================================
-    const quotaRecord =
-      await SponsorRegistrationQuota.findOne({
-        sponsorId,
-        eventId,
-      });
+    const quotaRecord = await SponsorRegistrationQuota.findOne({
+      sponsorId,
+      eventId,
+    });
 
     if (!quotaRecord) {
       return res.status(400).json({
         success: false,
-        message:
-          "No registration quota assigned for this sponsor",
+        message: "No registration quota assigned for this sponsor",
       });
     }
 
     const now = new Date();
 
-    if (
-      quotaRecord.startDateTime &&
-      now < quotaRecord.startDateTime
-    ) {
+    if (quotaRecord.startDateTime && now < quotaRecord.startDateTime) {
       return res.status(400).json({
         success: false,
-        message:
-          "Registration has not started yet",
+        message: "Registration has not started yet",
       });
     }
 
-    if (
-      quotaRecord.endDateTime &&
-      now > quotaRecord.endDateTime
-    ) {
+    if (quotaRecord.endDateTime && now > quotaRecord.endDateTime) {
       return res.status(400).json({
         success: false,
         message: "Registration has ended",
@@ -3637,15 +3591,11 @@ export const importSponsorRegistrationsByEventAdmin = async (
       type: "buffer",
     });
 
-    const sheetName =
-      workbook.SheetNames[0];
+    const sheetName = workbook.SheetNames[0];
 
-    const rows = XLSX.utils.sheet_to_json(
-      workbook.Sheets[sheetName],
-      {
-        defval: "",
-      }
-    );
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+      defval: "",
+    });
 
     if (!rows.length) {
       return res.status(400).json({
@@ -3657,26 +3607,21 @@ export const importSponsorRegistrationsByEventAdmin = async (
     // ==========================================
     // Quota Calculation
     // ==========================================
-    const alreadyUsed =
-      await EventRegistration.countDocuments({
-        sponsorId,
-        eventId,
-        registrationType:
-          "Sponsor Registration",
-        isSuspended: false,
-      });
+    const alreadyUsed = await EventRegistration.countDocuments({
+      sponsorId,
+      eventId,
+      registrationType: "Sponsor Registration",
+      isSuspended: false,
+    });
 
-    const totalQuota =
-      quotaRecord.quota;
+    const totalQuota = quotaRecord.quota;
 
-    const remainingQuota =
-      totalQuota - alreadyUsed;
+    const remainingQuota = totalQuota - alreadyUsed;
 
     if (remainingQuota <= 0) {
       return res.status(400).json({
         success: false,
-        message:
-          "Sponsor quota has already been exhausted",
+        message: "Sponsor quota has already been exhausted",
       });
     }
 
@@ -3684,9 +3629,7 @@ export const importSponsorRegistrationsByEventAdmin = async (
     // Preload Users
     // ==========================================
     const emails = rows
-      .map((r) =>
-        r.email?.toString().trim().toLowerCase()
-      )
+      .map((r) => r.email?.toString().trim().toLowerCase())
       .filter(Boolean);
 
     const users = await User.find({
@@ -3697,35 +3640,23 @@ export const importSponsorRegistrationsByEventAdmin = async (
     const userMap = new Map();
 
     users.forEach((user) => {
-      userMap.set(
-        user.email.toLowerCase(),
-        user
-      );
+      userMap.set(user.email.toLowerCase(), user);
     });
 
     // Existing registrations
-    const existingRegistrations =
-      await EventRegistration.find({
-        eventId,
-        email: { $in: emails },
-        isPaid: true,
-      }).select(
-        "email isSuspended"
-      );
+    const existingRegistrations = await EventRegistration.find({
+      eventId,
+      email: { $in: emails },
+      isPaid: true,
+    }).select("email isSuspended");
 
     const existingMap = new Map();
 
-    existingRegistrations.forEach(
-      (reg) => {
-        existingMap.set(
-          reg.email.toLowerCase(),
-          reg
-        );
-      }
-    );
+    existingRegistrations.forEach((reg) => {
+      existingMap.set(reg.email.toLowerCase(), reg);
+    });
 
-    const duplicateEmailsInFile =
-      new Set();
+    const duplicateEmailsInFile = new Set();
 
     const skipped = [];
 
@@ -3734,36 +3665,24 @@ export const importSponsorRegistrationsByEventAdmin = async (
     // ==========================================
     // Start Processing Rows
     // ==========================================
-    for (
-      let index = 0;
-      index < rows.length;
-      index++
-    ) {
+    for (let index = 0; index < rows.length; index++) {
       const row = rows[index];
 
       const rowNumber = index + 2;
 
-      const email = row.email
-        ?.toString()
-        .trim()
-        .toLowerCase();
+      const email = row.email?.toString().trim().toLowerCase();
 
-      const name = row.name
-        ?.toString()
-        .trim();
+      const name = row.name?.toString().trim();
 
       // -----------------------
       // QUOTA EXHAUSTED
       // -----------------------
-      if (
-        importedCount >= remainingQuota
-      ) {
+      if (importedCount >= remainingQuota) {
         skipped.push({
           row: rowNumber,
           name,
           email,
-          reason:
-            "Sponsor quota exceeded",
+          reason: "Sponsor quota exceeded",
         });
         continue;
       }
@@ -3776,8 +3695,7 @@ export const importSponsorRegistrationsByEventAdmin = async (
           row: rowNumber,
           name: null,
           email,
-          reason:
-            "Name is required",
+          reason: "Name is required",
         });
         continue;
       }
@@ -3790,8 +3708,7 @@ export const importSponsorRegistrationsByEventAdmin = async (
           row: rowNumber,
           name,
           email: null,
-          reason:
-            "Email is required",
+          reason: "Email is required",
         });
         continue;
       }
@@ -3799,18 +3716,14 @@ export const importSponsorRegistrationsByEventAdmin = async (
       // -----------------------
       // Email Format
       // -----------------------
-      const emailRegex =
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-      if (
-        !emailRegex.test(email)
-      ) {
+      if (!emailRegex.test(email)) {
         skipped.push({
           row: rowNumber,
           name,
           email,
-          reason:
-            "Invalid email format",
+          reason: "Invalid email format",
         });
         continue;
       }
@@ -3818,38 +3731,29 @@ export const importSponsorRegistrationsByEventAdmin = async (
       // -----------------------
       // Duplicate In File
       // -----------------------
-      if (
-        duplicateEmailsInFile.has(
-          email
-        )
-      ) {
+      if (duplicateEmailsInFile.has(email)) {
         skipped.push({
           row: rowNumber,
           name,
           email,
-          reason:
-            "Duplicate email in uploaded file",
+          reason: "Duplicate email in uploaded file",
         });
         continue;
       }
 
-      duplicateEmailsInFile.add(
-        email
-      );
+      duplicateEmailsInFile.add(email);
 
       // -----------------------
       // User Exists
       // -----------------------
-      const user =
-        userMap.get(email);
+      const user = userMap.get(email);
 
       if (!user) {
         skipped.push({
           row: rowNumber,
           name,
           email,
-          reason:
-            "User not found with role user",
+          reason: "User not found with role user",
         });
         continue;
       }
@@ -3857,19 +3761,14 @@ export const importSponsorRegistrationsByEventAdmin = async (
       // -----------------------
       // Existing Registration
       // -----------------------
-      const existing =
-        existingMap.get(email);
+      const existing = existingMap.get(email);
 
-      if (
-        existing &&
-        existing.isSuspended
-      ) {
+      if (existing && existing.isSuspended) {
         skipped.push({
           row: rowNumber,
           name,
           email,
-          reason:
-            "User registration is suspended",
+          reason: "User registration is suspended",
         });
         continue;
       }
@@ -3879,8 +3778,7 @@ export const importSponsorRegistrationsByEventAdmin = async (
           row: rowNumber,
           name,
           email,
-          reason:
-            "User already registered for this event",
+          reason: "User already registered for this event",
         });
         continue;
       }
@@ -3888,131 +3786,79 @@ export const importSponsorRegistrationsByEventAdmin = async (
       // ==================================
       // Create Registration
       // ==================================
-      const session =
-        await mongoose.startSession();
+      const session = await mongoose.startSession();
 
       try {
-        await session.withTransaction(
-          async () => {
-            const generatedRegNum =
-              await generateRegistrationNumber(
-                event._id,
-                session
-              );
+        await session.withTransaction(async () => {
+          const generatedRegNum = await generateRegistrationNumber(
+            event._id,
+            session,
+          );
 
-            const publicToken =
-              generateRegistrationPublicToken();
+          const publicToken = generateRegistrationPublicToken();
 
-            const registration =
-              new EventRegistration({
-                sponsorId,
+          const registration = new EventRegistration({
+            sponsorId,
 
-                userId:
-                  user._id,
+            userId: user._id,
 
-                eventId,
+            eventId,
 
-                registrationSlabId,
+            registrationSlabId,
 
-                cardProfileId,
+            cardProfileId,
 
-                prefix:
-                  row.prefix ||
-                  user.prefix ||
-                  "",
+            prefix: row.prefix || user.prefix || "",
 
-                name,
+            name,
 
-                gender:
-                  row.gender ||
-                  user.gender ||
-                  "",
+            gender: row.gender || user.gender || "",
 
-                email,
+            email,
 
-                mobile:
-                  row.mobile ||
-                  user.mobile ||
-                  "",
+            mobile: row.mobile || user.mobile || "",
 
-                designation:
-                  row.designation ||
-                  user.designation ||
-                  "",
+            designation: row.designation || user.designation || "",
 
-                affiliation:
-                  row.affiliation ||
-                  user.affiliation ||
-                  "",
+            affiliation: row.affiliation || user.affiliation || "",
 
-                mciNumber:
-                  row.mciNumber ||
-                  user.mciNumber ||
-                  "",
+            mciNumber: row.mciNumber || user.mciNumber || "",
 
-                mciState:
-                  row.mciState ||
-                  user.mciState ||
-                  "",
+            mciState: row.mciState || user.mciState || "",
 
-                department:
-                  row.department ||
-                  user.department ||
-                  "",
+            department: row.department || user.department || "",
 
-                alternateEmail:
-                  row.alternateEmail ||
-                  "",
+            alternateEmail: row.alternateEmail || "",
 
-                alternateMobile:
-                  row.alternateMobile ||
-                  "",
+            alternateMobile: row.alternateMobile || "",
 
-                country:
-                  row.country ||
-                  user.country ||
-                  "",
+            country: row.country || user.country || "",
 
-                city:
-                  row.city ||
-                  user.city ||
-                  "",
+            city: row.city || user.city || "",
 
-                state:
-                  row.state ||
-                  user.state ||
-                  "",
+            state: row.state || user.state || "",
 
-                address:
-                  row.address ||
-                  user.address ||
-                  "",
+            address: row.address || user.address || "",
 
-                pincode:
-                  row.pincode ||
-                  user.pincode ||
-                  "",
+            pincode: row.pincode || user.pincode || "",
 
-                isPaid: true,
+            isPaid: true,
 
-                regNumGenerated: true,
+            regNumGenerated: true,
 
-                regNum:
-                  generatedRegNum,
+            regNum: generatedRegNum,
 
-                isSuspended: false,
+            isSuspended: false,
 
-                publicToken,
+            publicToken,
 
-                registrationType:
-                  "Sponsor Registration",
-              });
+            registrationType: "Sponsor Registration",
+          });
 
-            await registration.save({
-              session,
-            });
-          }
-        );
+          await registration.save({
+            session,
+          });
+        });
 
         importedCount++;
       } catch (error) {
@@ -4020,9 +3866,7 @@ export const importSponsorRegistrationsByEventAdmin = async (
           row: rowNumber,
           name,
           email,
-          reason:
-            error.message ||
-            "Registration failed",
+          reason: error.message || "Registration failed",
         });
       } finally {
         await session.endSession();
@@ -4031,47 +3875,37 @@ export const importSponsorRegistrationsByEventAdmin = async (
 
     return res.status(200).json({
       success: true,
-      message:
-        "Sponsor registration import completed",
+      message: "Sponsor registration import completed",
 
       summary: {
         sponsorId,
 
+        sponsorName: sponsor.sponsorName,
+        contactPersonName: sponsor.contactPersonName,
+
         totalRows: rows.length,
 
-        imported:
-          importedCount,
+        imported: importedCount,
 
-        skipped:
-          skipped.length,
+        skipped: skipped.length,
 
         totalQuota,
 
         alreadyUsed,
 
-        quotaConsumedInImport:
-          importedCount,
+        quotaConsumedInImport: importedCount,
 
-        quotaRemaining:
-          totalQuota -
-          alreadyUsed -
-          importedCount,
+        quotaRemaining: totalQuota - alreadyUsed - importedCount,
       },
 
-      skippedRecords:
-        skipped,
+      skippedRecords: skipped,
     });
   } catch (error) {
-    console.error(
-      "Import sponsor registration error:",
-      error
-    );
+    console.error("Import sponsor registration error:", error);
 
     return res.status(500).json({
       success: false,
-      message:
-        error.message ||
-        "Server Error",
+      message: error.message || "Server Error",
     });
   }
 };
