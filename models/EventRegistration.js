@@ -229,6 +229,12 @@ EventRegistrationSchema.index(
   { unique: true, sparse: true },
 );
 
+// Optimizes getAllUsers: find each user's earliest registration
+EventRegistrationSchema.index(
+  { userId: 1, createdAt: 1 },
+  { name: "userId_1_createdAt_1" },
+);
+
 // Avoid model overwrite during hot-reload
 export default mongoose.models.EventRegistration ||
   mongoose.model("EventRegistration", EventRegistrationSchema);

@@ -148,39 +148,45 @@ export const getAllUsers = async (req, res) => {
   try {
     const { page, limit, skip } = getPagination(req);
 
-    // Search by name, email, and mobile
-    const searchQuery = buildSearch(req, ["name", "email", "mobile"]);
+    const searchQuery = buildSearch(req, [
+      "name",
+      "email",
+      "mobile",
+    ]);
 
     const matchQuery = {
       role: "user",
       ...searchQuery,
     };
 
-    // Run count and aggregation in parallel
     const [totalUsers, users] = await Promise.all([
       User.countDocuments(matchQuery),
 
       User.aggregate([
-        // 1. Filter users
+        // 1. Filter users first
         {
           $match: matchQuery,
         },
 
-        // 2. Get first registration of each user
+        // 2. Exclude sensitive fields early
+        {
+          $project: {
+            password: 0,
+            plainPassword: 0,
+            passwordResetToken: 0,
+            passwordResetExpires: 0,
+            otp: 0,
+            otpExpires: 0,
+          },
+        },
+
+        // 3. Find each user's earliest registration
         {
           $lookup: {
             from: "eventregistrations",
-            let: {
-              userId: "$_id",
-            },
+            localField: "_id",
+            foreignField: "userId",
             pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $eq: ["$userId", "$$userId"],
-                  },
-                },
-              },
               {
                 $sort: {
                   createdAt: 1,
@@ -191,6 +197,7 @@ export const getAllUsers = async (req, res) => {
               },
               {
                 $project: {
+                  _id: 0,
                   createdAt: 1,
                   eventId: 1,
                 },
@@ -200,7 +207,7 @@ export const getAllUsers = async (req, res) => {
           },
         },
 
-        // 3. Set signup date
+        // 4. Preserve the existing createdAt logic
         {
           $addFields: {
             createdAt: {
@@ -217,14 +224,14 @@ export const getAllUsers = async (req, res) => {
           },
         },
 
-        // 4. Sort users
+        // 5. Sort using the calculated createdAt
         {
           $sort: {
             createdAt: -1,
           },
         },
 
-        // 5. Apply pagination BEFORE event lookup
+        // 6. Apply pagination
         {
           $skip: skip,
         },
@@ -232,7 +239,7 @@ export const getAllUsers = async (req, res) => {
           $limit: limit,
         },
 
-        // 6. Get event details only for paginated users
+        // 7. Fetch event details only for paginated users
         {
           $lookup: {
             from: "events",
@@ -242,7 +249,7 @@ export const getAllUsers = async (req, res) => {
           },
         },
 
-        // 7. Set signupEvent
+        // 8. Preserve signupEvent behavior
         {
           $addFields: {
             signupEvent: {
@@ -259,20 +266,14 @@ export const getAllUsers = async (req, res) => {
           },
         },
 
-        // 8. Remove sensitive and temporary fields
+        // 9. Remove temporary lookup fields
         {
           $project: {
-            password: 0,
-            plainPassword: 0,
-            passwordResetToken: 0,
-            passwordResetExpires: 0,
-            otp: 0,
-            otpExpires: 0,
             firstRegistration: 0,
             signupEventDetails: 0,
           },
         },
-      ]),
+      ]).allowDiskUse(true),
     ]);
 
     return res.status(200).json({
@@ -282,11 +283,10 @@ export const getAllUsers = async (req, res) => {
       pagination: buildPaginationMeta(
         totalUsers,
         page,
-        limit
+        limit,
       ),
       users,
     });
-
   } catch (error) {
     console.error("Get all users error:", error);
 
@@ -296,6 +296,7 @@ export const getAllUsers = async (req, res) => {
     });
   }
 };
+
 
 
 // =======================
