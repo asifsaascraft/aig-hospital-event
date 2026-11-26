@@ -140,8 +140,9 @@ export const registerUserByEventAdmin = async (req, res) => {
   }
 };
 
+
 // =======================
-// Admin: Get All Users (Pagination + Search)
+// Admin: Get All Users (Optimized Pagination + Search)
 // =======================
 export const getAllUsers = async (req, res) => {
   try {
@@ -155,117 +156,137 @@ export const getAllUsers = async (req, res) => {
       ...searchQuery,
     };
 
-    // Get total matching users
-    const totalUsers = await User.countDocuments(matchQuery);
+    // Run count and aggregation in parallel
+    const [totalUsers, users] = await Promise.all([
+      User.countDocuments(matchQuery),
 
-    const users = await User.aggregate([
-      {
-        $match: matchQuery,
-      },
+      User.aggregate([
+        // 1. Filter users
+        {
+          $match: matchQuery,
+        },
 
-      // Get first registration of the user
-      {
-        $lookup: {
-          from: "eventregistrations",
-          let: {
-            userId: "$_id",
-          },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $eq: ["$userId", "$$userId"],
+        // 2. Get first registration of each user
+        {
+          $lookup: {
+            from: "eventregistrations",
+            let: {
+              userId: "$_id",
+            },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $eq: ["$userId", "$$userId"],
+                  },
                 },
               },
-            },
-            {
-              $sort: {
-                createdAt: 1,
-              },
-            },
-            {
-              $limit: 1,
-            },
-            {
-              $project: {
-                createdAt: 1,
-                eventId: 1,
-              },
-            },
-          ],
-          as: "firstRegistration",
-        },
-      },
-
-      // Get event details
-      {
-        $lookup: {
-          from: "events",
-          localField: "firstRegistration.eventId",
-          foreignField: "_id",
-          as: "signupEventDetails",
-        },
-      },
-
-      // Set signupEvent and registration createdAt
-      {
-        $addFields: {
-          signupEvent: {
-            $ifNull: [
               {
-                $arrayElemAt: ["$signupEventDetails.eventName", 0],
+                $sort: {
+                  createdAt: 1,
+                },
               },
-              "Self",
-            ],
-          },
-
-          createdAt: {
-            $ifNull: [
               {
-                $arrayElemAt: ["$firstRegistration.createdAt", 0],
+                $limit: 1,
               },
-              "$createdAt",
+              {
+                $project: {
+                  createdAt: 1,
+                  eventId: 1,
+                },
+              },
             ],
+            as: "firstRegistration",
           },
         },
-      },
 
-      // Remove sensitive fields and temporary lookup fields
-      {
-        $project: {
-          password: 0,
-          plainPassword: 0,
-          passwordResetToken: 0,
-          passwordResetExpires: 0,
-          otp: 0,
-          otpExpires: 0,
-          firstRegistration: 0,
-          signupEventDetails: 0,
+        // 3. Set signup date
+        {
+          $addFields: {
+            createdAt: {
+              $ifNull: [
+                {
+                  $arrayElemAt: [
+                    "$firstRegistration.createdAt",
+                    0,
+                  ],
+                },
+                "$createdAt",
+              ],
+            },
+          },
         },
-      },
 
-      {
-        $sort: {
-          createdAt: -1,
+        // 4. Sort users
+        {
+          $sort: {
+            createdAt: -1,
+          },
         },
-      },
 
-      // Pagination
-      {
-        $skip: skip,
-      },
-      {
-        $limit: limit,
-      },
+        // 5. Apply pagination BEFORE event lookup
+        {
+          $skip: skip,
+        },
+        {
+          $limit: limit,
+        },
+
+        // 6. Get event details only for paginated users
+        {
+          $lookup: {
+            from: "events",
+            localField: "firstRegistration.eventId",
+            foreignField: "_id",
+            as: "signupEventDetails",
+          },
+        },
+
+        // 7. Set signupEvent
+        {
+          $addFields: {
+            signupEvent: {
+              $ifNull: [
+                {
+                  $arrayElemAt: [
+                    "$signupEventDetails.eventName",
+                    0,
+                  ],
+                },
+                "Self",
+              ],
+            },
+          },
+        },
+
+        // 8. Remove sensitive and temporary fields
+        {
+          $project: {
+            password: 0,
+            plainPassword: 0,
+            passwordResetToken: 0,
+            passwordResetExpires: 0,
+            otp: 0,
+            otpExpires: 0,
+            firstRegistration: 0,
+            signupEventDetails: 0,
+          },
+        },
+      ]),
     ]);
 
     return res.status(200).json({
       success: true,
       count: users.length,
       totalCount: totalUsers,
-      pagination: buildPaginationMeta(totalUsers, page, limit),
+      pagination: buildPaginationMeta(
+        totalUsers,
+        page,
+        limit
+      ),
       users,
     });
+
   } catch (error) {
     console.error("Get all users error:", error);
 
@@ -275,6 +296,7 @@ export const getAllUsers = async (req, res) => {
     });
   }
 };
+
 
 // =======================
 // Admin: Get All Users (Without Pagination)
